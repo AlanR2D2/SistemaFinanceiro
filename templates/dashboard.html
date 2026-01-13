@@ -1,0 +1,939 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block header %}Dashboard{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+<style>
+  /* Sidebar uses the default/light styles from base.html kk */
+
+  /* ====== Dashboard ====== */
+  .dash-shell{
+    background: radial-gradient(1200px 800px at 15% 0%, rgba(64, 134, 255, .22) 0%, transparent 60%),
+                radial-gradient(900px 600px at 90% 10%, rgba(0, 255, 204, .14) 0%, transparent 55%),
+                linear-gradient(135deg, #06152c 0%, #041733 55%, #031225 100%);
+    border-radius: 18px;
+    padding: 18px;
+  }
+
+  .glass{
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 18px 45px rgba(0,0,0,0.28);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 18px;
+  }
+
+  .glass-soft{
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.22);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 18px;
+  }
+
+  .muted{ color: rgba(255,255,255,0.72); font-size: 12px; }
+  .title{ color: rgba(255,255,255,0.94); font-weight: 900; letter-spacing: .2px; }
+  .divider{ height: 1px; background: rgba(255,255,255,0.10); margin: 14px 0; border-radius: 999px; }
+
+  .section-pill{
+    display:inline-flex; align-items:center; gap:8px;
+    padding: 8px 12px; border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: rgba(255,255,255,0.92);
+    font-weight: 900; font-size: 12px;
+  }
+
+  .kpi{ padding: 16px; position: relative; overflow:hidden; }
+  .kpi::before{
+    content:""; position:absolute; inset:-2px;
+    background: radial-gradient(450px 200px at 20% 0%, rgba(255,255,255,0.10) 0%, transparent 55%);
+    pointer-events:none;
+  }
+  .kpi-label{ color: rgba(255,255,255,0.75); font-size: 12px; font-weight: 800; }
+  .kpi-num{ color: rgba(255,255,255,0.97); font-weight: 950; font-size: 30px; line-height:1.05; margin-top:6px; }
+  .kpi-sub{ color: rgba(255,255,255,0.62); font-size: 11px; margin-top: 6px; }
+
+  .panel{ padding: 14px; overflow: visible; }
+  .panel-title{
+    color: rgba(255,255,255,0.92);
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: .2px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom: 10px;
+  }
+  .panel-title span{ color: rgba(255,255,255,0.65); font-weight: 700; font-size: 11px; }
+  .chart-wrap{ height: 320px; position: relative; z-index: 1; overflow: visible; }
+
+  .tabs{ display:flex; gap:10px; padding: 8px; }
+  .tab-btn{
+    flex:1;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.86);
+    font-weight: 950;
+    cursor: pointer;
+    transition: .15s ease-in-out;
+  }
+  .tab-btn:hover{ background: rgba(255,255,255,0.10); }
+  .tab-btn.active{
+    background: rgba(255,255,255,0.14);
+    border-color: rgba(255,255,255,0.22);
+    color: rgba(255,255,255,0.95);
+  }
+  .tab-content{ display:none; }
+  .tab-content.active{ display:block; }
+
+  .filter-label{ color: rgba(255,255,255,0.78); font-size: 12px; font-weight: 800; margin-bottom: 6px; }
+
+  .btn-glass{
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.92);
+    border-radius: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: 900;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-glass:hover{ background: rgba(255,255,255,0.18); }
+
+  .btn-glass-sm{
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.16);
+    color: rgba(255,255,255,0.92);
+    border-radius: 12px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-weight: 950;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .btn-glass-sm:hover{ background: rgba(255,255,255,0.16); }
+
+  /* ===== Filtros estilo Excel (mais compactos) ===== */
+  .xl-filter{ position: relative; z-index: 1000; }
+
+  .xl-trigger{
+    width: 100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding: 10px 12px;         /* ✅ menor */
+    border-radius: 14px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: rgba(255,255,255,0.92);
+    cursor: pointer;
+    user-select: none;
+  }
+  .xl-trigger:hover{ background: rgba(255,255,255,0.12); }
+  .xl-trigger-title{ font-weight: 950; font-size: 11px; letter-spacing:.2px; }  /* ✅ menor */
+  .xl-trigger-sub{ font-weight: 800; font-size: 11px; color: rgba(255,255,255,0.72); margin-top: 2px; }
+
+  .xl-caret{
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 7px solid rgba(255,255,255,0.85);
+    opacity: .95;
+  }
+
+  .xl-pop{
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 420px;
+    max-width: 100%;
+    z-index: 9999;
+    display: none;
+
+    background: rgba(12, 22, 40, 0.96);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 12px;
+    box-shadow: 0 22px 65px rgba(0,0,0,0.60);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    overflow: hidden;
+  }
+  .xl-filter.open .xl-pop{ display:block; }
+  .xl-pop.portaled{ position: fixed !important; z-index: 2147483647 !important; }
+  .xl-pop.is-open{ display:block !important; }
+
+  .xl-pop-top{ padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.10); }
+  .xl-search{
+    width: 100%;
+    padding: 9px 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: rgba(255,255,255,0.92);
+    font-weight: 800;
+    outline: none;
+    font-size: 12px;
+  }
+  .xl-search::placeholder{ color: rgba(255,255,255,0.55); }
+
+  .xl-pop-actions{
+    display:flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.10);
+  }
+  .xl-action{
+    padding: 7px 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: rgba(255,255,255,0.90);
+    font-weight: 900;
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  .xl-action:hover{ background: rgba(255,255,255,0.14); }
+
+  .xl-list{ max-height: 240px; overflow:auto; padding: 6px; }
+  .xl-list::-webkit-scrollbar{ width: 8px; }
+  .xl-list::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.20); border-radius: 10px; }
+
+  .xl-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .xl-item:hover{ background: rgba(255,255,255,0.08); }
+
+  .xl-check{ width: 16px; height:16px; accent-color: #4cc3ff; cursor:pointer; }
+  .xl-text{ color: rgba(255,255,255,0.92); font-weight: 800; font-size: 12px; }
+
+  .xl-pop-bottom{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    padding: 10px;
+    border-top: 1px solid rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.04);
+  }
+
+  .xl-btn{
+    padding: 9px 14px;
+    border-radius: 10px;
+    font-weight: 950;
+    cursor:pointer;
+    border: 1px solid rgba(255,255,255,0.18);
+    font-size: 12px;
+  }
+  .xl-btn-cancel{ background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.92); }
+  .xl-btn-cancel:hover{ background: rgba(255,255,255,0.10); }
+  .xl-btn-ok{
+    background: rgba(76,195,255,0.22);
+    color: rgba(255,255,255,0.98);
+    border-color: rgba(76,195,255,0.35);
+  }
+  .xl-btn-ok:hover{ background: rgba(76,195,255,0.30); }
+</style>
+
+<div class="dash-shell">
+  <div class="glass p-5 mb-5">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <div class="title text-xl">Painel Financeiro</div>
+        <div class="muted mt-1">
+          Finalizado quando <b>Status = "{{ final_status }}"</b>.
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- ✅ Botão recolher sidebar (se existir no base.html) -->
+        <button type="button" id="sidebarToggle" class="sidebar-toggle" title="Recolher/Expandir menu">
+          <span class="sidebar-dot"></span>
+          <span id="sidebarToggleText">Recolher menu</span>
+        </button>
+
+        <div class="section-pill">
+          <span>Logado:</span>
+          <span style="color:rgba(255,255,255,0.98)">{{ current_user.nome or current_user.login }}</span>
+          <span class="muted">({{ current_user.hierarquia }})</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Filtros (na mesma linha) -->
+    <form method="GET" action="/" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+
+      <!-- STATUS -->
+      <div class="md:col-span-3">
+        <div class="filter-label">Status</div>
+        <div id="xlStatus" class="xl-filter">
+          <button type="button" class="xl-trigger" id="xlTrigger_status" aria-haspopup="true" aria-expanded="false">
+            <div class="xl-trigger-text">
+              <div class="xl-trigger-title">Status</div>
+              <div class="xl-trigger-sub" id="xlSummary_status">(Todos)</div>
+            </div>
+            <div class="xl-caret"></div>
+          </button>
+
+          <div class="xl-pop" id="xlPop_status" role="dialog" aria-label="Filtro de Status">
+            <div class="xl-pop-top">
+              <input id="xlSearch_status" class="xl-search" type="text" placeholder="Pesquisar..." autocomplete="off">
+            </div>
+
+            <div class="xl-pop-actions">
+              <button type="button" class="xl-action" id="xlSelectAll_status">Selecionar tudo</button>
+              <button type="button" class="xl-action" id="xlClear_status">Limpar</button>
+            </div>
+
+            <div class="xl-list" id="xlList_status">
+              {% for st in status_options %}
+                <label class="xl-item" data-label="{{ (st or '')|lower }}">
+                  <input class="xl-check" type="checkbox" value="{{ st }}"
+                    {% if st in selected_statuses %}checked{% endif %}>
+                  <span class="xl-text">{{ st }}</span>
+                </label>
+              {% endfor %}
+              <label class="xl-item" data-label="(em branco)">
+                <input class="xl-check" type="checkbox" value="__BLANK__"
+                  {% if '__BLANK__' in selected_statuses %}checked{% endif %}>
+                <span class="xl-text">(Em branco)</span>
+              </label>
+            </div>
+
+            <div class="xl-pop-bottom">
+              <button type="button" class="xl-btn xl-btn-cancel" id="xlCancel_status">Cancelar</button>
+              <button type="button" class="xl-btn xl-btn-ok" id="xlOk_status">OK</button>
+            </div>
+          </div>
+
+          <div id="xlHidden_status"></div>
+        </div>
+      </div>
+
+      <!-- UF -->
+      <div class="md:col-span-3">
+        <div class="filter-label">UF</div>
+        <div id="xlUf" class="xl-filter">
+          <button type="button" class="xl-trigger" id="xlTrigger_uf" aria-haspopup="true" aria-expanded="false">
+            <div class="xl-trigger-text">
+              <div class="xl-trigger-title">UF</div>
+              <div class="xl-trigger-sub" id="xlSummary_uf">(Todos)</div>
+            </div>
+            <div class="xl-caret"></div>
+          </button>
+
+          <div class="xl-pop" id="xlPop_uf" role="dialog" aria-label="Filtro de UF">
+            <div class="xl-pop-top">
+              <input id="xlSearch_uf" class="xl-search" type="text" placeholder="Pesquisar..." autocomplete="off">
+            </div>
+
+            <div class="xl-pop-actions">
+              <button type="button" class="xl-action" id="xlSelectAll_uf">Selecionar tudo</button>
+              <button type="button" class="xl-action" id="xlClear_uf">Limpar</button>
+            </div>
+
+            <div class="xl-list" id="xlList_uf">
+              {% for uf in uf_options %}
+                <label class="xl-item" data-label="{{ (uf or '')|lower }}">
+                  <input class="xl-check" type="checkbox" value="{{ uf }}"
+                    {% if uf in selected_ufs %}checked{% endif %}>
+                  <span class="xl-text">{{ uf }}</span>
+                </label>
+              {% endfor %}
+              <label class="xl-item" data-label="(em branco)">
+                <input class="xl-check" type="checkbox" value="__BLANK__"
+                  {% if '__BLANK__' in selected_ufs %}checked{% endif %}>
+                <span class="xl-text">(Em branco)</span>
+              </label>
+            </div>
+
+            <div class="xl-pop-bottom">
+              <button type="button" class="xl-btn xl-btn-cancel" id="xlCancel_uf">Cancelar</button>
+              <button type="button" class="xl-btn xl-btn-ok" id="xlOk_uf">OK</button>
+            </div>
+          </div>
+
+          <div id="xlHidden_uf"></div>
+        </div>
+      </div>
+
+      <!-- RÉU -->
+      <div class="md:col-span-3">
+        <div class="filter-label">Réu</div>
+        <div id="xlReu" class="xl-filter">
+          <button type="button" class="xl-trigger" id="xlTrigger_reu" aria-haspopup="true" aria-expanded="false">
+            <div class="xl-trigger-text">
+              <div class="xl-trigger-title">Réu</div>
+              <div class="xl-trigger-sub" id="xlSummary_reu">(Todos)</div>
+            </div>
+            <div class="xl-caret"></div>
+          </button>
+
+          <div class="xl-pop" id="xlPop_reu" role="dialog" aria-label="Filtro de Réu">
+            <div class="xl-pop-top">
+              <input id="xlSearch_reu" class="xl-search" type="text" placeholder="Pesquisar..." autocomplete="off">
+            </div>
+
+            <div class="xl-pop-actions">
+              <button type="button" class="xl-action" id="xlSelectAll_reu">Selecionar tudo</button>
+              <button type="button" class="xl-action" id="xlClear_reu">Limpar</button>
+            </div>
+
+            <div class="xl-list" id="xlList_reu">
+              {% for r in reu_options %}
+                <label class="xl-item" data-label="{{ (r or '')|lower }}">
+                  <input class="xl-check" type="checkbox" value="{{ r }}"
+                    {% if r in selected_reus %}checked{% endif %}>
+                  <span class="xl-text">{{ r }}</span>
+                </label>
+              {% endfor %}
+              <label class="xl-item" data-label="(em branco)">
+                <input class="xl-check" type="checkbox" value="__BLANK__"
+                  {% if '__BLANK__' in selected_reus %}checked{% endif %}>
+                <span class="xl-text">(Em branco)</span>
+              </label>
+            </div>
+
+            <div class="xl-pop-bottom">
+              <button type="button" class="xl-btn xl-btn-cancel" id="xlCancel_reu">Cancelar</button>
+              <button type="button" class="xl-btn xl-btn-ok" id="xlOk_reu">OK</button>
+            </div>
+          </div>
+
+          <div id="xlHidden_reu"></div>
+        </div>
+      </div>
+
+      <!-- Botões -->
+      <div class="md:col-span-3 flex gap-2 justify-end">
+        <button class="btn-glass-sm" type="submit">Aplicar</button>
+        <a class="btn-glass-sm" href="/">Limpar</a>
+      </div>
+    </form>
+
+    <div class="divider"></div>
+
+    <div class="tabs glass-soft">
+      <button type="button" class="tab-btn active" data-tab="tab-ac">ACORDOS</button>
+      <button type="button" class="tab-btn" data-tab="tab-md">MANDADOS</button>
+    </div>
+  </div>
+
+  {% set ac = kpis.acordos %}
+  {% set md = kpis.mandados %}
+
+  <!-- TAB ACORDOS -->
+  <div id="tab-ac" class="tab-content active">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-5">
+      <div class="glass kpi">
+        <div class="kpi-label">Total</div>
+        <div class="kpi-num">{{ ac.total }}</div>
+        <div class="kpi-sub">Registros (após filtro)</div>
+      </div>
+      <div class="glass kpi">
+        <div class="kpi-label">Pagos</div>
+        <div class="kpi-num">{{ ac.pagos }}</div>
+        <div class="kpi-sub">Com Data Pagamento</div>
+      </div>
+      <div class="glass kpi">
+        <div class="kpi-label">Sem pagamento</div>
+        <div class="kpi-num">{{ ac.sem_pag }}</div>
+        <div class="kpi-sub">Data Pagamento vazia</div>
+      </div>
+      <div class="glass kpi">
+        <div class="kpi-label">Ativos</div>
+        <div class="kpi-num">{{ ac.ativos }}</div>
+        <div class="kpi-sub">Status ≠ Finalizado</div>
+      </div>
+      <div class="glass kpi">
+        <div class="kpi-label">Finalizados</div>
+        <div class="kpi-num">{{ ac.finalizados }}</div>
+        <div class="kpi-sub">Status = Finalizado</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
+      <div class="glass panel">
+        <div class="panel-title">
+          <div>Contagem por Mês <span>(Data Pagamento)</span></div>
+        </div>
+        <div class="chart-wrap"><canvas id="ac_mes"></canvas></div>
+      </div>
+
+      <div class="glass panel">
+        <div class="panel-title">
+          <div>Status <span>(todos)</span></div>
+        </div>
+        <div class="chart-wrap" id="wrap_ac_status"><canvas id="ac_status"></canvas></div>
+      </div>
+
+      <div class="glass panel">
+        <div class="panel-title">
+          <div>UF <span>(todos)</span></div>
+        </div>
+        <div class="chart-wrap" id="wrap_ac_uf"><canvas id="ac_uf"></canvas></div>
+      </div>
+
+      <div class="glass panel">
+        <div class="panel-title">
+          <div>Réu <span>(todos)</span></div>
+        </div>
+        <div class="chart-wrap" id="wrap_ac_reu"><canvas id="ac_reu"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB MANDADOS -->
+  <div id="tab-md" class="tab-content">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-5">
+      <div class="glass kpi">
+        <div class="kpi-label">Total</div>
+        <div class="kpi-num">{{ md.total }}</div>
+        <div class="kpi-sub">Registros (após filtro)</div>
+      </div>
+      <div class="glass kpi">
+        <div class="kpi-label">Pagos</div>
+        <div class="kpi-num">{{ md.pagos }}</div>
+        <div class="kpi-sub">Com Data Pagamento</div>
+      </div>
+      <div class="glass kpi">
+        <div class="kpi-label">Sem pagamento</div>
+        <div class="kpi-num">{{ md.sem_pag }}</div>
+        <div class="kpi-sub">Data Pagamento vazia</div>
+      </div>
+      <div class="glass kpi">
+        <div class="kpi-label">Ativos</div>
+        <div class="kpi-num">{{ md.ativos }}</div>
+        <div class="kpi-sub">Status ≠ Finalizado</div>
+      </div>
+      <div class="glass kpi">
+        <div class="kpi-label">Finalizados</div>
+        <div class="kpi-num">{{ md.finalizados }}</div>
+        <div class="kpi-sub">Status = Finalizado</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div class="glass panel">
+        <div class="panel-title">
+          <div>Contagem por Mês <span>(Data Pagamento)</span></div>
+        </div>
+        <div class="chart-wrap"><canvas id="md_mes"></canvas></div>
+      </div>
+
+      <div class="glass panel">
+        <div class="panel-title">
+          <div>Status <span>(todos)</span></div>
+        </div>
+        <div class="chart-wrap" id="wrap_md_status"><canvas id="md_status"></canvas></div>
+      </div>
+
+      <div class="glass panel">
+        <div class="panel-title">
+          <div>UF <span>(todos)</span></div>
+        </div>
+        <div class="chart-wrap" id="wrap_md_uf"><canvas id="md_uf"></canvas></div>
+      </div>
+
+      <div class="glass panel">
+        <div class="panel-title">
+          <div>Réu <span>(todos)</span></div>
+        </div>
+        <div class="chart-wrap" id="wrap_md_reu"><canvas id="md_reu"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Tabs
+  const tabButtons = document.querySelectorAll(".tab-btn");
+  const tabContents = document.querySelectorAll(".tab-content");
+  tabButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-tab");
+      tabButtons.forEach(b => b.classList.remove("active"));
+      tabContents.forEach(c => c.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(id).classList.add("active");
+    });
+  });
+
+  // Sidebar toggle (funciona se existir #sidebar no base.html)
+  (function(){
+    const btn = document.getElementById("sidebarToggle");
+    if (!btn) return;
+
+    const sidebar = document.getElementById("sidebar");
+    const txt = document.getElementById("sidebarToggleText");
+
+    // restaura estado
+    const saved = localStorage.getItem("sidebarCollapsed");
+    if (saved === "1") {
+      document.body.classList.add("sidebar-collapsed");
+      if (txt) txt.textContent = "Expandir menu";
+    }
+
+    btn.addEventListener("click", () => {
+      // se não existir sidebar, só alterna a classe mesmo assim (não quebra)
+      document.body.classList.toggle("sidebar-collapsed");
+
+      const collapsed = document.body.classList.contains("sidebar-collapsed");
+      localStorage.setItem("sidebarCollapsed", collapsed ? "1" : "0");
+      if (txt) txt.textContent = collapsed ? "Expandir menu" : "Recolher menu";
+    });
+  })();
+
+  // ====== Filtro Excel-like (genérico) ======
+  function initXlFilter(cfg){
+    const root = document.getElementById(cfg.rootId);
+    const trigger = document.getElementById(cfg.triggerId);
+    const pop = document.getElementById(cfg.popId);
+    const search = document.getElementById(cfg.searchId);
+    const list = document.getElementById(cfg.listId);
+    const summary = document.getElementById(cfg.summaryId);
+    const btnAll = document.getElementById(cfg.btnAllId);
+    const btnClear = document.getElementById(cfg.btnClearId);
+    const btnCancel = document.getElementById(cfg.btnCancelId);
+    const btnOk = document.getElementById(cfg.btnOkId);
+    const hidden = document.getElementById(cfg.hiddenId);
+
+    if (!root || !trigger || !pop || !search || !list || !summary || !btnAll || !btnClear || !btnCancel || !btnOk || !hidden) return;
+
+    const popHome = pop.parentElement;
+    let snapshot = [];
+    let isPortaled = false;
+
+    const checks = () => Array.from(list.querySelectorAll("input.xl-check"));
+
+    function portalToBody(){
+      if (isPortaled) return;
+      document.body.appendChild(pop);
+      pop.classList.add("portaled");
+      isPortaled = true;
+    }
+
+    function returnFromBody(){
+      if (!isPortaled) return;
+      pop.classList.remove("portaled");
+      popHome.appendChild(pop);
+      isPortaled = false;
+    }
+
+    function positionPop(){
+      const r = trigger.getBoundingClientRect();
+      const gap = 8;
+      pop.style.top = (r.bottom + gap) + "px";
+      pop.style.left = r.left + "px";
+      pop.style.width = Math.min(420, r.width) + "px";
+    }
+
+    function getSelectedValues(){
+      return checks().filter(c => c.checked).map(c => c.value);
+    }
+
+    function setSelectedValues(values){
+      const set = new Set(values);
+      checks().forEach(c => c.checked = set.has(c.value));
+    }
+
+    function updateSummary(){
+      const selected = getSelectedValues();
+      const sel = selected.filter(v => v !== "__BLANK__");
+      const blankChecked = selected.includes("__BLANK__");
+      const total = sel.length + (blankChecked ? 1 : 0);
+
+      if (total === 0) summary.textContent = "(Todos)";
+      else if (total === 1){
+        summary.textContent = blankChecked ? "(Em branco)" : sel[0];
+      } else {
+        summary.textContent = `${total} selecionados`;
+      }
+    }
+
+    function filter(term){
+      const t = (term || "").toLowerCase().trim();
+      Array.from(list.querySelectorAll(".xl-item")).forEach(item => {
+        const lbl = item.getAttribute("data-label") || "";
+        item.style.display = lbl.includes(t) ? "flex" : "none";
+      });
+    }
+
+    function open(){
+      snapshot = getSelectedValues();
+
+      root.classList.add("open");
+      trigger.setAttribute("aria-expanded", "true");
+
+      portalToBody();
+      positionPop();
+      pop.classList.add("is-open");
+
+      search.value = "";
+      filter("");
+      setTimeout(() => search.focus(), 0);
+
+      window.addEventListener("scroll", positionPop, true);
+      window.addEventListener("resize", positionPop, true);
+    }
+
+    function close(){
+      root.classList.remove("open");
+      trigger.setAttribute("aria-expanded", "false");
+
+      window.removeEventListener("scroll", positionPop, true);
+      window.removeEventListener("resize", positionPop, true);
+
+      pop.classList.remove("is-open");
+      returnFromBody();
+    }
+
+    trigger.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      root.classList.contains("open") ? close() : open();
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!root.contains(e.target) && !pop.contains(e.target)) close();
+    });
+
+    pop.addEventListener("click", (e) => e.stopPropagation());
+    search.addEventListener("input", (e) => filter(e.target.value));
+
+    btnAll.addEventListener("click", () => { checks().forEach(c => c.checked = true); updateSummary(); });
+    btnClear.addEventListener("click", () => { checks().forEach(c => c.checked = false); updateSummary(); });
+
+    btnCancel.addEventListener("click", () => { setSelectedValues(snapshot); updateSummary(); close(); });
+
+    btnOk.addEventListener("click", () => {
+      hidden.innerHTML = "";
+      getSelectedValues().forEach(v => {
+        const inp = document.createElement("input");
+        inp.type = "hidden";
+        inp.name = cfg.paramName;   // status / uf / reu
+        inp.value = v;
+        hidden.appendChild(inp);
+      });
+
+      updateSummary();
+      const form = root.closest("form");
+      if (form) form.submit();
+    });
+
+    list.addEventListener("change", (e) => {
+      if (e.target && e.target.classList.contains("xl-check")) updateSummary();
+    });
+
+    updateSummary();
+  }
+
+  // Inicia os 3 filtros
+  initXlFilter({
+    rootId: "xlStatus",
+    triggerId: "xlTrigger_status",
+    popId: "xlPop_status",
+    searchId: "xlSearch_status",
+    listId: "xlList_status",
+    summaryId: "xlSummary_status",
+    btnAllId: "xlSelectAll_status",
+    btnClearId: "xlClear_status",
+    btnCancelId: "xlCancel_status",
+    btnOkId: "xlOk_status",
+    hiddenId: "xlHidden_status",
+    paramName: "status",
+  });
+
+  initXlFilter({
+    rootId: "xlUf",
+    triggerId: "xlTrigger_uf",
+    popId: "xlPop_uf",
+    searchId: "xlSearch_uf",
+    listId: "xlList_uf",
+    summaryId: "xlSummary_uf",
+    btnAllId: "xlSelectAll_uf",
+    btnClearId: "xlClear_uf",
+    btnCancelId: "xlCancel_uf",
+    btnOkId: "xlOk_uf",
+    hiddenId: "xlHidden_uf",
+    paramName: "uf",
+  });
+
+  initXlFilter({
+    rootId: "xlReu",
+    triggerId: "xlTrigger_reu",
+    popId: "xlPop_reu",
+    searchId: "xlSearch_reu",
+    listId: "xlList_reu",
+    summaryId: "xlSummary_reu",
+    btnAllId: "xlSelectAll_reu",
+    btnClearId: "xlClear_reu",
+    btnCancelId: "xlCancel_reu",
+    btnOkId: "xlOk_reu",
+    hiddenId: "xlHidden_reu",
+    paramName: "reu",
+  });
+
+  // ====== Charts ======
+  const charts = {{ charts|tojson }};
+  Chart.register(ChartDataLabels);
+
+  const ticks = "rgba(255,255,255,0.85)";
+  const grid  = "rgba(255,255,255,0.10)";
+  const dlColor = "rgba(255,255,255,0.92)";
+
+  function padMax(maxVal){
+    const m = Number(maxVal || 0);
+    const padded = Math.ceil(m * 1.2);
+    return Math.max(m + 1, padded);
+  }
+
+  const baseOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    layout: { padding: { top: 6, right: 28, bottom: 6, left: 6 } },
+    plugins: {
+      legend: { display: false },
+      tooltip: { enabled: true },
+      datalabels: {
+        color: dlColor,
+        font: { weight: "800" },
+        formatter: (v) => (v === null || v === undefined ? "" : v),
+        clamp: false,
+        clip: false
+      }
+    },
+    scales: {
+      x: { ticks: { color: ticks, precision: 0 }, grid: { color: grid } },
+      y: { ticks: { color: ticks }, grid: { color: grid } }
+    }
+  };
+
+  const verticalOptions = {
+    ...baseOptions,
+    plugins: { ...baseOptions.plugins, datalabels: { ...baseOptions.plugins.datalabels, anchor: "end", align: "end" } }
+  };
+
+  const horizontalOptions = {
+    ...baseOptions,
+    indexAxis: "y",
+    plugins: {
+      ...baseOptions.plugins,
+      datalabels: { ...baseOptions.plugins.datalabels, anchor: "end", align: "right", offset: 6 }
+    }
+  };
+
+  function setDynamicHeight(wrapperId, labelsLen) {
+    const wrap = document.getElementById(wrapperId);
+    if (!wrap) return;
+    const h = Math.max(320, labelsLen * 26);
+    wrap.style.height = h + "px";
+  }
+
+  // ACORDOS
+  new Chart(document.getElementById("ac_mes"), {
+    type: "bar",
+    data: { labels: charts.acordos.mes_labels, datasets: [{ data: charts.acordos.mes_values }] },
+    options: verticalOptions
+  });
+
+  setDynamicHeight("wrap_ac_status", charts.acordos.status_labels.length);
+  const acStatusMax = Math.max(...charts.acordos.status_values, 0);
+  new Chart(document.getElementById("ac_status"), {
+    type: "bar",
+    data: { labels: charts.acordos.status_labels, datasets: [{ data: charts.acordos.status_values }] },
+    options: {
+      ...horizontalOptions,
+      scales: { ...horizontalOptions.scales, x: { ...horizontalOptions.scales.x, suggestedMax: padMax(acStatusMax) } }
+    }
+  });
+
+  setDynamicHeight("wrap_ac_uf", charts.acordos.uf_labels.length);
+  const acUfMax = Math.max(...charts.acordos.uf_values, 0);
+  new Chart(document.getElementById("ac_uf"), {
+    type: "bar",
+    data: { labels: charts.acordos.uf_labels, datasets: [{ data: charts.acordos.uf_values }] },
+    options: {
+      ...horizontalOptions,
+      scales: { ...horizontalOptions.scales, x: { ...horizontalOptions.scales.x, suggestedMax: padMax(acUfMax) } }
+    }
+  });
+
+  setDynamicHeight("wrap_ac_reu", charts.acordos.reu_labels.length);
+  const acReuMax = Math.max(...charts.acordos.reu_values, 0);
+  new Chart(document.getElementById("ac_reu"), {
+    type: "bar",
+    data: { labels: charts.acordos.reu_labels, datasets: [{ data: charts.acordos.reu_values }] },
+    options: {
+      ...horizontalOptions,
+      scales: { ...horizontalOptions.scales, x: { ...horizontalOptions.scales.x, suggestedMax: padMax(acReuMax) } }
+    }
+  });
+
+  // MANDADOS
+  new Chart(document.getElementById("md_mes"), {
+    type: "bar",
+    data: { labels: charts.mandados.mes_labels, datasets: [{ data: charts.mandados.mes_values }] },
+    options: verticalOptions
+  });
+
+  setDynamicHeight("wrap_md_status", charts.mandados.status_labels.length);
+  const mdStatusMax = Math.max(...charts.mandados.status_values, 0);
+  new Chart(document.getElementById("md_status"), {
+    type: "bar",
+    data: { labels: charts.mandados.status_labels, datasets: [{ data: charts.mandados.status_values }] },
+    options: {
+      ...horizontalOptions,
+      scales: { ...horizontalOptions.scales, x: { ...horizontalOptions.scales.x, suggestedMax: padMax(mdStatusMax) } }
+    }
+  });
+
+  setDynamicHeight("wrap_md_uf", charts.mandados.uf_labels.length);
+  const mdUfMax = Math.max(...charts.mandados.uf_values, 0);
+  new Chart(document.getElementById("md_uf"), {
+    type: "bar",
+    data: { labels: charts.mandados.uf_labels, datasets: [{ data: charts.mandados.uf_values }] },
+    options: {
+      ...horizontalOptions,
+      scales: { ...horizontalOptions.scales, x: { ...horizontalOptions.scales.x, suggestedMax: padMax(mdUfMax) } }
+    }
+  });
+
+  setDynamicHeight("wrap_md_reu", charts.mandados.reu_labels.length);
+  const mdReuMax = Math.max(...charts.mandados.reu_values, 0);
+  new Chart(document.getElementById("md_reu"), {
+    type: "bar",
+    data: { labels: charts.mandados.reu_labels, datasets: [{ data: charts.mandados.reu_values }] },
+    options: {
+      ...horizontalOptions,
+      scales: { ...horizontalOptions.scales, x: { ...horizontalOptions.scales.x, suggestedMax: padMax(mdReuMax) } }
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,24 @@
+services:
+  web:
+    build: .
+    container_name: site-financeiro-web
+    command: >
+      gunicorn -w 3 -k gthread --threads 8 --timeout 120
+      --bind 0.0.0.0:5001 app:app
+    env_file:
+      - .env
+    networks:
+      - financeiro_net
+      - n8n_net
+    restart: unless-stopped
+    volumes:
+      - ./templates:/app/templates:ro
+      - ./static:/app/static:ro
+
+networks:
+  financeiro_net:
+    name: financeiro_net
+    driver: bridge
+  n8n_net:
+    external: true
+    name: n8n-docker-caddy_n8n_net

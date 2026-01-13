@@ -1,0 +1,4 @@
+financeiro.n8n-draconsumidor.com.br {
+    encode gzip
+    reverse_proxy site-financeiro-web:5001
+}

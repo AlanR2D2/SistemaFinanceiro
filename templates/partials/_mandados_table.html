@@ -1,0 +1,1622 @@
+{# templates/partials/_mandados_table.html #}
+
+<style>
+  .md-card{
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:14px;
+    overflow:hidden;
+  }
+  .md-card-h{
+    padding:14px 16px;
+    border-bottom:1px solid #e5e7eb;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .md-card-title{
+    font-weight:800;
+    color:#111827;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .md-pill{
+    display:none;
+    font-size:12px;
+    padding:2px 10px;
+    border-radius:999px;
+    background:#111827;
+    color:#fff;
+    font-weight:700;
+  }
+  .md-actions{ display:flex; align-items:center; gap:10px; }
+  .md-btn{
+    padding:8px 12px;
+    border-radius:10px;
+    border:1px solid #e5e7eb;
+    background:#fff;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .md-btn:hover{ background:#f9fafb; }
+  .md-btn-primary{
+    background:#4f46e5;
+    border-color:#4f46e5;
+    color:#fff;
+  }
+  .md-btn-primary:hover{ background:#4338ca; }
+
+  /* ======= CARDS DE SOMATÓRIO (MESMO TAMANHO “BOM” DOS ACORDOS) ======= */
+  .md-sums{
+    padding: 14px 16px 0 16px;
+  }
+  .md-sums-grid{
+    display:grid;
+    grid-template-columns: repeat(6, minmax(180px, 1fr));
+    gap:12px;
+    align-items:stretch;
+  }
+  .md-sum-card{
+    border:1px solid #e5e7eb;
+    border-radius:14px;
+    background:#fff;
+    padding:14px 14px;
+    min-height: 86px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+  }
+  .md-sum-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .md-sum-label{
+    font-size:11px;
+    font-weight:950;
+    color:#6b7280;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .md-sum-value{
+    font-size:16px;
+    font-weight:950;
+    color:#111827;
+    margin-top:6px;
+  }
+  .md-sum-sub{
+    margin-top:6px;
+    font-size:12px;
+    color:#6b7280;
+  }
+  .md-sum-card.total{
+    border-color:#c7d2fe;
+    background: #eef2ff;
+  }
+  .md-sum-card.total .md-sum-label{ color:#4338ca; }
+  .md-sum-card.total .md-sum-value{ color:#111827; }
+
+  @media (max-width: 1400px){
+    .md-sums-grid{ grid-template-columns: repeat(3, minmax(220px, 1fr)); }
+  }
+  @media (max-width: 900px){
+    .md-sums-grid{ grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+  }
+  @media (max-width: 520px){
+    .md-sums-grid{ grid-template-columns: 1fr; }
+  }
+
+  /* WRAP com altura fixa (~50 linhas) */
+  .md-table-wrap{
+    overflow:auto;
+    min-height: 1100px;
+    max-height: 1100px;
+    position:relative;
+    margin-top: 12px;
+  }
+
+  table.md-table{ width:100%; border-collapse:separate; border-spacing:0; }
+  table.md-table thead th{
+    position:sticky;
+    top:0;
+    z-index:3;
+    background:#f9fafb;
+    border-bottom:1px solid #e5e7eb;
+    font-size:12px;
+    font-weight:800;
+    text-transform:uppercase;
+    color:#374151;
+    padding:10px 14px;
+    white-space:nowrap;
+  }
+  table.md-table tbody td{
+    padding:10px 14px;
+    border-bottom:1px solid #f1f5f9;
+    font-size:13px;
+    vertical-align:top;
+    color:#111827;
+  }
+
+  /* hover */
+  table.md-table tbody tr:hover{ background:#fafafa; cursor:default; }
+
+  .md-th-inner{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    white-space:nowrap;
+  }
+  .md-th-tools{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    flex:0 0 auto;
+  }
+  .md-dot{
+    width:8px; height:8px;
+    border-radius:999px;
+    background:#111827;
+    display:none;
+    flex:0 0 auto;
+  }
+  th.md-filtered .md-dot{ display:inline-block; }
+  .md-th-btn{
+    font-size:12px;
+    line-height:1;
+    padding:2px 6px;
+    border-radius:8px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .md-th-btn:hover{ background:#e5e7eb; }
+
+  /* ===== Filter panel ===== */
+  .md-panel{
+    position:fixed;
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    width:380px;
+    box-shadow:0 18px 60px rgba(0,0,0,.18);
+    z-index:2147483647;
+    display:none;
+    padding:10px;
+  }
+  .md-panel *{ box-sizing:border-box; }
+  .md-panel-top{ display:flex; gap:10px; align-items:center; }
+  .md-panel input[type="search"]{
+    width:100%;
+    padding:8px 10px;
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+    outline:none;
+    font-size:13px;
+  }
+  .md-mode{
+    display:none;
+    padding:4px;
+    border:1px solid #e5e7eb;
+    border-radius:999px;
+    background:#fff;
+    flex:0 0 auto;
+  }
+  .md-mode button{
+    padding:7px 12px;
+    border-radius:999px;
+    border:1px solid transparent;
+    font-weight:900;
+    font-size:12px;
+    color:#6b7280;
+    background:transparent;
+    cursor:pointer;
+    white-space:nowrap;
+    line-height:1;
+  }
+  .md-mode button.active{ background:#111827; color:#fff; }
+  .md-panel-list{
+    margin-top:10px;
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+    padding:8px;
+    overflow:auto;
+    min-height:520px;
+    max-height:520px;
+  }
+  .md-panel-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:6px 6px;
+    border-radius:8px;
+    font-size:13px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .md-panel-item:hover{ background:#f9fafb; }
+  .md-panel-item input{ cursor:pointer; }
+  .md-panel-actions{
+    margin-top:10px;
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap:8px;
+  }
+  .md-panel-actions button{
+    padding:7px 8px;
+    border-radius:10px;
+    border:1px solid #e5e7eb;
+    background:#fff;
+    font-weight:900;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .md-panel-actions button:hover{ background:#f9fafb; }
+  .md-panel-actions .primary{
+    background:#4f46e5;
+    border-color:#4f46e5;
+    color:#fff;
+  }
+  .md-panel-actions .primary:hover{ background:#4338ca; }
+  .md-panel-actions .sort{
+    border-color:#c7d2fe;
+    color:#4338ca;
+  }
+  .md-panel-actions .sort:hover{ background:#eef2ff; }
+
+  .clamp-2{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+
+  /* ===================== MODAL (SCROLL OK) ===================== */
+  .md-modal-overlay{
+    position:fixed; inset:0;
+    background: rgba(17,24,39,.55);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index: 2147483646;
+    padding: 16px;
+  }
+  .md-modal{
+    width:min(1100px, 100%);
+    max-height: calc(100vh - 32px);
+    background:#fff;
+    border-radius:18px;
+    border:1px solid #e5e7eb;
+    box-shadow:0 30px 90px rgba(0,0,0,.35);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  .md-modal-h{
+    flex: 0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:14px 16px;
+    border-bottom:1px solid #e5e7eb;
+    background:#f9fafb;
+  }
+  .md-modal-h .left{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-width:0;
+  }
+  .md-modal-badge{
+    font-size:12px;
+    font-weight:900;
+    color:#4338ca;
+    background:#eef2ff;
+    border:1px solid #c7d2fe;
+    padding:4px 10px;
+    border-radius:999px;
+    white-space:nowrap;
+  }
+  .md-modal-title{
+    font-weight:950;
+    color:#111827;
+    font-size:15px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .md-modal-sub{
+    font-size:12px;
+    color:#6b7280;
+    margin-top:2px;
+  }
+  .md-modal-close{
+    width:40px;height:40px;
+    border-radius:12px;
+    border:1px solid #e5e7eb;
+    background:#fff;
+    cursor:pointer;
+    font-weight:900;
+  }
+  .md-modal-close:hover{ background:#f3f4f6; }
+  .md-modal-b{
+    flex: 1 1 auto;
+    overflow:auto;
+    -webkit-overflow-scrolling: touch;
+    padding:16px;
+    background:#fff;
+  }
+  .md-grid{
+    display:grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap:12px;
+  }
+  .md-field{ grid-column: span 6; }
+  .md-field.col-12{ grid-column: span 12; }
+  .md-field.col-4{ grid-column: span 4; }
+  .md-field.col-3{ grid-column: span 3; }
+  .md-field.col-8{ grid-column: span 8; }
+  .md-field label{
+    display:block;
+    font-size:11px;
+    font-weight:950;
+    color:#374151;
+    margin-bottom:6px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+  .md-input, .md-select, .md-textarea{
+    width:100%;
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid #e5e7eb;
+    outline:none;
+    font-size:14px;
+    background:#fff;
+  }
+  .md-input:focus, .md-select:focus, .md-textarea:focus{
+    border-color:#c7d2fe;
+    box-shadow:0 0 0 4px rgba(79,70,229,.12);
+  }
+  .md-textarea{ min-height: 110px; resize: vertical; }
+  .md-modal-f{
+    flex: 0 0 auto;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    padding:14px 16px;
+    border-top:1px solid #e5e7eb;
+    background:#fff;
+  }
+  .md-error{
+    display:none;
+    color:#b91c1c;
+    font-weight:800;
+    font-size:13px;
+  }
+  .md-f-actions{ display:flex; gap:10px; align-items:center; }
+  .md-mbtn{
+    padding:10px 14px;
+    border-radius:12px;
+    border:1px solid #e5e7eb;
+    background:#fff;
+    font-weight:900;
+    cursor:pointer;
+  }
+  .md-mbtn:hover{ background:#f9fafb; }
+  .md-mbtn.primary{
+    background:#4f46e5;
+    border-color:#4f46e5;
+    color:#fff;
+  }
+  .md-mbtn.primary:hover{ background:#4338ca; }
+  body.md-modal-open{ overflow:hidden; }
+
+  @media (max-width: 900px){
+    .md-field, .md-field.col-4, .md-field.col-3, .md-field.col-8{ grid-column: span 12; }
+  }
+
+  /* ===================== SCROLLBAR HORIZONTAL FIXA NO RODAPÉ ===================== */
+  .md-xscroll-fixed{
+    position:fixed;
+    bottom:0;
+    height:14px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    z-index:2147483645;
+    background: rgba(255,255,255,0.85);
+    border-top:1px solid #e5e7eb;
+    backdrop-filter: blur(6px);
+    display:none;
+  }
+  .md-xscroll-fixed .md-xscroll-inner{ height:1px; }
+  body{ padding-bottom: 18px; }
+</style>
+
+<div class="md-card">
+  <div class="md-card-h">
+    <div class="md-card-title">
+      Registros (<span id="mdRowsCount">{{ rows|length }}</span>)
+      <span id="mdFilteredBadge" class="md-pill">Filtrado</span>
+    </div>
+
+    <div class="md-actions">
+      <button type="button" class="md-btn" onclick="MD.clearAll()">Limpar todos os filtros</button>
+      <button type="button" class="md-btn md-btn-primary" onclick="openCreateModalMD()">Novo mandado</button>
+    </div>
+  </div>
+
+  <!-- ======= SOMATÓRIOS (VISÍVEIS / FILTRADOS) ======= -->
+  <div class="md-sums">
+    <div class="md-sums-grid">
+      <div class="md-sum-card">
+        <div class="md-sum-top"><div class="md-sum-label">Quitação</div></div>
+        <div class="md-sum-value" id="mdSumQuitacao">R$ 0,00</div>
+        <div class="md-sum-sub">Somatório dos visíveis</div>
+      </div>
+
+      <div class="md-sum-card">
+        <div class="md-sum-top"><div class="md-sum-label">Depósito</div></div>
+        <div class="md-sum-value" id="mdSumDeposito">R$ 0,00</div>
+        <div class="md-sum-sub">Somatório dos visíveis</div>
+      </div>
+
+      <div class="md-sum-card">
+        <div class="md-sum-top"><div class="md-sum-label">Correção</div></div>
+        <div class="md-sum-value" id="mdSumCorrecao">R$ 0,00</div>
+        <div class="md-sum-sub">Somatório dos visíveis</div>
+      </div>
+
+      <div class="md-sum-card">
+        <div class="md-sum-top"><div class="md-sum-label">Honorários</div></div>
+        <div class="md-sum-value" id="mdSumHonorarios">R$ 0,00</div>
+        <div class="md-sum-sub">Somatório dos visíveis</div>
+      </div>
+
+      <div class="md-sum-card">
+        <div class="md-sum-top"><div class="md-sum-label">Repasse</div></div>
+        <div class="md-sum-value" id="mdSumRepasse">R$ 0,00</div>
+        <div class="md-sum-sub">Somatório dos visíveis</div>
+      </div>
+
+      <div class="md-sum-card total">
+        <div class="md-sum-top"><div class="md-sum-label">Total geral</div></div>
+        <div class="md-sum-value" id="mdSumTotalGeral">R$ 0,00</div>
+        <div class="md-sum-sub">Soma dos campos</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="md-table-wrap">
+    <table class="md-table" id="mdTable">
+      <thead>
+        <tr>
+          <th>DATA QUITAÇÃO</th>
+          <th>NÚMERO PROCESSO</th>
+          <th>UF</th>
+          <th>RÉU</th>
+          <th>AUTOR</th>
+          <th>TEL.</th>
+
+          <th>SENTENÇA</th>
+          <th>QUITAÇÃO</th>
+          <th>STATUS</th>
+          <th>PREVISÃO</th>
+          <th>DATA PAGAMENTO</th>
+          <th>LOCAL</th>
+          <th>TIPO</th>
+
+          <th>DEPÓSITO</th>
+          <th>CORREÇÃO</th>
+          <th>HONORÁRIOS</th>
+          <th>AUDIENCISTA</th>
+          <th>REPASSE</th>
+
+          <th>CHAVE PIX</th>
+          <th>SUCUMBÊNCIA</th>
+          <th style="min-width:320px;">OBSERVAÇÕES</th>
+
+          <th>MÊS PG</th>
+          <th>FINALIZADO</th>
+          <th>CRIADO EM</th>
+          <th>ATUALIZADO EM</th>
+          <th>ID</th>
+
+          <th style="text-align:right;" class="no-filter">Ações</th>
+        </tr>
+      </thead>
+
+      <tbody id="mdTbody">
+        {% for r in rows %}
+        <tr data-row='{{ r|tojson|safe }}' data-id="{{ r.id }}" class="md-row">
+          <td class="whitespace-nowrap"><div class="clamp-2 md-date">{{ r.data_quitacao or "-" }}</div></td>
+          <td class="font-medium whitespace-nowrap"><div class="clamp-2">{{ r.numero_processo or "-" }}</div></td>
+          <td><div class="clamp-2">{{ r.uf or "-" }}</div></td>
+          <td><div class="clamp-2">{{ r.reu or "-" }}</div></td>
+          <td style="min-width:220px; max-width:340px;"><div class="clamp-2">{{ r.autor or "-" }}</div></td>
+          <td><div class="clamp-2">{{ r.tel or "-" }}</div></td>
+
+          <td style="min-width:260px; max-width:360px;"><div class="clamp-2">{{ r.sentenca or "-" }}</div></td>
+          <td><div class="clamp-2">{{ r.quitacao or "-" }}</div></td>
+          <td style="min-width:260px; max-width:360px;"><div class="clamp-2">{{ r.status or "-" }}</div></td>
+          <td><div class="clamp-2">{{ r.previsao or "-" }}</div></td>
+          <td class="whitespace-nowrap"><div class="clamp-2 md-date">{{ r.data_pagamento or "-" }}</div></td>
+          <td><div class="clamp-2">{{ r.local or "-" }}</div></td>
+          <td><div class="clamp-2">{{ r.tipo or "-" }}</div></td>
+
+          <td><div class="clamp-2">{{ r.deposito or "-" }}</div></td>
+          <td><div class="clamp-2">{{ r.correcao or "-" }}</div></td>
+          <td><div class="clamp-2">{{ r.honorarios or "-" }}</div></td>
+          <td><div class="clamp-2">{{ r.audiencista or "-" }}</div></td>
+          <td><div class="clamp-2">{{ r.repasse or "-" }}</div></td>
+
+          <td><div class="clamp-2">{{ r.chave_pix or "-" }}</div></td>
+          <td><div class="clamp-2">{{ r.sucumbencia or "-" }}</div></td>
+          <td style="min-width:320px; max-width:520px;"><div class="clamp-2">{{ r.observacoes or "-" }}</div></td>
+
+          <td><div class="clamp-2">{{ r.mes_pg or "-" }}</div></td>
+          <td><div class="clamp-2">{{ "SIM" if (r.finalizado|int == 1) else "NÃO" }}</div></td>
+          <td class="whitespace-nowrap"><div class="clamp-2 md-date">{{ r.created_at or "-" }}</div></td>
+          <td class="whitespace-nowrap"><div class="clamp-2 md-date">{{ r.updated_at or "-" }}</div></td>
+          <td><div class="clamp-2">{{ r.id or "-" }}</div></td>
+
+          <td style="text-align:right; white-space:nowrap;">
+            <button class="md-btn md-edit-btn" type="button"
+              onclick="openEditModalFromRowMD(this.closest('tr'))">Editar</button>
+
+            <button class="md-btn" type="button"
+              style="margin-left:8px;border-color:#fecaca;color:#dc2626;"
+              onclick="MD.deleteFromBtn(event, {{ r.id }})">Excluir</button>
+          </td>
+        </tr>
+        {% endfor %}
+
+        {% if rows|length == 0 %}
+        <tr><td colspan="27" style="padding:18px; color:#6b7280;">Nenhum registro encontrado.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SCROLL HORIZONTAL FIXO NO RODAPÉ -->
+<div id="mdXScrollFixed" class="md-xscroll-fixed" aria-hidden="true">
+  <div id="mdXScrollInner" class="md-xscroll-inner"></div>
+</div>
+
+<!-- ===================== MODAL (CRIAR/EDITAR) ===================== -->
+<div id="mdModalOverlay" class="md-modal-overlay" aria-hidden="true">
+  <div class="md-modal" role="dialog" aria-modal="true" aria-labelledby="mdModalTitle">
+    <div class="md-modal-h">
+      <div class="left">
+        <div id="mdModalBadge" class="md-modal-badge">Editar</div>
+        <div style="min-width:0;">
+          <div class="md-modal-title" id="mdModalTitle">Mandado</div>
+          <div class="md-modal-sub" id="mdModalSub">Preencha os campos e salve.</div>
+        </div>
+      </div>
+      <button class="md-modal-close" type="button" onclick="closeModalMD()">✕</button>
+    </div>
+
+    <div class="md-modal-b">
+      <input type="hidden" id="mdFormMode" value="edit">
+      <input type="hidden" id="mdId" value="">
+
+      <div class="md-grid">
+        <div class="md-field col-3">
+          <label>Data quitação (dd/mm/aaaa)</label>
+          <input class="md-input" id="mdDataQuitacao" placeholder="dd/mm/aaaa">
+        </div>
+
+        <div class="md-field col-3">
+          <label>UF</label>
+          <select class="md-select" id="mdUfSelect">
+            <option value="">Selecione...</option>
+          </select>
+        </div>
+
+        <div class="md-field col-6">
+          <label>Número processo</label>
+          <input class="md-input" id="mdNumeroProcesso" placeholder="Número do processo">
+        </div>
+
+        <div class="md-field col-6">
+          <label>Réu</label>
+          <select class="md-select" id="mdReuSelect">
+            <option value="">Selecione...</option>
+          </select>
+        </div>
+
+        <div class="md-field col-6">
+          <label>Autor</label>
+          <input class="md-input" id="mdAutor" placeholder="Autor">
+        </div>
+
+        <div class="md-field col-4">
+          <label>Telefone</label>
+          <input class="md-input" id="mdTel" placeholder="Telefone">
+        </div>
+
+        <div class="md-field col-8">
+          <label>Sentença</label>
+          <input class="md-input" id="mdSentenca" placeholder="Sentença">
+        </div>
+
+        <div class="md-field col-4">
+          <label>Quitação</label>
+          <input class="md-input" id="mdQuitacao" placeholder="Ex: 1500.00">
+        </div>
+
+        <div class="md-field col-8">
+          <label>Status</label>
+          <select class="md-select" id="mdStatusSelect">
+            <option value="">Selecione...</option>
+          </select>
+        </div>
+
+        <div class="md-field col-4">
+          <label>Previsão</label>
+          <input class="md-input" id="mdPrevisao" placeholder="Previsão">
+        </div>
+
+        <div class="md-field col-4">
+          <label>Data pagamento (dd/mm/aaaa)</label>
+          <input class="md-input" id="mdDataPagamento" placeholder="dd/mm/aaaa">
+        </div>
+
+        <div class="md-field col-4">
+          <label>Local</label>
+          <select class="md-select" id="mdLocalSelect">
+            <option value="">Selecione...</option>
+          </select>
+        </div>
+
+        <div class="md-field col-6">
+          <label>Tipo</label>
+          <input class="md-input" id="mdTipo" placeholder="Tipo">
+        </div>
+
+        <div class="md-field col-3">
+          <label>Depósito</label>
+          <input class="md-input" id="mdDeposito" placeholder="Ex: 1000.00">
+        </div>
+
+        <div class="md-field col-3">
+          <label>Correção</label>
+          <input class="md-input" id="mdCorrecao" placeholder="Ex: 120.00">
+        </div>
+
+        <div class="md-field col-3">
+          <label>Honorários</label>
+          <input class="md-input" id="mdHonorarios" placeholder="Ex: 500.00">
+        </div>
+
+        <div class="md-field col-3">
+          <label>Audiencista</label>
+          <input class="md-input" id="mdAudiencista" placeholder="Audiencista">
+        </div>
+
+        <div class="md-field col-3">
+          <label>Repasse</label>
+          <input class="md-input" id="mdRepasse" placeholder="Ex: 250.00">
+        </div>
+
+        <div class="md-field col-9">
+          <label>Chave PIX</label>
+          <input class="md-input" id="mdChavePix" placeholder="Chave PIX">
+        </div>
+
+        <div class="md-field col-6">
+          <label>Sucumbência</label>
+          <input class="md-input" id="mdSucumbencia" placeholder="Sucumbência">
+        </div>
+
+        <div class="md-field col-6">
+          <label>Mês PG</label>
+          <input class="md-input" id="mdMesPg" placeholder="Ex: jan/26 ou 01/2026">
+        </div>
+
+        <div class="md-field col-12">
+          <label>Observações</label>
+          <textarea class="md-textarea" id="mdObservacoes" placeholder="Escreva aqui..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="md-modal-f">
+      <div id="mdError" class="md-error"></div>
+      <div class="md-f-actions">
+        <button class="md-mbtn" type="button" onclick="closeModalMD()">Cancelar</button>
+        <button class="md-mbtn primary" id="mdSaveBtn" type="button" onclick="submitModalMD()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================== DELETE (MANDADOS) ===================== */
+async function deleteMandado(id){
+  if(!id) return;
+  if(!confirm("Tem certeza que deseja excluir este mandado?")) return;
+
+  try{
+    const resp = await fetch(`/mandados/${id}`, { method: "DELETE" });
+    if(!resp.ok){
+      const txt = await resp.text();
+      alert(txt || "Falha ao excluir.");
+      return;
+    }
+    window.location.reload();
+  }catch(e){
+    console.error(e);
+    alert("Falha de rede ao excluir.");
+  }
+}
+</script>
+
+<script>
+/* ===================== TABELA + FILTROS + DATAS BR + SOMATÓRIOS ===================== */
+(function(){
+  const table = document.getElementById('mdTable');
+  const thead = table?.tHead?.rows?.[0];
+  const tbody = document.getElementById('mdTbody');
+  const badge = document.getElementById('mdFilteredBadge');
+  const countEl = document.getElementById('mdRowsCount');
+
+  if (!thead || !tbody) return;
+
+  // ===== refs somatórios =====
+  const sumEls = {
+    quitacao: document.getElementById("mdSumQuitacao"),
+    deposito: document.getElementById("mdSumDeposito"),
+    correcao: document.getElementById("mdSumCorrecao"),
+    honorarios: document.getElementById("mdSumHonorarios"),
+    repasse: document.getElementById("mdSumRepasse"),
+    total: document.getElementById("mdSumTotalGeral"),
+  };
+
+  // ===== helpers =====
+  function toBRDateText(raw){
+    if(!raw) return '-';
+    raw = String(raw).trim();
+    if(raw === '-' || raw === '') return '-';
+    if(/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
+    const m1 = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m1){
+      const yyyy = m1[1], mm = m1[2], dd = m1[3];
+      return `${dd}/${mm}/${yyyy}`;
+    }
+    return raw;
+  }
+
+  function toDayKey(raw){
+    const br = toBRDateText(raw);
+    return br === '-' ? '-' : br;
+  }
+  function toMonthKey(raw){
+    const br = toBRDateText(raw);
+    if(br === '-' || !/^\d{2}\/\d{2}\/\d{4}$/.test(br)) return br;
+    const [dd, mm, yyyy] = br.split('/');
+    return `${mm}/${yyyy}`;
+  }
+
+  function parseNumberBR(raw){
+    if(raw === null || raw === undefined) return 0;
+    let s = String(raw).trim();
+    if(!s || s === '-') return 0;
+
+    // remove R$, espaços, etc.
+    s = s.replace(/\s/g,'').replace(/^R\$/i,'').trim();
+
+    // Se tem vírgula e ponto, assume pt-BR: 1.234,56
+    if(s.includes(',') && s.includes('.')){
+      s = s.replace(/\./g,'').replace(',', '.');
+      const n = parseFloat(s);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    // Se só tem vírgula, pode ser decimal pt-BR: 1234,56
+    if(s.includes(',') && !s.includes('.')){
+      const n = parseFloat(s.replace(',', '.'));
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    // senão, parse normal (1234.56 ou 1234)
+    const n = parseFloat(s.replace(/[^\d.-]/g,''));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function formatBRL(n){
+    const v = Number.isFinite(n) ? n : 0;
+    return v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+  }
+
+  // aplica formatação BR nos campos marcados como data
+  tbody.querySelectorAll('.md-date').forEach(el=>{
+    el.textContent = toBRDateText(el.textContent);
+  });
+
+  // ===== painel =====
+  let panel = document.getElementById('mdGlobalFilterPanel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'mdGlobalFilterPanel';
+    panel.className = 'md-panel';
+    panel.innerHTML = `
+      <div class="md-panel-top">
+        <input type="search" placeholder="Pesquisar...">
+        <div class="md-mode" id="mdDateMode" role="group" aria-label="Modo de data">
+          <button type="button" data-mode="day" class="active">Dia</button>
+          <button type="button" data-mode="month">Mês</button>
+        </div>
+      </div>
+      <div class="md-panel-list"></div>
+      <div class="md-panel-actions">
+        <button type="button" class="sort" data-sort="asc">A→Z</button>
+        <button type="button" class="sort" data-sort="desc">Z→A</button>
+        <button type="button" data-act="clear">Limpar</button>
+        <button type="button" class="primary" data-act="ok" style="grid-column: span 2;">OK</button>
+      </div>
+    `;
+    document.body.appendChild(panel);
+  }
+
+  panel.addEventListener('wheel', (e)=> e.stopPropagation(), { passive:true });
+  panel.addEventListener('mousedown', (e)=> e.stopPropagation());
+  panel.addEventListener('touchstart', (e)=> e.stopPropagation(), { passive:true });
+
+  const allRows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector('.md-edit-btn'));
+
+  const FILTERABLE_COLS = [];
+  Array.from(thead.cells).forEach((th, idx) => {
+    const title = (th.innerText || '').trim().toLowerCase();
+    if (title === 'ações' || th.classList.contains('no-filter')) return;
+    FILTERABLE_COLS.push(idx);
+  });
+
+  let filters = {};
+  let sort = null;
+  let openCol = null;
+
+  function textOfCell(row, col){
+    const cell = row.cells[col];
+    if (!cell) return '-';
+    const t = (cell.innerText || '').trim();
+    return t === '' ? '-' : t;
+  }
+
+  function isDateCol(col){
+    const headerText = (thead.cells[col]?.innerText || '').toLowerCase();
+    if (headerText.includes('data')) return true;
+    if (headerText.includes('criado')) return true;
+    if (headerText.includes('atualizado')) return true;
+    return false;
+  }
+
+  function cellValueForFilter(row, col, fObj){
+    const raw = textOfCell(row, col);
+    if (fObj?.type === 'date'){
+      return fObj.mode === 'month' ? toMonthKey(raw) : toDayKey(raw);
+    }
+    return raw;
+  }
+
+  function matchesFilters(row, f = filters){
+    for (const [colStr, fObj] of Object.entries(f)){
+      const col = Number(colStr);
+      const v = cellValueForFilter(row, col, fObj);
+      if (!fObj?.set || !fObj.set.has(v)) return false;
+    }
+    return true;
+  }
+
+  function getVisibleRows(){
+    return allRows.filter(r => matchesFilters(r));
+  }
+
+  // ===== colunas numéricas (pela ordem do seu THEAD atual) =====
+  // 7 QUITAÇÃO, 13 DEPÓSITO, 14 CORREÇÃO, 15 HONORÁRIOS, 17 REPASSE
+  const COL_QUITACAO   = 7;
+  const COL_DEPOSITO   = 13;
+  const COL_CORRECAO   = 14;
+  const COL_HONORARIOS = 15;
+  const COL_REPASSE    = 17;
+
+  function updateSums(){
+    const vis = getVisibleRows();
+
+    let sQuit = 0, sDep = 0, sCor = 0, sHon = 0, sRep = 0;
+
+    vis.forEach(r=>{
+      sQuit += parseNumberBR(textOfCell(r, COL_QUITACAO));
+      sDep  += parseNumberBR(textOfCell(r, COL_DEPOSITO));
+      sCor  += parseNumberBR(textOfCell(r, COL_CORRECAO));
+      sHon  += parseNumberBR(textOfCell(r, COL_HONORARIOS));
+      sRep  += parseNumberBR(textOfCell(r, COL_REPASSE));
+    });
+
+    const total = sQuit + sDep + sCor + sHon + sRep;
+
+    if(sumEls.quitacao)   sumEls.quitacao.textContent   = formatBRL(sQuit);
+    if(sumEls.deposito)   sumEls.deposito.textContent   = formatBRL(sDep);
+    if(sumEls.correcao)   sumEls.correcao.textContent   = formatBRL(sCor);
+    if(sumEls.honorarios) sumEls.honorarios.textContent = formatBRL(sHon);
+    if(sumEls.repasse)    sumEls.repasse.textContent    = formatBRL(sRep);
+    if(sumEls.total)      sumEls.total.textContent      = formatBRL(total);
+  }
+
+  function apply(){
+    allRows.forEach(r => r.style.display = matchesFilters(r) ? '' : 'none');
+
+    if (sort){
+      const vis = getVisibleRows();
+      const col = sort.col;
+      const dir = sort.dir;
+
+      vis.sort((a,b)=>{
+        const A = textOfCell(a,col);
+        const B = textOfCell(b,col);
+
+        if (isDateCol(col)){
+          const aBr = toBRDateText(A);
+          const bBr = toBRDateText(B);
+          const aIso = (aBr === '-' ? '' : aBr.split('/').reverse().join('-'));
+          const bIso = (bBr === '-' ? '' : bBr.split('/').reverse().join('-'));
+          const cmp = aIso.localeCompare(bIso);
+          return dir === 'asc' ? cmp : -cmp;
+        }
+
+        const aNum = parseFloat(A.replace(/[^\d.-]/g,''));
+        const bNum = parseFloat(B.replace(/[^\d.-]/g,''));
+        let cmp = 0;
+
+        if (!isNaN(aNum) && !isNaN(bNum) && (A.match(/\d/) && B.match(/\d/))){
+          cmp = aNum - bNum;
+        } else {
+          cmp = A.localeCompare(B, 'pt-BR');
+        }
+        return dir === 'asc' ? cmp : -cmp;
+      });
+
+      vis.forEach(r => tbody.appendChild(r));
+    }
+
+    const visCount = getVisibleRows().length;
+    if (countEl) countEl.textContent = visCount;
+
+    const hasFilters = Object.keys(filters).length > 0;
+    if (badge) badge.style.display = hasFilters ? 'inline-block' : 'none';
+
+    FILTERABLE_COLS.forEach(i=>{
+      const th = thead.cells[i];
+      if (!th) return;
+      th.classList.toggle('md-filtered', !!filters[i]);
+    });
+
+    window.MD_XSCROLL?.refresh?.();
+
+    // >>> atualiza cards sempre que filtrar/ordenar
+    updateSums();
+  }
+
+  function valuesForColumn(col, forcedDateMode = null){
+    const temp = {...filters};
+    delete temp[col];
+
+    const candidates = allRows.filter(r => matchesFilters(r, temp));
+    const vals = new Set();
+    const existing = filters[col] || null;
+
+    if (isDateCol(col)){
+      const mode = forcedDateMode || (existing?.type === 'date' ? existing.mode : 'day');
+      candidates.forEach(r=>{
+        const raw = textOfCell(r,col);
+        vals.add(mode === 'month' ? toMonthKey(raw) : toDayKey(raw));
+      });
+
+      return Array.from(vals).sort((a,b)=>{
+        if(mode === 'month'){
+          const [am, ay] = (a||'').split('/');
+          const [bm, by] = (b||'').split('/');
+          return `${ay||''}-${am||''}`.localeCompare(`${by||''}-${bm||''}`,'pt-BR');
+        }
+        const aKey = a === '-' ? '' : a.split('/').reverse().join('-');
+        const bKey = b === '-' ? '' : b.split('/').reverse().join('-');
+        return aKey.localeCompare(bKey,'pt-BR');
+      });
+    }
+
+    candidates.forEach(r => vals.add(textOfCell(r,col)));
+    return Array.from(vals).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  }
+
+  function closePanel(){
+    panel.style.display = 'none';
+    openCol = null;
+  }
+
+  function positionPanelNear(th){
+    const rect = th.getBoundingClientRect();
+    const panelW = 380;
+    const margin = 8;
+
+    let left = rect.right - panelW;
+    if (left < margin) left = margin;
+
+    let top = rect.bottom + 8;
+    const panelH = 680;
+    const maxTop = window.innerHeight - panelH - margin;
+    if (top > maxTop) top = Math.max(margin, maxTop);
+
+    panel.style.left = left + 'px';
+    panel.style.top = top + 'px';
+  }
+
+  function setDateModeUI(show, activeMode){
+    const wrap = document.getElementById('mdDateMode');
+    if (!wrap) return;
+    wrap.style.display = show ? 'inline-flex' : 'none';
+    wrap.querySelectorAll('button').forEach(b=>{
+      b.classList.toggle('active', b.dataset.mode === activeMode);
+    });
+  }
+
+  function populatePanel(col, forcedDateMode = null){
+    const list = panel.querySelector('.md-panel-list');
+    list.innerHTML = '';
+
+    const isDate = isDateCol(col);
+    let dateMode = 'day';
+    const existing = filters[col];
+
+    if (isDate){
+      if (forcedDateMode) dateMode = forcedDateMode;
+      else if (existing?.type === 'date') dateMode = existing.mode;
+      setDateModeUI(true, dateMode);
+    } else {
+      setDateModeUI(false, 'day');
+    }
+
+    const vals = valuesForColumn(col, isDate ? dateMode : null);
+
+    let currentSet = null;
+    if (existing?.type === 'date' && isDate) currentSet = existing.set;
+    else if (existing?.type === 'set') currentSet = existing.set;
+
+    vals.forEach(v=>{
+      const lab = document.createElement('label');
+      lab.className = 'md-panel-item';
+      lab.dataset.val = v;
+      const checked = currentSet ? currentSet.has(v) : false;
+
+      lab.innerHTML = `
+        <input type="checkbox" ${checked ? 'checked' : ''}>
+        <span>${v}</span>
+      `;
+      list.appendChild(lab);
+    });
+
+    const s = panel.querySelector('input[type="search"]');
+    if (s) s.value = '';
+
+    panel.dataset.isDateCol = isDate ? '1' : '0';
+    panel.dataset.dateMode = isDate ? dateMode : '';
+  }
+
+  function openPanelFor(col, th){
+    openCol = col;
+    populatePanel(col);
+    positionPanelNear(th);
+    panel.style.display = 'block';
+    panel.querySelector('input[type="search"]')?.focus();
+  }
+
+  function buildHeaderUI(){
+    FILTERABLE_COLS.forEach((col)=>{
+      const th = thead.cells[col];
+      if (!th) return;
+      if (th.dataset.mdInited === '1') return;
+      th.dataset.mdInited = '1';
+
+      const label = (th.innerText || '').trim();
+      th.innerHTML = `
+        <span class="md-th-inner">
+          <span>${label}</span>
+          <span class="md-th-tools">
+            <span class="md-dot"></span>
+            <span class="md-th-btn" data-act="open" title="Filtrar/Ordenar">▾</span>
+          </span>
+        </span>
+      `;
+
+      th.querySelector('[data-act="open"]').addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const isOpen = (panel.style.display === 'block' && openCol === col);
+        if (isOpen) { closePanel(); return; }
+        openPanelFor(col, th);
+      });
+    });
+  }
+
+  panel.querySelector('input[type="search"]').addEventListener('input', (e)=>{
+    const q = (e.target.value || '').trim().toLowerCase();
+    panel.querySelectorAll('.md-panel-item').forEach(it=>{
+      const v = (it.dataset.val || '').toLowerCase();
+      it.style.display = v.includes(q) ? '' : 'none';
+    });
+  });
+
+  const dateModeWrap = document.getElementById('mdDateMode');
+  if (dateModeWrap){
+    dateModeWrap.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        if (openCol === null) return;
+        if (panel.dataset.isDateCol !== '1') return;
+        const mode = btn.dataset.mode;
+        setDateModeUI(true, mode);
+        populatePanel(openCol, mode);
+      });
+    });
+  }
+
+  panel.querySelectorAll('[data-sort]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if (openCol === null) return;
+      sort = { col: openCol, dir: btn.dataset.sort };
+      closePanel();
+      apply();
+    });
+  });
+
+  panel.querySelector('[data-act="clear"]').addEventListener('click', ()=>{
+    if (openCol === null) return;
+    delete filters[openCol];
+    closePanel();
+    apply();
+  });
+
+  panel.querySelector('[data-act="ok"]').addEventListener('click', ()=>{
+    if (openCol === null) return;
+
+    const set = new Set();
+    panel.querySelectorAll('.md-panel-item').forEach(it=>{
+      const cb = it.querySelector('input[type="checkbox"]');
+      if (cb && cb.checked) set.add(it.dataset.val);
+    });
+
+    if (!set.size){
+      delete filters[openCol];
+      closePanel();
+      apply();
+      return;
+    }
+
+    const isDate = panel.dataset.isDateCol === '1';
+    const dateMode = panel.dataset.dateMode || 'day';
+
+    filters[openCol] = isDate
+      ? { type:'date', mode:dateMode, set }
+      : { type:'set', set };
+
+    closePanel();
+    apply();
+  });
+
+  document.addEventListener('click', (e)=>{
+    if (panel.style.display !== 'block') return;
+    const inside = e.target.closest && e.target.closest('#mdGlobalFilterPanel');
+    const onHeaderBtn = e.target.closest && e.target.closest('.md-th-btn');
+    if (inside || onHeaderBtn) return;
+    closePanel();
+  });
+
+  document.addEventListener('keydown', (e)=>{
+    if (e.key === "Escape" && panel.style.display === "block") closePanel();
+  });
+
+  window.addEventListener('resize', ()=>{ if(openCol!==null){ closePanel(); } });
+
+  window.MD = window.MD || {};
+  window.MD.clearAll = function(){
+    filters = {};
+    sort = null;
+    closePanel();
+    apply();
+  };
+  window.MD.deleteFromBtn = function(ev, id){
+    ev.preventDefault();
+    ev.stopPropagation();
+    deleteMandado(id);
+  };
+
+  buildHeaderUI();
+  apply(); // já chama updateSums()
+})();
+</script>
+
+<script>
+/* ===================== DOUBLE CLICK NA LINHA PARA EDITAR ===================== */
+(function(){
+  const tbody = document.getElementById("mdTbody");
+  if(!tbody) return;
+
+  tbody.addEventListener("dblclick", (e)=>{
+    const tr = e.target.closest("tr");
+    if(!tr) return;
+
+    if (e.target.closest("button, a, input, select, textarea")) return;
+    if(!tr.querySelector(".md-edit-btn")) return;
+
+    openEditModalFromRowMD(tr);
+  });
+})();
+</script>
+
+<script>
+/* ===================== SCROLLBAR HORIZONTAL FIXA NO RODAPÉ ===================== */
+(function(){
+  const wrap  = document.querySelector(".md-table-wrap");
+  const fixed = document.getElementById("mdXScrollFixed");
+  const inner = document.getElementById("mdXScrollInner");
+  const table = document.getElementById("mdTable");
+
+  if(!wrap || !fixed || !inner || !table) return;
+
+  let syncing = false;
+
+  function getMaxScroll(el){
+    return Math.max(0, el.scrollWidth - el.clientWidth);
+  }
+
+  function positionFixedOverWrap(){
+    const r = wrap.getBoundingClientRect();
+    fixed.style.left = Math.max(0, r.left) + "px";
+    fixed.style.width = Math.max(0, r.width) + "px";
+  }
+
+  function updateInnerWidth(){
+    const w = Math.max(table.scrollWidth, wrap.scrollWidth);
+    inner.style.width = w + "px";
+  }
+
+  function toggleIfOverflow(){
+    const hasOverflow = table.scrollWidth > wrap.clientWidth + 2;
+    fixed.style.display = hasOverflow ? "block" : "none";
+  }
+
+  function syncFixedToWrap(){
+    const maxW = getMaxScroll(wrap);
+    const maxF = getMaxScroll(fixed);
+    if (maxW <= 0 || maxF <= 0) return;
+    fixed.scrollLeft = (wrap.scrollLeft / maxW) * maxF;
+  }
+
+  function syncWrapToFixed(){
+    const maxW = getMaxScroll(wrap);
+    const maxF = getMaxScroll(fixed);
+    if (maxW <= 0 || maxF <= 0) return;
+    wrap.scrollLeft = (fixed.scrollLeft / maxF) * maxW;
+  }
+
+  function refresh(){
+    positionFixedOverWrap();
+    updateInnerWidth();
+    toggleIfOverflow();
+    syncFixedToWrap();
+  }
+
+  fixed.addEventListener("scroll", ()=>{
+    if(syncing) return;
+    syncing = true;
+    syncWrapToFixed();
+    syncing = false;
+  }, { passive:true });
+
+  wrap.addEventListener("scroll", ()=>{
+    if(syncing) return;
+    syncing = true;
+    syncFixedToWrap();
+    syncing = false;
+  }, { passive:true });
+
+  const ro = new ResizeObserver(()=> refresh());
+  ro.observe(wrap);
+  ro.observe(table);
+
+  window.addEventListener("resize", ()=> refresh());
+  window.addEventListener("scroll", ()=> positionFixedOverWrap(), { passive:true });
+
+  window.MD_XSCROLL = { refresh };
+
+  refresh();
+})();
+</script>
+
+<script>
+/* ===================== MODAL + DROPDOWNS + CRUD (MANDADOS) ===================== */
+(function(){
+  function _showError(msg){
+    const el = document.getElementById("mdError");
+    if(!el) return;
+    if(!msg){
+      el.style.display = "none";
+      el.textContent = "";
+      return;
+    }
+    el.style.display = "block";
+    el.textContent = msg;
+  }
+
+  function toBRDateText(raw){
+    if(!raw) return '';
+    raw = String(raw).trim();
+    if(raw === '-' || raw === '') return '';
+    if(/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
+
+    const m1 = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m1){
+      const yyyy = m1[1], mm = m1[2], dd = m1[3];
+      return `${dd}/${mm}/${yyyy}`;
+    }
+    return raw;
+  }
+
+  const sel = {
+    uf: document.getElementById("mdUfSelect"),
+    status: document.getElementById("mdStatusSelect"),
+    reu: document.getElementById("mdReuSelect"),
+    local: document.getElementById("mdLocalSelect"),
+  };
+
+  let _optionsLoaded = false;
+  let _options = null;
+
+  async function loadOptionsOnce(){
+    if (_optionsLoaded) return _options;
+    _optionsLoaded = true;
+
+    try{
+      const resp = await fetch("/api/cadastro-options", { headers: { "Accept": "application/json" }});
+      if(!resp.ok) throw new Error("Falha ao carregar opções");
+      _options = await resp.json();
+    }catch(e){
+      console.error(e);
+      _options = {};
+    }
+
+    fillSelect(sel.uf, (_options["fin_uf"] || []));
+    fillSelect(sel.status, (_options["fin_status"] || []));
+    fillSelect(sel.reu, (_options["fin_reu"] || []));
+    fillSelect(sel.local, (_options["fin_local"] || []));
+
+    return _options;
+  }
+
+  function fillSelect(selectEl, items){
+    if(!selectEl) return;
+    const first = selectEl.querySelector('option[value=""]')
+      ? selectEl.querySelector('option[value=""]').outerHTML
+      : '<option value="">Selecione...</option>';
+    selectEl.innerHTML = first;
+
+    (items || []).forEach(v=>{
+      const op = document.createElement("option");
+      op.value = String(v);
+      op.textContent = String(v);
+      selectEl.appendChild(op);
+    });
+  }
+
+  function openModal(mode){
+    const overlay = document.getElementById("mdModalOverlay");
+    const badge = document.getElementById("mdModalBadge");
+    const title = document.getElementById("mdModalTitle");
+    const sub = document.getElementById("mdModalSub");
+    const formMode = document.getElementById("mdFormMode");
+    const saveBtn = document.getElementById("mdSaveBtn");
+
+    _showError("");
+
+    if(mode === "create"){
+      badge.textContent = "Novo";
+      title.textContent = "Criar mandado";
+      sub.textContent = "Preencha os campos e clique em criar.";
+      formMode.value = "create";
+      document.getElementById("mdId").value = "";
+      saveBtn.textContent = "Criar";
+      _fillForm({});
+    } else {
+      badge.textContent = "Editar";
+      title.textContent = "Editar mandado";
+      sub.textContent = "Ajuste os campos e clique em salvar.";
+      formMode.value = "edit";
+      saveBtn.textContent = "Salvar";
+    }
+
+    overlay.style.display = "flex";
+    overlay.setAttribute("aria-hidden", "false");
+    document.body.classList.add("md-modal-open");
+  }
+
+  function closeModal(){
+    const overlay = document.getElementById("mdModalOverlay");
+    overlay.style.display = "none";
+    overlay.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("md-modal-open");
+    _showError("");
+  }
+
+  function setSelectValue(selectEl, value){
+    if(!selectEl) return;
+    const v = (value ?? "").toString().trim();
+    selectEl.value = v;
+    if (v && selectEl.value !== v) selectEl.value = "";
+  }
+
+  function _fillForm(row){
+    document.getElementById("mdId").value = row?.id ?? "";
+
+    document.getElementById("mdDataQuitacao").value = toBRDateText(row?.data_quitacao ?? "");
+    document.getElementById("mdNumeroProcesso").value = row?.numero_processo ?? "";
+
+    setSelectValue(sel.uf, row?.uf ?? "");
+    setSelectValue(sel.reu, row?.reu ?? "");
+    setSelectValue(sel.status, row?.status ?? "");
+
+    document.getElementById("mdAutor").value = row?.autor ?? "";
+    document.getElementById("mdTel").value = row?.tel ?? "";
+
+    document.getElementById("mdSentenca").value = row?.sentenca ?? "";
+    document.getElementById("mdQuitacao").value = row?.quitacao ?? "";
+
+    document.getElementById("mdPrevisao").value = row?.previsao ?? "";
+    document.getElementById("mdDataPagamento").value = toBRDateText(row?.data_pagamento ?? "");
+
+    setSelectValue(sel.local, row?.local ?? "");
+    document.getElementById("mdTipo").value = row?.tipo ?? "";
+
+    document.getElementById("mdDeposito").value = row?.deposito ?? "";
+    document.getElementById("mdCorrecao").value = row?.correcao ?? "";
+    document.getElementById("mdHonorarios").value = row?.honorarios ?? "";
+    document.getElementById("mdAudiencista").value = row?.audiencista ?? "";
+    document.getElementById("mdRepasse").value = row?.repasse ?? "";
+
+    document.getElementById("mdChavePix").value = row?.chave_pix ?? "";
+    document.getElementById("mdSucumbencia").value = row?.sucumbencia ?? "";
+
+    document.getElementById("mdMesPg").value = row?.mes_pg ?? "";
+    document.getElementById("mdObservacoes").value = row?.observacoes ?? "";
+  }
+
+  function _collectForm(){
+    return {
+      id: document.getElementById("mdId").value || null,
+
+      data_quitacao: document.getElementById("mdDataQuitacao").value.trim(),
+      numero_processo: document.getElementById("mdNumeroProcesso").value.trim(),
+
+      uf_id: (sel.uf?.value || "").trim(),
+      reu: (sel.reu?.value || "").trim(),
+      autor: document.getElementById("mdAutor").value.trim(),
+      tel: document.getElementById("mdTel").value.trim(),
+
+      sentenca: document.getElementById("mdSentenca").value.trim(),
+      quitacao: document.getElementById("mdQuitacao").value.trim(),
+      status_id: (sel.status?.value || "").trim(),
+
+      previsao: document.getElementById("mdPrevisao").value.trim(),
+      data_pagamento: document.getElementById("mdDataPagamento").value.trim(),
+
+      local: (sel.local?.value || "").trim(),
+      tipo: document.getElementById("mdTipo").value.trim(),
+
+      deposito: document.getElementById("mdDeposito").value.trim(),
+      correcao: document.getElementById("mdCorrecao").value.trim(),
+      honorarios: document.getElementById("mdHonorarios").value.trim(),
+
+      audiencista: document.getElementById("mdAudiencista").value.trim(),
+      repasse: document.getElementById("mdRepasse").value.trim(),
+
+      chave_pix: document.getElementById("mdChavePix").value.trim(),
+      sucumbencia: document.getElementById("mdSucumbencia").value.trim(),
+
+      mes_pg: document.getElementById("mdMesPg").value.trim(),
+      observacoes: document.getElementById("mdObservacoes").value.trim(),
+    };
+  }
+
+  document.addEventListener("click", (e)=>{
+    const overlay = document.getElementById("mdModalOverlay");
+    if(!overlay || overlay.style.display !== "flex") return;
+    if(e.target === overlay) closeModal();
+  });
+
+  document.addEventListener("keydown", (e)=>{
+    if(e.key !== "Escape") return;
+    const overlay = document.getElementById("mdModalOverlay");
+    if(overlay && overlay.style.display === "flex") closeModal();
+  });
+
+  window.closeModalMD = closeModal;
+
+  window.openCreateModalMD = async function(){
+    await loadOptionsOnce();
+    openModal("create");
+  };
+
+  window.openEditModalFromRowMD = async function(tr){
+    await loadOptionsOnce();
+    try{
+      const raw = tr?.dataset?.row || "{}";
+      const row = JSON.parse(raw);
+      openModal("edit");
+      _fillForm(row);
+    }catch(err){
+      console.error("Erro openEditModalFromRowMD:", err);
+      _showError("Não foi possível abrir edição (dados inválidos).");
+    }
+  };
+
+  window.submitModalMD = async function(){
+    const mode = document.getElementById("mdFormMode").value;
+    if(mode === "create") return saveCreate();
+    return saveEdit();
+  };
+
+  async function saveEdit(){
+    const payload = _collectForm();
+    if(!payload.id){
+      _showError("ID do mandado não encontrado.");
+      return;
+    }
+
+    try{
+      const resp = await fetch(`/mandados/${payload.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if(!resp.ok){
+        const txt = await resp.text();
+        _showError(txt || "Erro ao salvar edição.");
+        return;
+      }
+
+      window.location.reload();
+    }catch(err){
+      console.error(err);
+      _showError("Falha de rede ao salvar.");
+    }
+  }
+
+  async function saveCreate(){
+    const payload = _collectForm();
+    payload.id = null;
+
+    try{
+      const resp = await fetch(`/mandados`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if(!resp.ok){
+        const txt = await resp.text();
+        _showError(txt || "Erro ao criar mandado.");
+        return;
+      }
+
+      window.location.reload();
+    }catch(err){
+      console.error(err);
+      _showError("Falha de rede ao criar.");
+    }
+  }
+  
+})();
+</script>

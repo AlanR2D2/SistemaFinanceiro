@@ -1,0 +1,69 @@
+# =====================================
+# Arquivos sensíveis
+# =====================================
+.env
+credentials.json
+sync_acordos.py
+sync_mandados.py
+test_filters.py
+
+# =====================================
+# Python
+# =====================================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs
+*.log
+
+# Virtualenvs
+.env/
+env/
+venv/
+ENV/
+
+# Build / Distribuição
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Testes
+.coverage
+.tox/
+.pytest_cache/
+htmlcov/
+
+# =====================================
+# IDEs / Editores
+# =====================================
+.vscode/
+.idea/
+*.swp
+
+# =====================================
+# SO / Sistema
+# =====================================
+.DS_Store
+Thumbs.db
+
+# =====================================
+# Docker
+# =====================================
+# Volumes e layers temporários
+*.pid
+*.tar
+*.bak
+
+# =====================================
+# Outros opcionais
+# =====================================
+# Relatórios temporários
+*.out
+*.tmp
+*.bak
+
+# Arquivos gerados em runtime
+instance/
+.site/

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema Financeiro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+    <div class="p-8">
+      <!-- LOGO -->
+      <div class="text-center mb-8">
+        <img src="{{ url_for('static', filename='images/logo.png') }}"
+             alt="Logo"
+             class="mx-auto rounded-full w-24 h-24 object-cover mb-4">
+        <h1 class="text-2xl font-bold text-gray-800">Sistema Financeiro</h1>
+        <p class="text-gray-600 mt-2">© Todos os direitos reservados</p>
+      </div>
+
+      <!-- FORM LOGIN -->
+      <form id="loginForm" class="space-y-6" method="POST" action="/login">
+        <div>
+          <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Usuário</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i data-feather="user" class="h-5 w-5 text-gray-400"></i>
+            </div>
+            <input type="text" id="username" name="username" required
+                   class="pl-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                   placeholder="Digite seu login" autocomplete="username">
+          </div>
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i data-feather="lock" class="h-5 w-5 text-gray-400"></i>
+            </div>
+            <input type="password" id="password" name="password" required
+                   class="pl-10 pr-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                   placeholder="Digite sua senha" autocomplete="current-password">
+
+            <button type="button" id="togglePassword"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
+                    aria-label="Mostrar/ocultar senha">
+              <i data-feather="eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-300 font-medium">
+          <i data-feather="log-in" class="inline mr-2"></i>Entrar
+        </button>
+      </form>
+
+      {% if error %}
+      <div class="mt-6 p-3 bg-red-100 text-red-700 rounded text-center">
+        {{ error }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  
+  <script>
+    feather.replace();
+
+    // mostrar/ocultar senha
+    (function() {
+      const toggleBtn = document.getElementById('togglePassword');
+      const passwordInput = document.getElementById('password');
+      const toggleIcon = toggleBtn.querySelector('i');
+
+      toggleBtn.addEventListener('click', () => {
+        const isHidden = passwordInput.type === 'password';
+        passwordInput.type = isHidden ? 'text' : 'password';
+        toggleIcon.setAttribute('data-feather', isHidden ? 'eye-off' : 'eye');
+        feather.replace();
+      });
+    })();
+  </script>
+</body>
+</html>

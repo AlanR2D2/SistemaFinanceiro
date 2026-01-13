@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+{% block title %}Table Management{% endblock %}
+{% block header %}Table Management{% endblock %}
+
+{% block content %}
+<style>
+  /* Paleta igual ao print */
+  :root{
+    --mw-blue:#1b2aa6;        /* azul principal */
+    --mw-blue-2:#15208a;      /* azul mais escuro */
+    --mw-border:#e5e7eb;      /* cinza borda */
+    --mw-bg:#f5f7fb;          /* fundo claro */
+  }
+
+  .tm-page{ background: var(--mw-bg); padding: 18px; border-radius: 16px; }
+  .tm-card{
+    background:#fff;
+    border:1px solid var(--mw-border);
+    border-radius: 14px;
+    overflow:hidden;
+  }
+  .tm-card-h{
+    padding: 16px 18px;
+    border-bottom:1px solid var(--mw-border);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .tm-title{ font-size: 20px; font-weight: 700; color:#0f172a; }
+  .tm-sub{ font-size: 12px; color:#64748b; margin-top:2px; }
+
+  .tm-toolbar{
+    padding: 14px 18px;
+    display:flex;
+    align-items:end;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+
+  .tm-field label{ display:block; font-size:12px; color:#475569; margin-bottom:6px; }
+  .tm-select, .tm-search{
+    height: 40px;
+    padding: 0 12px;
+    border:1px solid var(--mw-border);
+    border-radius: 10px;
+    background:#fff;
+    color:#0f172a;
+    outline:none;
+    min-width: 320px;
+  }
+  .tm-search{ min-width: 260px; }
+
+  .tm-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .btn{
+    height:40px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border:1px solid var(--mw-border);
+    background:#f8fafc;
+    color:#0f172a;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .btn:hover{ filter:brightness(1.02); }
+  .btn-green{
+    background:#16a34a;
+    color:#fff;
+    border-color:#15803d;
+  }
+  .btn-blue{
+    background: var(--mw-blue);
+    color:#fff;
+    border-color: var(--mw-blue-2);
+  }
+
+  .tm-table-wrap{ border-top:1px solid var(--mw-border); }
+  table.tm{
+    width:100%;
+    border-collapse:collapse;
+    table-layout:fixed;
+    font-size: 13px;
+  }
+  table.tm thead th{
+    text-align:left;
+    font-size:12px;
+    color:#334155;
+    background:#fbfcff;
+    border-bottom:1px solid var(--mw-border);
+    padding: 12px 14px;
+  }
+  table.tm tbody td{
+    padding: 12px 14px;
+    border-bottom:1px solid #eef2f7;
+    color:#0f172a;
+    vertical-align:middle;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    border:1px solid var(--mw-border);
+    background:#fff;
+    color:#0f172a;
+  }
+  .pill.on{ background: rgba(22,163,74,.10); border-color: rgba(22,163,74,.25); color:#14532d; }
+  .pill.off{ background: rgba(100,116,139,.10); border-color: rgba(100,116,139,.22); color:#334155; }
+
+  /* “célula editável” discreta */
+  .cell-input{
+    width:100%;
+    height: 36px;
+    padding: 0 10px;
+    border:1px solid var(--mw-border);
+    border-radius: 10px;
+    outline:none;
+    background:#fff;
+  }
+  .cell-input:focus{ border-color: rgba(27,42,166,.55); box-shadow: 0 0 0 3px rgba(27,42,166,.12); }
+
+  /* Modal */
+  .modal-backdrop{
+    position:fixed;
+    inset:0;
+    background: rgba(15,23,42,.45);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index: 50;
+    padding: 18px;
+  }
+  .modal{
+    width: 720px;
+    max-width: 100%;
+    background:#fff;
+    border-radius: 14px;
+    border:1px solid var(--mw-border);
+    overflow:hidden;
+  }
+  .modal-h{
+    padding: 14px 16px;
+    background: var(--mw-blue);
+    color:#fff;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .modal-b{ padding: 16px; }
+  .modal-close{
+    background: transparent;
+    border:none;
+    color:#fff;
+    font-weight:800;
+    cursor:pointer;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .alert{
+    margin: 12px 18px 0;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(239,68,68,.25);
+    background: rgba(239,68,68,.08);
+    color:#7f1d1d;
+    font-weight:700;
+  }
+</style>
+
+<div class="tm-page">
+
+  <div class="tm-card">
+    <div class="tm-card-h">
+      <div>
+        <div class="tm-title">Table Management</div>
+        <div class="tm-sub">Gerencie tabelas de cadastro (com validação de uso em Acordos e Mandados)</div>
+      </div>
+
+      <form method="get" action="{{ url_for('cadastros') }}" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <input class="tm-search" type="text" name="s" value="{{ (request.args.get('s') or '') }}"
+               placeholder="Search..." />
+        <button class="btn btn-blue" type="submit">Search</button>
+      </form>
+    </div>
+
+    {% if error %}
+      <div class="alert">Atenção: {{ error }}</div>
+    {% endif %}
+
+    <div class="tm-toolbar">
+      <form method="get" action="{{ url_for('cadastros') }}" class="tm-field" style="display:flex; gap:12px; flex-wrap:wrap; align-items:end;">
+        <div>
+          <label>Selecione a tabela</label>
+          <select class="tm-select" name="table" onchange="this.form.submit()">
+            {% for tname, tc in cadastro_tables.items() %}
+              <option value="{{ tname }}" {% if tname == table %}selected{% endif %}>
+                {{ tc.label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </form>
+
+      <div class="tm-actions">
+        <button class="btn" type="button" onclick="openAddModal()">Adicionar</button>
+      </div>
+    </div>
+
+    <div class="tm-table-wrap">
+      <table class="tm">
+        <thead>
+          <tr>
+            <th style="width:55%;">{{ cfg.label }}</th>
+            <th style="width:15%;">Ativo</th>
+            <th style="width:30%; text-align:right;">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+            <tr>
+              <td title="{{ r[value_col] }}">
+                <form method="post" action="{{ url_for('cadastros_update', table=table) }}"
+                      style="display:flex; gap:10px; align-items:center;">
+                  <input type="hidden" name="old_value" value="{{ r[value_col] }}">
+                  <input class="cell-input" name="value" value="{{ r[value_col] }}">
+              </td>
+
+              <td>
+                  {% set is_active = (r[ativo_col] == 1) %}
+                  <label class="pill {{ 'on' if is_active else 'off' }}" style="cursor:pointer;">
+                    <input type="checkbox" name="ativo" value="1" {% if is_active %}checked{% endif %} style="transform:scale(1.1);">
+                    {{ 'Ativo' if is_active else 'Inativo' }}
+                  </label>
+              </td>
+
+              <td style="text-align:right;">
+                  <button class="btn btn-blue" type="submit">Salvar</button>
+                </form>
+
+                <form method="post" action="{{ url_for('cadastros_delete', table=table) }}"
+                      onsubmit="return confirm('Tem certeza que deseja excluir?');"
+                      style="display:inline;">
+                  <input type="hidden" name="value" value="{{ r[value_col] }}">
+                  <button class="btn" style="margin-left:8px; border-color: rgba(239,68,68,.30); color:#b91c1c;" type="submit">
+                    Excluir
+                  </button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+
+          {% if not rows %}
+            <tr>
+              <td colspan="3" style="padding:16px 14px; color:#64748b;">
+                Nenhum registro encontrado.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal Add Record -->
+<div id="addBackdrop" class="modal-backdrop">
+  <div class="modal">
+    <div class="modal-h">
+      <div style="font-weight:800;">Adicionar — {{ cfg.label }}</div>
+      <button class="modal-close" onclick="closeAddModal()">×</button>
+    </div>
+    <div class="modal-b">
+      <form method="post" action="{{ url_for('cadastros_add', table=table) }}" style="display:flex; gap:12px; flex-wrap:wrap; align-items:end;">
+        <div style="flex:1; min-width:260px;">
+          <label class="gs-label" style="display:block; font-size:12px; color:#475569; margin-bottom:6px;">Valor</label>
+          <input class="tm-search" style="min-width:100%;" name="value" placeholder="Digite o valor..." />
+        </div>
+        <div style="width:140px;">
+          <label style="display:block; font-size:12px; color:#475569; margin-bottom:6px;">Ativo</label>
+          <label class="pill on" style="height:40px; display:flex; align-items:center; justify-content:center; gap:10px;">
+            <input type="checkbox" name="ativo" value="1" checked style="transform:scale(1.1);">
+            Ativo
+          </label>
+        </div>
+        <button class="btn btn-green" type="submit">Salvar</button>
+        <button class="btn" type="button" onclick="closeAddModal()">Cancelar</button>
+      </form>
+
+      <div style="margin-top:10px; font-size:12px; color:#64748b;">
+        Observação: se o valor estiver em uso em Acordos/Mandados, o sistema bloqueia alteração do texto e exclusão.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openAddModal(){
+    document.getElementById("addBackdrop").style.display = "flex";
+  }
+  function closeAddModal(){
+    document.getElementById("addBackdrop").style.display = "none";
+  }
+  // fecha clicando fora
+  document.getElementById("addBackdrop")?.addEventListener("click", (e) => {
+    if (e.target.id === "addBackdrop") closeAddModal();
+  });
+
+  // Busca dinâmica (client-side) — filtra a tabela enquanto digita
+  (function(){
+    const search = document.querySelector('.tm-card-h .tm-search');
+    const tbody = document.querySelector('.tm-table-wrap table.tm tbody');
+    if(!search || !tbody) return;
+
+    function debounce(fn, wait){ let t; return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn(...args), wait); }; }
+
+    // remove acentuação para comparação
+    function normalizeText(s){ return (s||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase(); }
+
+    function filterRows(q){
+      q = normalizeText((q||'').trim());
+      const rows = Array.from(tbody.querySelectorAll('tr')).filter(r=>!r.classList.contains('no-results'));
+      let visible = 0;
+      for(const tr of rows){
+        // priorizar o valor do input na célula (nome do cadastro)
+        const input = tr.querySelector('input[name="value"]');
+        const valueText = input ? input.value : (tr.cells[0] ? tr.cells[0].innerText : '');
+        const ativoLabel = (tr.querySelector('.pill') || {}).innerText || '';
+        const text = normalizeText((valueText + ' ' + ativoLabel).replace(/\s+/g,' '));
+
+        if(!q || text.indexOf(q) !== -1){ tr.style.display = ''; visible++; }
+        else { tr.style.display = 'none'; }
+      }
+
+      const existing = tbody.querySelector('.no-results');
+      if(visible === 0){
+        if(!existing){
+          const nr = document.createElement('tr');
+          nr.className = 'no-results';
+          nr.innerHTML = '<td colspan="3" style="padding:16px 14px; color:#64748b;">Nenhum registro encontrado.</td>';
+          tbody.appendChild(nr);
+        }
+      } else if(existing){ existing.remove(); }
+    }
+
+    const handler = debounce((e)=> filterRows(e.target.value), 180);
+    search.addEventListener('input', handler);
+
+    // suporte: ESC limpa
+    search.addEventListener('keydown', (e)=>{ if(e.key === 'Escape'){ e.target.value=''; filterRows(''); } });
+
+    // aplica filtro inicial (se houver valor vindo do servidor)
+    filterRows(search.value || '');
+  })();
+  
+</script>
+{% endblock %}

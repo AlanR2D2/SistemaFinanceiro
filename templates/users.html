@@ -1,0 +1,477 @@
+{% extends "base.html" %}
+{% block title %}Usuários{% endblock %}
+{% block header %}Usuários{% endblock %}
+
+{% block content %}
+<style>
+  :root{
+    --mw-blue:#1b2aa6;
+    --mw-blue-2:#15208a;
+    --mw-border:#e5e7eb;
+    --mw-bg:#f5f7fb;
+  }
+
+  .um-page{ background: var(--mw-bg); padding: 18px; border-radius: 16px; }
+  .um-card{
+    background:#fff;
+    border:1px solid var(--mw-border);
+    border-radius: 14px;
+    overflow:hidden;
+  }
+  .um-card-h{
+    padding: 16px 18px;
+    border-bottom:1px solid var(--mw-border);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .um-title{ font-size: 20px; font-weight: 800; color:#0f172a; }
+  .um-sub{ font-size: 12px; color:#64748b; margin-top:2px; }
+
+  .um-toolbar{
+    padding: 14px 18px;
+    display:flex;
+    align-items:end;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    border-bottom:1px solid var(--mw-border);
+  }
+
+  .um-search{
+    height: 40px;
+    padding: 0 12px;
+    border:1px solid var(--mw-border);
+    border-radius: 10px;
+    background:#fff;
+    color:#0f172a;
+    outline:none;
+    min-width: 280px;
+  }
+
+  .btn{
+    height:40px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border:1px solid var(--mw-border);
+    background:#f8fafc;
+    color:#0f172a;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .btn:hover{ filter:brightness(1.02); }
+  .btn-blue{
+    background: var(--mw-blue);
+    color:#fff;
+    border-color: var(--mw-blue-2);
+  }
+  .btn-blue:hover{ background: var(--mw-blue-2); }
+  .btn-green{
+    background:#16a34a;
+    color:#fff;
+    border-color:#15803d;
+  }
+  .btn-green:hover{ background:#15803d; }
+  .btn-danger{
+    border-color: rgba(239,68,68,.30);
+    color:#b91c1c;
+    background:#fff;
+  }
+  .btn-danger:hover{ background: rgba(239,68,68,.06); }
+
+  .um-table-wrap{ overflow:auto; }
+  table.um{
+    width:100%;
+    border-collapse:collapse;
+    table-layout:fixed;
+    font-size: 13px;
+  }
+  table.um thead th{
+    text-align:left;
+    font-size:12px;
+    color:#334155;
+    background:#fbfcff;
+    border-bottom:1px solid var(--mw-border);
+    padding: 12px 14px;
+    white-space:nowrap;
+  }
+  table.um tbody td{
+    padding: 12px 14px;
+    border-bottom:1px solid #eef2f7;
+    color:#0f172a;
+    vertical-align:middle;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .cell-input, .cell-select{
+    width:100%;
+    height: 36px;
+    padding: 0 10px;
+    border:1px solid var(--mw-border);
+    border-radius: 10px;
+    outline:none;
+    background:#fff;
+  }
+  .cell-input:focus, .cell-select:focus{
+    border-color: rgba(27,42,166,.55);
+    box-shadow: 0 0 0 3px rgba(27,42,166,.12);
+  }
+
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    border:1px solid var(--mw-border);
+    background:#fff;
+    color:#0f172a;
+  }
+  .pill.admin{ background: rgba(27,42,166,.10); border-color: rgba(27,42,166,.22); color:#111827; }
+  .pill.user{ background: rgba(100,116,139,.10); border-color: rgba(100,116,139,.22); color:#334155; }
+
+  
+  .alert{
+    margin: 12px 18px 0;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(239,68,68,.25);
+    background: rgba(239,68,68,.08);
+    color:#7f1d1d;
+    font-weight:800;
+  }
+  .ok{
+    margin: 12px 18px 0;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(22,163,74,.22);
+    background: rgba(22,163,74,.08);
+    color:#14532d;
+    font-weight:800;
+  }
+
+  /* Modal */
+  .modal-backdrop{
+    position:fixed;
+    inset:0;
+    background: rgba(15,23,42,.45);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index: 50;
+    padding: 18px;
+  }
+  .modal{
+    width: 760px;
+    max-width: 100%;
+    background:#fff;
+    border-radius: 14px;
+    border:1px solid var(--mw-border);
+    overflow:hidden;
+  }
+  .modal-h{
+    padding: 14px 16px;
+    background: var(--mw-blue);
+    color:#fff;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+  }
+  .modal-b{ padding: 16px; }
+  .modal-close{
+    background: transparent;
+    border:none;
+    color:#fff;
+    font-weight:900;
+    cursor:pointer;
+    font-size: 18px;
+    line-height: 1;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:12px;
+  }
+  .field label{
+    display:block; font-size:12px; color:#475569; margin-bottom:6px; font-weight:800;
+  }
+  .hint{
+    margin-top:10px;
+    font-size:12px;
+    color:#64748b;
+  }
+  @media (max-width: 820px){
+    .grid{ grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="um-page">
+  <div class="um-card">
+
+    <div class="um-card-h">
+      <div>
+        <div class="um-title">Usuários</div>
+        <div class="um-sub">Gerencie login, hierarquia e ações administrativas.</div>
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <button class="btn btn-green" type="button" onclick="openAddUserModal()">Adicionar usuário</button>
+      </div>
+    </div>
+
+    {% if error %}
+      <div class="alert">Atenção: {{ error }}</div>
+    {% endif %}
+    {% if ok %}
+      <div class="ok">{{ ok }}</div>
+    {% endif %}
+
+    <div class="um-toolbar">
+      <form method="get" action="{{ url_for('users_admin') }}" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <input class="um-search" type="text" name="s" value="{{ (request.args.get('s') or '') }}" placeholder="Buscar por login, nome ou email..." />
+        <button class="btn btn-blue" type="submit">Buscar</button>
+        {% if request.args.get('s') %}
+          <a class="btn" href="{{ url_for('users_admin') }}">Limpar</a>
+        {% endif %}
+      </form>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <span class="pill user">Total: {{ rows|length }}</span>
+      </div>
+    </div>
+
+    <div class="um-table-wrap">
+      <table class="um">
+        <thead>
+          <tr>
+            <th style="width:16%;">Login</th>
+            <th style="width:24%;">Nome</th>
+            <th style="width:24%;">Email</th>
+            <th style="width:14%;">Hierarquia</th>
+            <th style="width:22%; text-align:right;">Ações</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for u in rows %}
+          {% set h = (u.hierarquia or 'user')|lower %}
+          <tr>
+            <td title="{{ u.login }}">{{ u.login }}</td>
+
+            <td title="{{ u.nome or '' }}">
+              <form method="post" action="{{ url_for('users_update') }}" style="display:flex; gap:10px; align-items:center;">
+                <input type="hidden" name="login" value="{{ u.login }}">
+                <input class="cell-input" name="nome" value="{{ u.nome or '' }}" placeholder="Nome">
+            </td>
+
+            <td title="{{ u.email or '' }}">
+                <input class="cell-input" name="email" value="{{ u.email or '' }}" placeholder="Email">
+            </td>
+
+            <td>
+                <select class="cell-select" name="hierarquia">
+                  <option value="user" {% if h == 'user' %}selected{% endif %}>user</option>
+                  <option value="admin" {% if h == 'admin' %}selected{% endif %}>admin</option>
+                </select>
+            </td>
+
+            <td style="text-align:right;">
+                <button class="btn btn-blue" type="submit">Salvar</button>
+              </form>
+
+              <button class="btn" type="button" style="margin-left:8px;"
+                      onclick="openResetModal('{{ u.login }}')">
+                Reset senha
+              </button>
+
+              <form method="post" action="{{ url_for('users_delete') }}"
+                    onsubmit="return confirm('Tem certeza que deseja excluir o usuário {{ u.login }}?');"
+                    style="display:inline;">
+                <input type="hidden" name="login" value="{{ u.login }}">
+                <button class="btn btn-danger" style="margin-left:8px;" type="submit">
+                  Excluir
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+
+          {% if not rows %}
+          <tr>
+            <td colspan="5" style="padding:16px 14px; color:#64748b;">
+              Nenhum usuário encontrado.
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================== MODAL: ADD USER ===================== -->
+<div id="addUserBackdrop" class="modal-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addUserTitle">
+    <div class="modal-h">
+      <div style="font-weight:900;" id="addUserTitle">Adicionar usuário</div>
+      <button class="modal-close" type="button" onclick="closeAddUserModal()">×</button>
+    </div>
+
+    <div class="modal-b">
+      <form method="post" action="{{ url_for('users_add') }}">
+        <div class="grid">
+          <div class="field">
+            <label>Login *</label>
+            <input class="cell-input" name="login" placeholder="ex: joao.silva" required>
+          </div>
+
+          <div class="field">
+            <label>Hierarquia</label>
+            <select class="cell-select" name="hierarquia">
+              <option value="user">user</option>
+              <option value="admin">admin</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Nome</label>
+            <input class="cell-input" name="nome" placeholder="Nome completo">
+          </div>
+
+          <div class="field">
+            <label>Email</label>
+            <input class="cell-input" name="email" placeholder="email@dominio.com">
+          </div>
+
+          <div class="field">
+            <label>Senha *</label>
+            <input class="cell-input" name="senha" type="password" placeholder="Senha inicial" required>
+          </div>
+
+          <div class="field">
+            <label>Confirmar senha *</label>
+            <input class="cell-input" name="senha2" type="password" placeholder="Repita a senha" required>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px; flex-wrap:wrap;">
+          <button class="btn" type="button" onclick="closeAddUserModal()">Cancelar</button>
+          <button class="btn btn-green" type="submit">Salvar</button>
+        </div>
+
+        <div class="hint">
+          Dica: use hierarquias <b>user</b>, <b>admin</b>.
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: RESET PASSWORD ===================== -->
+<div id="resetBackdrop" class="modal-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="resetTitle">
+    <div class="modal-h">
+      <div style="font-weight:900;" id="resetTitle">Resetar senha</div>
+      <button class="modal-close" type="button" onclick="closeResetModal()">×</button>
+    </div>
+
+    <div class="modal-b">
+      <form method="post" action="{{ url_for('users_update') }}" onsubmit="return validateResetForm();">
+        <input type="hidden" name="login" id="resetLogin" value="">
+        <input type="hidden" name="mode" value="reset_password">
+
+        <div class="grid">
+          <div class="field">
+            <label>Nova senha *</label>
+            <input class="cell-input" name="senha" id="resetSenha" type="password" required>
+          </div>
+          <div class="field">
+            <label>Confirmar nova senha *</label>
+            <input class="cell-input" name="senha2" id="resetSenha2" type="password" required>
+          </div>
+        </div>
+
+        <div id="resetErr" class="alert" style="display:none; margin:14px 0 0;">Senhas não conferem.</div>
+
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px; flex-wrap:wrap;">
+          <button class="btn" type="button" onclick="closeResetModal()">Cancelar</button>
+          <button class="btn btn-blue" type="submit">Atualizar</button>
+        </div>
+
+        <div class="hint">
+          Isso troca a senha do usuário selecionado.
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openAddUserModal(){
+    const el = document.getElementById("addUserBackdrop");
+    if(!el) return;
+    el.style.display = "flex";
+    el.setAttribute("aria-hidden", "false");
+  }
+  function closeAddUserModal(){
+    const el = document.getElementById("addUserBackdrop");
+    if(!el) return;
+    el.style.display = "none";
+    el.setAttribute("aria-hidden", "true");
+  }
+
+  function openResetModal(login){
+    const el = document.getElementById("resetBackdrop");
+    if(!el) return;
+    document.getElementById("resetLogin").value = login || "";
+    document.getElementById("resetTitle").textContent = "Resetar senha — " + (login || "");
+    document.getElementById("resetSenha").value = "";
+    document.getElementById("resetSenha2").value = "";
+    const err = document.getElementById("resetErr");
+    if(err){ err.style.display = "none"; }
+    el.style.display = "flex";
+    el.setAttribute("aria-hidden", "false");
+  }
+  function closeResetModal(){
+    const el = document.getElementById("resetBackdrop");
+    if(!el) return;
+    el.style.display = "none";
+    el.setAttribute("aria-hidden", "true");
+  }
+
+  function validateResetForm(){
+    const s1 = (document.getElementById("resetSenha")?.value || "");
+    const s2 = (document.getElementById("resetSenha2")?.value || "");
+    const err = document.getElementById("resetErr");
+    if(s1 !== s2){
+      if(err) err.style.display = "block";
+      return false;
+    }
+    if(err) err.style.display = "none";
+    return true;
+  }
+
+  // fecha clicando fora
+  document.getElementById("addUserBackdrop")?.addEventListener("click", (e) => {
+    if (e.target.id === "addUserBackdrop") closeAddUserModal();
+  });
+  document.getElementById("resetBackdrop")?.addEventListener("click", (e) => {
+    if (e.target.id === "resetBackdrop") closeResetModal();
+  });
+
+  // ESC fecha
+  document.addEventListener("keydown", (e)=>{
+    if(e.key !== "Escape") return;
+    if(document.getElementById("addUserBackdrop")?.style.display === "flex") closeAddUserModal();
+    if(document.getElementById("resetBackdrop")?.style.display === "flex") closeResetModal();
+  });
+</script>
+{% endblock %}
