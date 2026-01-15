@@ -57,7 +57,7 @@
   }
   .md-sums-grid{
     display:grid;
-    grid-template-columns: repeat(6, minmax(180px, 1fr));
+    grid-template-columns: repeat(5, minmax(180px, 1fr));
     gap:12px;
     align-items:stretch;
   }
@@ -454,18 +454,6 @@
   <div class="md-sums">
     <div class="md-sums-grid">
       <div class="md-sum-card">
-        <div class="md-sum-top"><div class="md-sum-label">Quitação</div></div>
-        <div class="md-sum-value" id="mdSumQuitacao">R$ 0,00</div>
-        <div class="md-sum-sub">Somatório dos visíveis</div>
-      </div>
-
-      <div class="md-sum-card">
-        <div class="md-sum-top"><div class="md-sum-label">Depósito</div></div>
-        <div class="md-sum-value" id="mdSumDeposito">R$ 0,00</div>
-        <div class="md-sum-sub">Somatório dos visíveis</div>
-      </div>
-
-      <div class="md-sum-card">
         <div class="md-sum-top"><div class="md-sum-label">Correção</div></div>
         <div class="md-sum-value" id="mdSumCorrecao">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
@@ -478,15 +466,21 @@
       </div>
 
       <div class="md-sum-card">
-        <div class="md-sum-top"><div class="md-sum-label">Repasse</div></div>
-        <div class="md-sum-value" id="mdSumRepasse">R$ 0,00</div>
+        <div class="md-sum-top"><div class="md-sum-label">Audiencista</div></div>
+        <div class="md-sum-value" id="mdSumAudiencista">R$ 0,00</div>
+        <div class="md-sum-sub">Somatório dos visíveis</div>
+      </div>
+
+      <div class="md-sum-card">
+        <div class="md-sum-top"><div class="md-sum-label">Sucumbência</div></div>
+        <div class="md-sum-value" id="mdSumSucumbencia">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
       <div class="md-sum-card total">
-        <div class="md-sum-top"><div class="md-sum-label">Total geral</div></div>
-        <div class="md-sum-value" id="mdSumTotalGeral">R$ 0,00</div>
-        <div class="md-sum-sub">Soma dos campos</div>
+        <div class="md-sum-top"><div class="md-sum-label">Total final</div></div>
+        <div class="md-sum-value" id="mdSumTotalFinal">R$ 0,00</div>
+        <div class="md-sum-sub">Soma dos 4 campos</div>
       </div>
     </div>
   </div>
@@ -771,12 +765,11 @@ async function deleteMandado(id){
 
   // ===== refs somatórios =====
   const sumEls = {
-    quitacao: document.getElementById("mdSumQuitacao"),
-    deposito: document.getElementById("mdSumDeposito"),
     correcao: document.getElementById("mdSumCorrecao"),
     honorarios: document.getElementById("mdSumHonorarios"),
-    repasse: document.getElementById("mdSumRepasse"),
-    total: document.getElementById("mdSumTotalGeral"),
+    audiencista: document.getElementById("mdSumAudiencista"),
+    sucumbencia: document.getElementById("mdSumSucumbencia"),
+    total: document.getElementById("mdSumTotalFinal"),
   };
 
   // ===== helpers =====
@@ -809,23 +802,19 @@ async function deleteMandado(id){
     let s = String(raw).trim();
     if(!s || s === '-') return 0;
 
-    // remove R$, espaços, etc.
     s = s.replace(/\s/g,'').replace(/^R\$/i,'').trim();
 
-    // Se tem vírgula e ponto, assume pt-BR: 1.234,56
     if(s.includes(',') && s.includes('.')){
       s = s.replace(/\./g,'').replace(',', '.');
       const n = parseFloat(s);
       return Number.isFinite(n) ? n : 0;
     }
 
-    // Se só tem vírgula, pode ser decimal pt-BR: 1234,56
     if(s.includes(',') && !s.includes('.')){
       const n = parseFloat(s.replace(',', '.'));
       return Number.isFinite(n) ? n : 0;
     }
 
-    // senão, parse normal (1234.56 ou 1234)
     const n = parseFloat(s.replace(/[^\d.-]/g,''));
     return Number.isFinite(n) ? n : 0;
   }
@@ -919,34 +908,34 @@ async function deleteMandado(id){
   }
 
   // ===== colunas numéricas (pela ordem do seu THEAD atual) =====
-  // 7 QUITAÇÃO, 13 DEPÓSITO, 14 CORREÇÃO, 15 HONORÁRIOS, 17 REPASSE
-  const COL_QUITACAO   = 7;
-  const COL_DEPOSITO   = 13;
-  const COL_CORRECAO   = 14;
-  const COL_HONORARIOS = 15;
-  const COL_REPASSE    = 17;
+  // CORREÇÃO  = 14
+  // HONORÁRIOS= 15
+  // AUDIENCISTA=16 (no seu HTML está depois de HONORÁRIOS)
+  // SUCUMBÊNCIA=19
+  const COL_CORRECAO    = 14;
+  const COL_HONORARIOS  = 15;
+  const COL_AUDIENCISTA = 16;
+  const COL_SUCUMBENCIA = 19;
 
   function updateSums(){
     const vis = getVisibleRows();
 
-    let sQuit = 0, sDep = 0, sCor = 0, sHon = 0, sRep = 0;
+    let sCor = 0, sHon = 0, sAud = 0, sSuc = 0;
 
     vis.forEach(r=>{
-      sQuit += parseNumberBR(textOfCell(r, COL_QUITACAO));
-      sDep  += parseNumberBR(textOfCell(r, COL_DEPOSITO));
-      sCor  += parseNumberBR(textOfCell(r, COL_CORRECAO));
-      sHon  += parseNumberBR(textOfCell(r, COL_HONORARIOS));
-      sRep  += parseNumberBR(textOfCell(r, COL_REPASSE));
+      sCor += parseNumberBR(textOfCell(r, COL_CORRECAO));
+      sHon += parseNumberBR(textOfCell(r, COL_HONORARIOS));
+      sAud += parseNumberBR(textOfCell(r, COL_AUDIENCISTA));
+      sSuc += parseNumberBR(textOfCell(r, COL_SUCUMBENCIA));
     });
 
-    const total = sQuit + sDep + sCor + sHon + sRep;
+    const total = sCor + sHon + sAud + sSuc;
 
-    if(sumEls.quitacao)   sumEls.quitacao.textContent   = formatBRL(sQuit);
-    if(sumEls.deposito)   sumEls.deposito.textContent   = formatBRL(sDep);
-    if(sumEls.correcao)   sumEls.correcao.textContent   = formatBRL(sCor);
-    if(sumEls.honorarios) sumEls.honorarios.textContent = formatBRL(sHon);
-    if(sumEls.repasse)    sumEls.repasse.textContent    = formatBRL(sRep);
-    if(sumEls.total)      sumEls.total.textContent      = formatBRL(total);
+    if(sumEls.correcao)    sumEls.correcao.textContent    = formatBRL(sCor);
+    if(sumEls.honorarios)  sumEls.honorarios.textContent  = formatBRL(sHon);
+    if(sumEls.audiencista) sumEls.audiencista.textContent = formatBRL(sAud);
+    if(sumEls.sucumbencia) sumEls.sucumbencia.textContent = formatBRL(sSuc);
+    if(sumEls.total)       sumEls.total.textContent       = formatBRL(total);
   }
 
   function apply(){
@@ -1617,6 +1606,6 @@ async function deleteMandado(id){
       _showError("Falha de rede ao criar.");
     }
   }
-  
+
 })();
 </script>
