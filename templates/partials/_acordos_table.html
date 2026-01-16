@@ -455,7 +455,7 @@
       <button type="button" class="ac-btn ac-btn-primary" onclick="openCreateModal()">Novo acordo</button>
     </div>
   </div>
-
+  {% if current_user.role == "admin" %}
   <!-- ===== Totais dinâmicos (CORREÇÃO, HONORÁRIOS, AUDIENCISTA, SUCUMBÊNCIA + TOTAL) ===== -->
   <div class="ac-totals" id="acTotalsBar" aria-live="polite">
     <div class="ac-total-box">
@@ -488,6 +488,7 @@
       <div class="ac-total-sub">Soma dos 4 campos</div>
     </div>
   </div>
+  {% endif %}
 
   <div class="ac-table-wrap">
     <table class="ac-table" id="acTable">
@@ -631,7 +632,7 @@
 
         <div class="ac-field col-4">
           <label>Valor acordo</label>
-          <input class="ac-input" id="acValorAcordo" placeholder="Ex: 1500.00">
+          <input class="ac-input" id="acValorAcordo" placeholder="Ex: 1500,00">
         </div>
 
         <div class="ac-field col-8">
@@ -672,17 +673,17 @@
 
         <div class="ac-field col-4">
           <label>Honorários</label>
-          <input class="ac-input" id="acHonorarios" placeholder="Ex: 500.00">
+          <input class="ac-input" id="acHonorarios" placeholder="Ex: 500,00">
         </div>
 
         <div class="ac-field col-4">
           <label>Audiencista</label>
-          <input class="ac-input" id="acAudiencista" placeholder="Audiencista">
+          <input class="ac-input" id="acAudiencista" placeholder="Ex: 300,00">
         </div>
 
         <div class="ac-field col-4">
           <label>Repasse</label>
-          <input class="ac-input" id="acRepasse" placeholder="Ex: 250.00">
+          <input class="ac-input" id="acRepasse" placeholder="Ex: 250,00">
         </div>
 
         <div class="ac-field col-6">
@@ -692,7 +693,7 @@
 
         <div class="ac-field col-6">
           <label>Sucumbência</label>
-          <input class="ac-input" id="acSucumbencia" placeholder="Sucumbência">
+          <input class="ac-input" id="acSucumbencia" placeholder="Ex: 1.000,00">
         </div>
 
         <div class="ac-field col-12">
@@ -713,6 +714,20 @@
 </div>
 
 <script>
+/* ===================== FORMATADORES pt-BR (MILHAR '.' / DECIMAL ',') ===================== */
+const BR_NUMBER = new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
+
+function formatBR(v){
+  if(v === null || v === undefined || v === '' || v === '-') return '-';
+  const n = Number(String(v).replace(/\s/g,'').replace(/\./g,'').replace(',', '.'));
+  return Number.isFinite(n) ? BR_NUMBER.format(n) : String(v);
+}
+</script>
+
+<script>
 /* ===================== DELETE (FUNCIONA) ===================== */
 async function deleteAcordo(id){
   if(!id) return;
@@ -731,6 +746,33 @@ async function deleteAcordo(id){
     alert("Falha de rede ao excluir.");
   }
 }
+</script>
+
+<script>
+/* ===================== FORMATA NÚMEROS DA TABELA (APENAS EXIBIÇÃO) ===================== */
+(function(){
+  const numericCols = [
+    7,   // VALOR ACORDO
+    14,  // HONORÁRIOS
+    15,  // AUDIENCISTA
+    16,  // REPASSE
+    18   // SUCUMBÊNCIA
+  ];
+
+  const tbody = document.getElementById("acTbody");
+  if(!tbody) return;
+
+  tbody.querySelectorAll("tr").forEach(tr=>{
+    numericCols.forEach(idx=>{
+      const td = tr.cells[idx];
+      if(!td) return;
+      const div = td.querySelector("div");
+      if(!div) return;
+      const raw = div.textContent.trim();
+      div.textContent = formatBR(raw);
+    });
+  });
+})();
 </script>
 
 <script>
@@ -962,19 +1004,6 @@ async function deleteAcordo(id){
   });
   function money(n){ return moneyFmt.format(Number(n || 0)); }
 
-  // índices das colunas numéricas no THEAD atual
-  const COL_IDX = {
-    correcao: 13,     // LOCAL
-    honorarios: 14,   // HONORÁRIOS
-    audiencista: 15,  // AUDIENCISTA
-    sucumbencia: 18   // SUCUMBÊNCIA
-  };
-
-  // ATENÇÃO:
-  // Na tabela de ACORDOS, não existe coluna "CORREÇÃO" no THEAD.
-  // Então a somatória de "CORREÇÃO" precisa vir do objeto (dataset.row) se o campo existir,
-  // ou ficará 0 caso não exista.
-  // Se você tiver uma coluna "correcao" no backend (r.correcao), já funciona via dataset.row.
   function readRowObj(tr){
     try{ return JSON.parse(tr.dataset.row || "{}"); }
     catch(_){ return {}; }
@@ -986,13 +1015,12 @@ async function deleteAcordo(id){
     for (const tr of visibleRows){
       const obj = readRowObj(tr);
 
-      // CORREÇÃO: tenta pegar do objeto; se não existir, tenta célula (mas hoje o índice 13 é LOCAL)
       const vCor = (obj.correcao ?? obj.correção ?? obj["correção"] ?? obj["correcao"] ?? null);
       if (vCor !== null && vCor !== undefined) sCor += numFromAny(vCor);
 
-      const vHon = (obj.honorarios ?? textOfCell(tr, COL_IDX.honorarios));
-      const vAud = (obj.audiencista ?? textOfCell(tr, COL_IDX.audiencista));
-      const vSuc = (obj.sucumbencia ?? textOfCell(tr, COL_IDX.sucumbencia));
+      const vHon = (obj.honorarios ?? textOfCell(tr, 14));
+      const vAud = (obj.audiencista ?? textOfCell(tr, 15));
+      const vSuc = (obj.sucumbencia ?? textOfCell(tr, 18));
 
       sHon += numFromAny(vHon);
       sAud += numFromAny(vAud);
@@ -1539,7 +1567,9 @@ async function deleteAcordo(id){
 
     document.getElementById("acAutor").value = row?.autor ?? "";
     document.getElementById("acTel").value = row?.tel ?? "";
-    document.getElementById("acValorAcordo").value = row?.valor_acordo ?? "";
+
+    // Exibição no modal com separador pt-BR (só estética)
+    document.getElementById("acValorAcordo").value = (row?.valor_acordo ?? "") !== "" ? formatBR(row?.valor_acordo) : "";
 
     setSelectValue(sel.prazo_estimado, row?.prazo_estimado ?? "");
     document.getElementById("acPrazoReal").value = toBRDateText(row?.prazo_real ?? "");
@@ -1548,12 +1578,23 @@ async function deleteAcordo(id){
     setSelectValue(sel.local, row?.local ?? "");
     document.getElementById("acTipo").value = row?.tipo ?? "";
 
-    document.getElementById("acHonorarios").value = row?.honorarios ?? "";
-    document.getElementById("acAudiencista").value = row?.audiencista ?? "";
-    document.getElementById("acRepasse").value = row?.repasse ?? "";
+    document.getElementById("acHonorarios").value = (row?.honorarios ?? "") !== "" ? formatBR(row?.honorarios) : "";
+    document.getElementById("acAudiencista").value = (row?.audiencista ?? "") !== "" ? formatBR(row?.audiencista) : "";
+    document.getElementById("acRepasse").value = (row?.repasse ?? "") !== "" ? formatBR(row?.repasse) : "";
     document.getElementById("acChavePix").value = row?.chave_pix ?? "";
-    document.getElementById("acSucumbencia").value = row?.sucumbencia ?? "";
+    document.getElementById("acSucumbencia").value = (row?.sucumbencia ?? "") !== "" ? formatBR(row?.sucumbencia) : "";
     document.getElementById("acObservacoes").value = row?.observacoes ?? "";
+  }
+
+  // converte entrada pt-BR para formato "numérico" que o backend espera (ponto decimal)
+  function toDotDecimal(s){
+    if(s === null || s === undefined) return "";
+    let v = String(s).trim();
+    if(!v) return "";
+    v = v.replace(/\s/g,'');
+    v = v.replace(/\./g,'');
+    v = v.replace(',', '.');
+    return v;
   }
 
   function _collectForm(){
@@ -1569,7 +1610,9 @@ async function deleteAcordo(id){
       tel: document.getElementById("acTel").value.trim(),
       escritorio_reu: (sel.escritorio_reu?.value || "").trim(),
 
-      valor_acordo: document.getElementById("acValorAcordo").value.trim(),
+      // envia em formato numérico (1.234,56 -> 1234.56)
+      valor_acordo: toDotDecimal(document.getElementById("acValorAcordo").value),
+
       status_id: (sel.status?.value || "").trim(),
 
       prazo_estimado: (sel.prazo_estimado?.value || "").trim(),
@@ -1579,11 +1622,11 @@ async function deleteAcordo(id){
       local: (sel.local?.value || "").trim(),
       tipo: document.getElementById("acTipo").value.trim(),
 
-      honorarios: document.getElementById("acHonorarios").value.trim(),
-      audiencista: document.getElementById("acAudiencista").value.trim(),
-      repasse: document.getElementById("acRepasse").value.trim(),
+      honorarios: toDotDecimal(document.getElementById("acHonorarios").value),
+      audiencista: toDotDecimal(document.getElementById("acAudiencista").value),
+      repasse: toDotDecimal(document.getElementById("acRepasse").value),
       chave_pix: document.getElementById("acChavePix").value.trim(),
-      sucumbencia: document.getElementById("acSucumbencia").value.trim(),
+      sucumbencia: toDotDecimal(document.getElementById("acSucumbencia").value),
       observacoes: document.getElementById("acObservacoes").value.trim(),
     };
   }

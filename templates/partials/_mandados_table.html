@@ -52,9 +52,7 @@
   .md-btn-primary:hover{ background:#4338ca; }
 
   /* ======= CARDS DE SOMATÓRIO (MESMO TAMANHO “BOM” DOS ACORDOS) ======= */
-  .md-sums{
-    padding: 14px 16px 0 16px;
-  }
+  .md-sums{ padding: 14px 16px 0 16px; }
   .md-sums-grid{
     display:grid;
     grid-template-columns: repeat(5, minmax(180px, 1fr));
@@ -71,12 +69,7 @@
     flex-direction:column;
     justify-content:space-between;
   }
-  .md-sum-top{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-  }
+  .md-sum-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .md-sum-label{
     font-size:11px;
     font-weight:950;
@@ -92,6 +85,7 @@
     font-weight:950;
     color:#111827;
     margin-top:6px;
+    white-space:nowrap;
   }
   .md-sum-sub{
     margin-top:6px;
@@ -149,18 +143,8 @@
   /* hover */
   table.md-table tbody tr:hover{ background:#fafafa; cursor:default; }
 
-  .md-th-inner{
-    display:inline-flex;
-    align-items:center;
-    gap:8px;
-    white-space:nowrap;
-  }
-  .md-th-tools{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    flex:0 0 auto;
-  }
+  .md-th-inner{ display:inline-flex; align-items:center; gap:8px; white-space:nowrap; }
+  .md-th-tools{ display:inline-flex; align-items:center; gap:6px; flex:0 0 auto; }
   .md-dot{
     width:8px; height:8px;
     border-radius:999px;
@@ -304,12 +288,7 @@
     border-bottom:1px solid #e5e7eb;
     background:#f9fafb;
   }
-  .md-modal-h .left{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    min-width:0;
-  }
+  .md-modal-h .left{ display:flex; align-items:center; gap:12px; min-width:0; }
   .md-modal-badge{
     font-size:12px;
     font-weight:900;
@@ -328,11 +307,7 @@
     overflow:hidden;
     text-overflow:ellipsis;
   }
-  .md-modal-sub{
-    font-size:12px;
-    color:#6b7280;
-    margin-top:2px;
-  }
+  .md-modal-sub{ font-size:12px; color:#6b7280; margin-top:2px; }
   .md-modal-close{
     width:40px;height:40px;
     border-radius:12px;
@@ -349,11 +324,7 @@
     padding:16px;
     background:#fff;
   }
-  .md-grid{
-    display:grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap:12px;
-  }
+  .md-grid{ display:grid; grid-template-columns: repeat(12, 1fr); gap:12px; }
   .md-field{ grid-column: span 6; }
   .md-field.col-12{ grid-column: span 12; }
   .md-field.col-4{ grid-column: span 4; }
@@ -450,40 +421,54 @@
     </div>
   </div>
 
+  {% set _role = (current_user.role if (current_user is defined and current_user.is_authenticated and current_user.role is defined) else '') %}
+  {% if _role|string|lower == 'admin' %}
   <!-- ======= SOMATÓRIOS (VISÍVEIS / FILTRADOS) ======= -->
   <div class="md-sums">
     <div class="md-sums-grid">
       <div class="md-sum-card">
-        <div class="md-sum-top"><div class="md-sum-label">Correção</div></div>
+        <div class="md-sum-top">
+          <div class="md-sum-label">Correção</div>
+        </div>
         <div class="md-sum-value" id="mdSumCorrecao">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
       <div class="md-sum-card">
-        <div class="md-sum-top"><div class="md-sum-label">Honorários</div></div>
+        <div class="md-sum-top">
+          <div class="md-sum-label">Honorários</div>
+        </div>
         <div class="md-sum-value" id="mdSumHonorarios">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
       <div class="md-sum-card">
-        <div class="md-sum-top"><div class="md-sum-label">Audiencista</div></div>
+        <div class="md-sum-top">
+          <div class="md-sum-label">Audiencista</div>
+        </div>
         <div class="md-sum-value" id="mdSumAudiencista">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
       <div class="md-sum-card">
-        <div class="md-sum-top"><div class="md-sum-label">Sucumbência</div></div>
+        <div class="md-sum-top">
+          <div class="md-sum-label">Sucumbência</div>
+        </div>
         <div class="md-sum-value" id="mdSumSucumbencia">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
       <div class="md-sum-card total">
-        <div class="md-sum-top"><div class="md-sum-label">Total final</div></div>
+        <div class="md-sum-top">
+          <div class="md-sum-label">Total final</div>
+        </div>
         <div class="md-sum-value" id="mdSumTotalFinal">R$ 0,00</div>
         <div class="md-sum-sub">Soma dos 4 campos</div>
       </div>
     </div>
   </div>
+  {% endif %}
+
 
   <div class="md-table-wrap">
     <table class="md-table" id="mdTable">
@@ -542,14 +527,14 @@
           <td><div class="clamp-2">{{ r.local or "-" }}</div></td>
           <td><div class="clamp-2">{{ r.tipo or "-" }}</div></td>
 
-          <td><div class="clamp-2">{{ r.deposito or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.correcao or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.honorarios or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.audiencista or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.repasse or "-" }}</div></td>
+          <td><div class="clamp-2 md-money">{{ r.deposito or "-" }}</div></td>
+          <td><div class="clamp-2 md-money">{{ r.correcao or "-" }}</div></td>
+          <td><div class="clamp-2 md-money">{{ r.honorarios or "-" }}</div></td>
+          <td><div class="clamp-2 md-money">{{ r.audiencista or "-" }}</div></td>
+          <td><div class="clamp-2 md-money">{{ r.repasse or "-" }}</div></td>
 
           <td><div class="clamp-2">{{ r.chave_pix or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.sucumbencia or "-" }}</div></td>
+          <td><div class="clamp-2 md-money">{{ r.sucumbencia or "-" }}</div></td>
           <td style="min-width:320px; max-width:520px;"><div class="clamp-2">{{ r.observacoes or "-" }}</div></td>
 
           <td><div class="clamp-2">{{ r.mes_pg or "-" }}</div></td>
@@ -642,7 +627,7 @@
 
         <div class="md-field col-4">
           <label>Quitação</label>
-          <input class="md-input" id="mdQuitacao" placeholder="Ex: 1500.00">
+          <input class="md-input" id="mdQuitacao" placeholder="Ex: 1.500,00">
         </div>
 
         <div class="md-field col-8">
@@ -676,27 +661,27 @@
 
         <div class="md-field col-3">
           <label>Depósito</label>
-          <input class="md-input" id="mdDeposito" placeholder="Ex: 1000.00">
+          <input class="md-input" id="mdDeposito" placeholder="Ex: 1.000,00">
         </div>
 
         <div class="md-field col-3">
           <label>Correção</label>
-          <input class="md-input" id="mdCorrecao" placeholder="Ex: 120.00">
+          <input class="md-input" id="mdCorrecao" placeholder="Ex: 120,00">
         </div>
 
         <div class="md-field col-3">
           <label>Honorários</label>
-          <input class="md-input" id="mdHonorarios" placeholder="Ex: 500.00">
+          <input class="md-input" id="mdHonorarios" placeholder="Ex: 500,00">
         </div>
 
         <div class="md-field col-3">
           <label>Audiencista</label>
-          <input class="md-input" id="mdAudiencista" placeholder="Audiencista">
+          <input class="md-input" id="mdAudiencista" placeholder="Ex: 300,00">
         </div>
 
         <div class="md-field col-3">
           <label>Repasse</label>
-          <input class="md-input" id="mdRepasse" placeholder="Ex: 250.00">
+          <input class="md-input" id="mdRepasse" placeholder="Ex: 250,00">
         </div>
 
         <div class="md-field col-9">
@@ -706,7 +691,7 @@
 
         <div class="md-field col-6">
           <label>Sucumbência</label>
-          <input class="md-input" id="mdSucumbencia" placeholder="Sucumbência">
+          <input class="md-input" id="mdSucumbencia" placeholder="Ex: 1.000,00">
         </div>
 
         <div class="md-field col-6">
@@ -732,6 +717,20 @@
 </div>
 
 <script>
+/* ===================== FORMATADORES pt-BR (MILHAR '.' / DECIMAL ',') ===================== */
+const MD_NUMBER = new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
+
+function formatBR_MD(v){
+  if(v === null || v === undefined || v === '' || v === '-') return '-';
+  const n = Number(String(v).replace(/\s/g,'').replace(/\./g,'').replace(',', '.'));
+  return Number.isFinite(n) ? MD_NUMBER.format(n) : String(v);
+}
+</script>
+
+<script>
 /* ===================== DELETE (MANDADOS) ===================== */
 async function deleteMandado(id){
   if(!id) return;
@@ -750,6 +749,36 @@ async function deleteMandado(id){
     alert("Falha de rede ao excluir.");
   }
 }
+</script>
+
+<script>
+/* ===================== FORMATA NÚMEROS DA TABELA (APENAS EXIBIÇÃO) ===================== */
+(function(){
+  // índices (0-based) das colunas monetárias no seu THEAD atual
+  const numericCols = [
+    7,   // QUITAÇÃO
+    13,  // DEPÓSITO
+    14,  // CORREÇÃO
+    15,  // HONORÁRIOS
+    16,  // AUDIENCISTA
+    17,  // REPASSE
+    19   // SUCUMBÊNCIA
+  ];
+
+  const tbody = document.getElementById("mdTbody");
+  if(!tbody) return;
+
+  tbody.querySelectorAll("tr").forEach(tr=>{
+    numericCols.forEach(idx=>{
+      const td = tr.cells[idx];
+      if(!td) return;
+      const div = td.querySelector("div");
+      if(!div) return;
+      const raw = div.textContent.trim();
+      div.textContent = formatBR_MD(raw);
+    });
+  });
+})();
 </script>
 
 <script>
@@ -804,18 +833,27 @@ async function deleteMandado(id){
 
     s = s.replace(/\s/g,'').replace(/^R\$/i,'').trim();
 
+    // remove tudo que não é dígito, ponto, vírgula, sinal
+    s = s.replace(/[^0-9.,-]/g,'');
+
     if(s.includes(',') && s.includes('.')){
-      s = s.replace(/\./g,'').replace(',', '.');
-      const n = parseFloat(s);
+      // pt-BR típico: 1.234,56
+      if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+        s = s.replace(/\./g,'').replace(',', '.');
+      } else {
+        // caso raro: 1,234.56
+        s = s.replace(/,/g,'');
+      }
+      const n = Number(s);
       return Number.isFinite(n) ? n : 0;
     }
 
     if(s.includes(',') && !s.includes('.')){
-      const n = parseFloat(s.replace(',', '.'));
+      const n = Number(s.replace(',', '.'));
       return Number.isFinite(n) ? n : 0;
     }
 
-    const n = parseFloat(s.replace(/[^\d.-]/g,''));
+    const n = Number(s);
     return Number.isFinite(n) ? n : 0;
   }
 
@@ -907,11 +945,7 @@ async function deleteMandado(id){
     return allRows.filter(r => matchesFilters(r));
   }
 
-  // ===== colunas numéricas (pela ordem do seu THEAD atual) =====
-  // CORREÇÃO  = 14
-  // HONORÁRIOS= 15
-  // AUDIENCISTA=16 (no seu HTML está depois de HONORÁRIOS)
-  // SUCUMBÊNCIA=19
+  // ===== colunas numéricas (0-based) do seu THEAD atual =====
   const COL_CORRECAO    = 14;
   const COL_HONORARIOS  = 15;
   const COL_AUDIENCISTA = 16;
@@ -959,15 +993,19 @@ async function deleteMandado(id){
           return dir === 'asc' ? cmp : -cmp;
         }
 
-        const aNum = parseFloat(A.replace(/[^\d.-]/g,''));
-        const bNum = parseFloat(B.replace(/[^\d.-]/g,''));
-        let cmp = 0;
-
-        if (!isNaN(aNum) && !isNaN(bNum) && (A.match(/\d/) && B.match(/\d/))){
-          cmp = aNum - bNum;
-        } else {
-          cmp = A.localeCompare(B, 'pt-BR');
+        // se a coluna parecer moeda/número, usa parser pt-BR
+        const aHasDigit = /\d/.test(A);
+        const bHasDigit = /\d/.test(B);
+        if(aHasDigit && bHasDigit){
+          const aNum = parseNumberBR(A);
+          const bNum = parseNumberBR(B);
+          if(Number.isFinite(aNum) && Number.isFinite(bNum)){
+            const cmp = aNum - bNum;
+            return dir === 'asc' ? cmp : -cmp;
+          }
         }
+
+        const cmp = A.localeCompare(B, 'pt-BR');
         return dir === 'asc' ? cmp : -cmp;
       });
 
@@ -988,7 +1026,7 @@ async function deleteMandado(id){
 
     window.MD_XSCROLL?.refresh?.();
 
-    // >>> atualiza cards sempre que filtrar/ordenar
+    // atualiza cards sempre que filtrar/ordenar
     updateSums();
   }
 
@@ -1354,6 +1392,17 @@ async function deleteMandado(id){
     return raw;
   }
 
+  // converte entrada pt-BR para formato "numérico" (ponto decimal) pro backend
+  function toDotDecimalMD(s){
+    if(s === null || s === undefined) return "";
+    let v = String(s).trim();
+    if(!v) return "";
+    v = v.replace(/\s/g,'');
+    v = v.replace(/\./g,'');
+    v = v.replace(',', '.');
+    return v;
+  }
+
   const sel = {
     uf: document.getElementById("mdUfSelect"),
     status: document.getElementById("mdStatusSelect"),
@@ -1460,7 +1509,15 @@ async function deleteMandado(id){
     document.getElementById("mdTel").value = row?.tel ?? "";
 
     document.getElementById("mdSentenca").value = row?.sentenca ?? "";
-    document.getElementById("mdQuitacao").value = row?.quitacao ?? "";
+
+    // exibição BR no modal
+    document.getElementById("mdQuitacao").value = (row?.quitacao ?? "") !== "" ? formatBR_MD(row?.quitacao) : "";
+    document.getElementById("mdDeposito").value = (row?.deposito ?? "") !== "" ? formatBR_MD(row?.deposito) : "";
+    document.getElementById("mdCorrecao").value = (row?.correcao ?? "") !== "" ? formatBR_MD(row?.correcao) : "";
+    document.getElementById("mdHonorarios").value = (row?.honorarios ?? "") !== "" ? formatBR_MD(row?.honorarios) : "";
+    document.getElementById("mdAudiencista").value = (row?.audiencista ?? "") !== "" ? formatBR_MD(row?.audiencista) : "";
+    document.getElementById("mdRepasse").value = (row?.repasse ?? "") !== "" ? formatBR_MD(row?.repasse) : "";
+    document.getElementById("mdSucumbencia").value = (row?.sucumbencia ?? "") !== "" ? formatBR_MD(row?.sucumbencia) : "";
 
     document.getElementById("mdPrevisao").value = row?.previsao ?? "";
     document.getElementById("mdDataPagamento").value = toBRDateText(row?.data_pagamento ?? "");
@@ -1468,15 +1525,7 @@ async function deleteMandado(id){
     setSelectValue(sel.local, row?.local ?? "");
     document.getElementById("mdTipo").value = row?.tipo ?? "";
 
-    document.getElementById("mdDeposito").value = row?.deposito ?? "";
-    document.getElementById("mdCorrecao").value = row?.correcao ?? "";
-    document.getElementById("mdHonorarios").value = row?.honorarios ?? "";
-    document.getElementById("mdAudiencista").value = row?.audiencista ?? "";
-    document.getElementById("mdRepasse").value = row?.repasse ?? "";
-
     document.getElementById("mdChavePix").value = row?.chave_pix ?? "";
-    document.getElementById("mdSucumbencia").value = row?.sucumbencia ?? "";
-
     document.getElementById("mdMesPg").value = row?.mes_pg ?? "";
     document.getElementById("mdObservacoes").value = row?.observacoes ?? "";
   }
@@ -1494,25 +1543,24 @@ async function deleteMandado(id){
       tel: document.getElementById("mdTel").value.trim(),
 
       sentenca: document.getElementById("mdSentenca").value.trim(),
-      quitacao: document.getElementById("mdQuitacao").value.trim(),
-      status_id: (sel.status?.value || "").trim(),
 
+      // envia números em formato "dot-decimal" pro backend
+      quitacao: toDotDecimalMD(document.getElementById("mdQuitacao").value),
+      deposito: toDotDecimalMD(document.getElementById("mdDeposito").value),
+      correcao: toDotDecimalMD(document.getElementById("mdCorrecao").value),
+      honorarios: toDotDecimalMD(document.getElementById("mdHonorarios").value),
+      audiencista: toDotDecimalMD(document.getElementById("mdAudiencista").value),
+      repasse: toDotDecimalMD(document.getElementById("mdRepasse").value),
+      sucumbencia: toDotDecimalMD(document.getElementById("mdSucumbencia").value),
+
+      status_id: (sel.status?.value || "").trim(),
       previsao: document.getElementById("mdPrevisao").value.trim(),
       data_pagamento: document.getElementById("mdDataPagamento").value.trim(),
 
       local: (sel.local?.value || "").trim(),
       tipo: document.getElementById("mdTipo").value.trim(),
 
-      deposito: document.getElementById("mdDeposito").value.trim(),
-      correcao: document.getElementById("mdCorrecao").value.trim(),
-      honorarios: document.getElementById("mdHonorarios").value.trim(),
-
-      audiencista: document.getElementById("mdAudiencista").value.trim(),
-      repasse: document.getElementById("mdRepasse").value.trim(),
-
       chave_pix: document.getElementById("mdChavePix").value.trim(),
-      sucumbencia: document.getElementById("mdSucumbencia").value.trim(),
-
       mes_pg: document.getElementById("mdMesPg").value.trim(),
       observacoes: document.getElementById("mdObservacoes").value.trim(),
     };

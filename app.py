@@ -1,3 +1,4 @@
+# app.py
 import os
 import re
 from decimal import Decimal, InvalidOperation
@@ -39,6 +40,7 @@ TABLE_MANDADOS = "fin_mandados"
 class User(UserMixin):
     def __init__(self, data: dict):
         self.data = data or {}
+        # Flask-Login usa self.id internamente
         self.id = str(self.data.get("login", ""))
 
     @property
@@ -52,6 +54,37 @@ class User(UserMixin):
 
     @property
     def email(self): return self.data.get("email")
+
+    # ✅ COMPATIBILIDADE COM SEUS TEMPLATES:
+    # Alguns templates estão verificando current_user.role == "admin".
+    # No seu banco/código, o campo é "hierarquia".
+    @property
+    def role(self):
+        return (self.data.get("hierarquia") or "").strip().lower()
+
+    @property
+    def is_admin(self):
+        return self.role == "admin"
+
+
+@app.context_processor
+def inject_user_flags():
+    """
+    ✅ Disponibiliza no Jinja:
+      - is_admin: bool
+      - user_role: string
+    Assim você pode usar tanto:
+      {% if current_user.role == "admin" %}  (vai funcionar)
+    quanto:
+      {% if is_admin %}  (mais limpo)
+    """
+    try:
+        if current_user and current_user.is_authenticated:
+            return {"is_admin": bool(getattr(current_user, "is_admin", False)),
+                    "user_role": getattr(current_user, "role", "")}
+    except Exception:
+        pass
+    return {"is_admin": False, "user_role": ""}
 
 
 def _get_user_by_login(login: str) -> dict | None:
@@ -198,7 +231,6 @@ def parse_numeric(v):
     if v is None:
         return None
 
-    # já numérico
     if isinstance(v, (int, float, Decimal)):
         try:
             return float(v)
@@ -209,28 +241,19 @@ def parse_numeric(v):
     if s == "":
         return None
 
-    # remove espaços
     s = s.replace(" ", "")
-
-    # mantém só dígitos, sinais e separadores
     s = re.sub(r"[^0-9\-,.]", "", s)
     if s in ("", "-", ",", ".", "-.", "-,"):
         return None
 
-    # Heurística:
-    # se tem vírgula e ponto, o último separador tende a ser decimal
     if "," in s and "." in s:
         if s.rfind(",") > s.rfind("."):
-            # 1.234,56 -> remove pontos e troca vírgula por ponto
             s = s.replace(".", "").replace(",", ".")
         else:
-            # 1,234.56 -> remove vírgulas (milhar)
             s = s.replace(",", "")
     elif "," in s and "." not in s:
-        # 1234,56 -> decimal vírgula
         s = s.replace(".", "").replace(",", ".")
     else:
-        # só ponto ou só dígitos -> deixa como está
         pass
 
     try:
@@ -239,12 +262,8 @@ def parse_numeric(v):
         return None
 
 
-NUMERIC_FIELDS_ACORDOS = {
-    "valor_acordo", "honorarios", "repasse", "sucumbencia"
-}
-NUMERIC_FIELDS_MANDADOS = {
-    "deposito", "correcao", "honorarios", "repasse", "sucumbencia"
-}
+NUMERIC_FIELDS_ACORDOS = {"valor_acordo", "honorarios", "repasse", "sucumbencia"}
+NUMERIC_FIELDS_MANDADOS = {"deposito", "correcao", "honorarios", "repasse", "sucumbencia"}
 
 
 def clean_payload(payload: dict, numeric_fields: set[str]):
@@ -268,13 +287,12 @@ def clean_payload(payload: dict, numeric_fields: set[str]):
     return out
 
 
-# ========= NOVA REGRA: finalizado = 1 somente quando status for "FINALIZADO..." =========
+# ========= REGRA: finalizado = 1 somente quando status for "FINALIZADO..." =========
 
 def _status_text_from_payload(data: dict) -> str:
     """
     Prioriza SEMPRE o campo 'status' (texto exibido no sistema).
     Só usa 'status_id' como fallback caso 'status' não venha.
-    (Isso evita marcar finalizado errado quando o front envia um id/código em status_id.)
     """
     s = (data.get("status") or "").strip()
     if s:
@@ -283,13 +301,7 @@ def _status_text_from_payload(data: dict) -> str:
 
 
 def _derive_finalizado_from_status(status: str) -> int:
-    """
-    Regras:
-      - Se o status começar com 'FINALIZADO' (com ou sem acento/variações), finalizado=1
-      - Caso contrário, finalizado=0
-    """
     s = (status or "").strip().upper()
-    # cobre: "FINALIZADO", "FINALIZADO (CLIENTE INFORMADO)", "FINALIZADO - ...", etc.
     return 1 if s.startswith("FINALIZADO") else 0
 
 
@@ -300,7 +312,6 @@ def sb_select(table: str, columns="*", limit=300, order_col=None, desc=True, fil
         for (col, op, val) in filters:
             if val is None or val == "" or val == []:
                 continue
-
             if op == "eq":
                 q = q.eq(col, val)
             elif op == "ilike":
@@ -334,7 +345,6 @@ def sb_select_or_like(table: str, columns="*", limit=300, order_col=None, desc=T
         for (col, op, val) in extra_filters:
             if val is None or val == "" or val == []:
                 continue
-
             if op == "eq":
                 query = query.eq(col, val)
             elif op == "ilike":
@@ -573,8 +583,6 @@ def acordos_redirect_to_ativos():
 @login_required
 def acordos_create():
     data = request.get_json(force=True) or {}
-
-    # sempre derive finalizado a partir do TEXTO do status
     status_txt = _status_text_from_payload(data)
 
     payload = {
@@ -586,7 +594,7 @@ def acordos_create():
         "tel": data.get("tel"),
         "escritorio_reu": data.get("escritorio_reu"),
         "valor_acordo": data.get("valor_acordo"),
-        "status": status_txt,  # <--- força salvar o texto
+        "status": status_txt,
         "prazo_estimado": data.get("prazo_estimado"),
         "prazo_real": br_to_iso_date(data.get("prazo_real")),
         "data_pagamento": br_to_iso_date(data.get("data_pagamento")),
@@ -599,7 +607,7 @@ def acordos_create():
         "sucumbencia": data.get("sucumbencia"),
         "observacoes": data.get("observacoes"),
         "mes_pg": data.get("mes_pg"),
-        "finalizado": _derive_finalizado_from_status(status_txt),  # <--- REGRA NOVA
+        "finalizado": _derive_finalizado_from_status(status_txt),
     }
 
     payload = clean_payload(payload, NUMERIC_FIELDS_ACORDOS)
@@ -614,7 +622,6 @@ def acordos_create():
 @login_required
 def acordos_update(acordo_id: int):
     data = request.get_json(force=True) or {}
-
     status_txt = _status_text_from_payload(data)
 
     payload = {
@@ -626,7 +633,7 @@ def acordos_update(acordo_id: int):
         "tel": data.get("tel"),
         "escritorio_reu": data.get("escritorio_reu"),
         "valor_acordo": data.get("valor_acordo"),
-        "status": status_txt,  # <--- força salvar o texto
+        "status": status_txt,
         "prazo_estimado": data.get("prazo_estimado"),
         "prazo_real": br_to_iso_date(data.get("prazo_real")),
         "data_pagamento": br_to_iso_date(data.get("data_pagamento")),
@@ -639,7 +646,7 @@ def acordos_update(acordo_id: int):
         "sucumbencia": data.get("sucumbencia"),
         "observacoes": data.get("observacoes"),
         "mes_pg": data.get("mes_pg"),
-        "finalizado": _derive_finalizado_from_status(status_txt),  # <--- REGRA NOVA
+        "finalizado": _derive_finalizado_from_status(status_txt),
     }
 
     payload = clean_payload(payload, NUMERIC_FIELDS_ACORDOS)
@@ -696,7 +703,6 @@ def mandados_redirect_to_ativos():
 @login_required
 def mandados_create():
     data = request.get_json(force=True) or {}
-
     status_txt = _status_text_from_payload(data)
 
     payload = {
@@ -709,7 +715,7 @@ def mandados_create():
 
         "sentenca": data.get("sentenca"),
         "quitacao": data.get("quitacao"),
-        "status": status_txt,  # <--- força salvar o texto
+        "status": status_txt,
         "previsao": data.get("previsao"),
         "data_pagamento": br_to_iso_date(data.get("data_pagamento")),
         "local": data.get("local"),
@@ -726,7 +732,7 @@ def mandados_create():
         "observacoes": data.get("observacoes"),
         "mes_pg": data.get("mes_pg"),
 
-        "finalizado": _derive_finalizado_from_status(status_txt),  # <--- REGRA NOVA
+        "finalizado": _derive_finalizado_from_status(status_txt),
     }
 
     payload = clean_payload(payload, NUMERIC_FIELDS_MANDADOS)
@@ -741,7 +747,6 @@ def mandados_create():
 @login_required
 def mandados_update(mandado_id: int):
     data = request.get_json(force=True) or {}
-
     status_txt = _status_text_from_payload(data)
 
     payload = {
@@ -754,7 +759,7 @@ def mandados_update(mandado_id: int):
 
         "sentenca": data.get("sentenca"),
         "quitacao": data.get("quitacao"),
-        "status": status_txt,  # <--- força salvar o texto
+        "status": status_txt,
         "previsao": data.get("previsao"),
         "data_pagamento": br_to_iso_date(data.get("data_pagamento")),
         "local": data.get("local"),
@@ -771,7 +776,7 @@ def mandados_update(mandado_id: int):
         "observacoes": data.get("observacoes"),
         "mes_pg": data.get("mes_pg"),
 
-        "finalizado": _derive_finalizado_from_status(status_txt),  # <--- REGRA NOVA
+        "finalizado": _derive_finalizado_from_status(status_txt),
     }
 
     payload = clean_payload(payload, NUMERIC_FIELDS_MANDADOS)
@@ -793,10 +798,14 @@ def mandados_delete(mandado_id: int):
 # ===================== CADASTROS (ADMIN) =====================
 
 def require_admin():
+    """
+    ✅ Regra atual:
+      - admin, financeiro e gestor têm permissão
+    OBS: Seus cards você quer APENAS admin -> isso fica no template usando is_admin/current_user.role.
+    """
     h = (current_user.hierarquia or "").strip().lower()
     if h not in ("admin", "financeiro", "gestor"):
         abort(403)
-
 
 
 CADASTRO_TABLES = {
