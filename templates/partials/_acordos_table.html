@@ -455,7 +455,10 @@
       <button type="button" class="ac-btn ac-btn-primary" onclick="openCreateModal()">Novo acordo</button>
     </div>
   </div>
-  {% if current_user.role == "admin" %}
+
+  {# ✅ mesma lógica “admin” dos mandados (role) #}
+  {% set _role = (current_user.role if (current_user is defined and current_user.is_authenticated and current_user.role is defined) else (current_user.hierarquia if (current_user is defined and current_user.is_authenticated and current_user.hierarquia is defined) else '')) %}
+  {% if _role|string|lower == 'admin' %}
   <!-- ===== Totais dinâmicos (CORREÇÃO, HONORÁRIOS, AUDIENCISTA, SUCUMBÊNCIA + TOTAL) ===== -->
   <div class="ac-totals" id="acTotalsBar" aria-live="polite">
     <div class="ac-total-box">
@@ -530,7 +533,10 @@
           <td style="min-width:220px; max-width:340px;"><div class="clamp-2">{{ r.autor or "-" }}</div></td>
           <td><div class="clamp-2">{{ r.tel or "-" }}</div></td>
           <td><div class="clamp-2">{{ r.escritorio_reu or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.valor_acordo or "-" }}</div></td>
+
+          {# ✅ marca como money pra formatar de forma robusta #}
+          <td><div class="clamp-2 ac-money">{{ r.valor_acordo or "-" }}</div></td>
+
           <td style="min-width:260px; max-width:360px;"><div class="clamp-2">{{ r.status or "-" }}</div></td>
 
           <td><div class="clamp-2">{{ r.prazo_estimado or "-" }}</div></td>
@@ -539,11 +545,11 @@
           <td><div class="clamp-2">{{ r.local or "-" }}</div></td>
           <td><div class="clamp-2">{{ r.tipo or "-" }}</div></td>
 
-          <td><div class="clamp-2">{{ r.honorarios or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.audiencista or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.repasse or "-" }}</div></td>
+          <td><div class="clamp-2 ac-money">{{ r.honorarios or "-" }}</div></td>
+          <td><div class="clamp-2 ac-money">{{ r.audiencista or "-" }}</div></td>
+          <td><div class="clamp-2 ac-money">{{ r.repasse or "-" }}</div></td>
           <td><div class="clamp-2">{{ r.chave_pix or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.sucumbencia or "-" }}</div></td>
+          <td><div class="clamp-2 ac-money">{{ r.sucumbencia or "-" }}</div></td>
           <td style="min-width:320px; max-width:520px;"><div class="clamp-2">{{ r.observacoes or "-" }}</div></td>
 
           <td style="text-align:right; white-space:nowrap;">
@@ -714,17 +720,68 @@
 </div>
 
 <script>
-/* ===================== FORMATADORES pt-BR (MILHAR '.' / DECIMAL ',') ===================== */
-const BR_NUMBER = new Intl.NumberFormat('pt-BR', {
+/* ===================== FORMATADORES pt-BR + PARSER ROBUSTO ===================== */
+/*
+  Problema que você descreveu:
+  - Supabase manda 20541.49
+  - Seu formatador antigo removia TODOS os pontos antes de transformar, virando 2054149
+  - Resultado: 2.054.149,00 (errado)
+
+  Solução:
+  - Se vier "com ponto e sem vírgula" => interpretar como decimal americano (.) e NÃO remover o ponto
+  - Se vier "com vírgula" => interpretar como pt-BR (milhar '.' e decimal ',')
+*/
+const AC_BR_NUMBER = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2
 });
 
-function formatBR(v){
-  if(v === null || v === undefined || v === '' || v === '-') return '-';
-  const n = Number(String(v).replace(/\s/g,'').replace(/\./g,'').replace(',', '.'));
-  return Number.isFinite(n) ? BR_NUMBER.format(n) : String(v);
+function acParseAnyNumber(raw){
+  if(raw === null || raw === undefined) return null;
+  if(typeof raw === "number" && Number.isFinite(raw)) return raw;
+
+  let s = String(raw).trim();
+  if(!s || s === '-') return null;
+
+  s = s.replace(/\s/g,'').replace(/^R\$/i,'').trim();
+  // mantém só dígitos e separadores comuns
+  s = s.replace(/[^0-9.,-]/g,'');
+  if(!s || s === '-' || s === ',' || s === '.') return null;
+
+  const hasComma = s.includes(',');
+  const hasDot = s.includes('.');
+
+  // Caso 1: "20541.49" (decimal com ponto) -> só converter direto
+  if(hasDot && !hasComma){
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  // Caso 2: "20.000,00" (pt-BR) ou "1.234.567,89"
+  if(hasComma){
+    // remove separadores de milhar '.' e troca vírgula por ponto
+    const n = Number(s.replace(/\./g,'').replace(',', '.'));
+    return Number.isFinite(n) ? n : null;
+  }
+
+  // Caso 3: só número "20000" (inteiro)
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
 }
+
+function acFormatBR(v){
+  const n = acParseAnyNumber(v);
+  if(n === null) return (v === null || v === undefined || v === '' || v === '-') ? '-' : String(v);
+  return AC_BR_NUMBER.format(n);
+}
+
+function acMoneyBRL(n){
+  const v = Number.isFinite(n) ? n : 0;
+  return v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+}
+
+// expõe pra outros scripts (auto-cálculo usa)
+window.AC_BR_NUMBER = AC_BR_NUMBER;
 </script>
 
 <script>
@@ -751,26 +808,12 @@ async function deleteAcordo(id){
 <script>
 /* ===================== FORMATA NÚMEROS DA TABELA (APENAS EXIBIÇÃO) ===================== */
 (function(){
-  const numericCols = [
-    7,   // VALOR ACORDO
-    14,  // HONORÁRIOS
-    15,  // AUDIENCISTA
-    16,  // REPASSE
-    18   // SUCUMBÊNCIA
-  ];
-
   const tbody = document.getElementById("acTbody");
   if(!tbody) return;
 
-  tbody.querySelectorAll("tr").forEach(tr=>{
-    numericCols.forEach(idx=>{
-      const td = tr.cells[idx];
-      if(!td) return;
-      const div = td.querySelector("div");
-      if(!div) return;
-      const raw = div.textContent.trim();
-      div.textContent = formatBR(raw);
-    });
+  // Formata qualquer célula com .ac-money (mais seguro do que índices fixos)
+  tbody.querySelectorAll(".ac-money").forEach(div=>{
+    div.textContent = acFormatBR(div.textContent.trim());
   });
 })();
 </script>
@@ -971,42 +1014,14 @@ async function deleteAcordo(id){
     return allRows.filter(r => matchesFilters(r));
   }
 
-  // ======= parse num BR + render moeda =======
-  function numFromAny(v){
-    if (v === null || v === undefined) return 0;
-    if (typeof v === "number" && Number.isFinite(v)) return v;
-
-    const s0 = String(v).trim();
-    if (!s0 || s0 === "-") return 0;
-
-    let s = s0.replace(/\s/g, "").replace(/R\$/gi, "");
-    s = s.replace(/[^0-9.,-]/g, "");
-    if (!s || s === "-" || s === "," || s === ".") return 0;
-
-    if (s.includes(",") && s.includes(".")){
-      if (s.lastIndexOf(",") > s.lastIndexOf(".")){
-        s = s.replace(/\./g, "").replace(",", ".");
-      } else {
-        s = s.replace(/,/g, "");
-      }
-    } else if (s.includes(",") && !s.includes(".")){
-      s = s.replace(/\./g, "").replace(",", ".");
-    }
-
-    const n = Number(s);
-    return Number.isFinite(n) ? n : 0;
-  }
-
-  const moneyFmt = new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    maximumFractionDigits: 2
-  });
-  function money(n){ return moneyFmt.format(Number(n || 0)); }
-
   function readRowObj(tr){
     try{ return JSON.parse(tr.dataset.row || "{}"); }
     catch(_){ return {}; }
+  }
+
+  function numFromAny(v){
+    const n = acParseAnyNumber(v);
+    return n === null ? 0 : n;
   }
 
   function computeTotalsFromVisibleRows(visibleRows){
@@ -1018,6 +1033,8 @@ async function deleteAcordo(id){
       const vCor = (obj.correcao ?? obj.correção ?? obj["correção"] ?? obj["correcao"] ?? null);
       if (vCor !== null && vCor !== undefined) sCor += numFromAny(vCor);
 
+      // índices conforme seu THEAD:
+      // 14 honorários, 15 audiencista, 18 sucumbência
       const vHon = (obj.honorarios ?? textOfCell(tr, 14));
       const vAud = (obj.audiencista ?? textOfCell(tr, 15));
       const vSuc = (obj.sucumbencia ?? textOfCell(tr, 18));
@@ -1035,11 +1052,11 @@ async function deleteAcordo(id){
     const vis = getVisibleRows();
     const t = computeTotalsFromVisibleRows(vis);
 
-    if (sumEls.correcao) sumEls.correcao.textContent = money(t.sCor);
-    if (sumEls.honorarios) sumEls.honorarios.textContent = money(t.sHon);
-    if (sumEls.audiencista) sumEls.audiencista.textContent = money(t.sAud);
-    if (sumEls.sucumbencia) sumEls.sucumbencia.textContent = money(t.sSuc);
-    if (sumEls.total) sumEls.total.textContent = money(t.total);
+    if (sumEls.correcao) sumEls.correcao.textContent = acMoneyBRL(t.sCor);
+    if (sumEls.honorarios) sumEls.honorarios.textContent = acMoneyBRL(t.sHon);
+    if (sumEls.audiencista) sumEls.audiencista.textContent = acMoneyBRL(t.sAud);
+    if (sumEls.sucumbencia) sumEls.sucumbencia.textContent = acMoneyBRL(t.sSuc);
+    if (sumEls.total) sumEls.total.textContent = acMoneyBRL(t.total);
   }
 
   function apply(){
@@ -1063,15 +1080,15 @@ async function deleteAcordo(id){
           return dir === 'asc' ? cmp : -cmp;
         }
 
-        const aNum = parseFloat(A.replace(/[^\d.-]/g,''));
-        const bNum = parseFloat(B.replace(/[^\d.-]/g,''));
-        let cmp = 0;
-
-        if (!isNaN(aNum) && !isNaN(bNum) && (A.match(/\d/) && B.match(/\d/))){
-          cmp = aNum - bNum;
-        } else {
-          cmp = A.localeCompare(B, 'pt-BR');
+        // se parece número/moeda, compara como número (robusto p/ 20541.49)
+        const aNum = acParseAnyNumber(A);
+        const bNum = acParseAnyNumber(B);
+        if (aNum !== null && bNum !== null){
+          const cmp = aNum - bNum;
+          return dir === 'asc' ? cmp : -cmp;
         }
+
+        const cmp = A.localeCompare(B, 'pt-BR');
         return dir === 'asc' ? cmp : -cmp;
       });
 
@@ -1113,9 +1130,9 @@ async function deleteAcordo(id){
 
       return Array.from(vals).sort((a,b)=>{
         if(mode === 'month'){
-          const [am, ay] = a.split('/');
-          const [bm, by] = b.split('/');
-          return `${ay}-${am}`.localeCompare(`${by}-${bm}`,'pt-BR');
+          const [am, ay] = (a||'').split('/');
+          const [bm, by] = (b||'').split('/');
+          return `${ay||''}-${am||''}`.localeCompare(`${by||''}-${bm||''}`,'pt-BR');
         }
         const aKey = a === '-' ? '' : a.split('/').reverse().join('-');
         const bKey = b === '-' ? '' : b.split('/').reverse().join('-');
@@ -1350,7 +1367,7 @@ async function deleteAcordo(id){
 </script>
 
 <script>
-/* ===================== SCROLLBAR HORIZONTAL FIXA NO RODAPÉ (SINCRONIZADA E RANGE CORRETO) ===================== */
+/* ===================== SCROLLBAR HORIZONTAL FIXA NO RODAPÉ ===================== */
 (function(){
   const wrap  = document.querySelector(".ac-table-wrap");
   const fixed = document.getElementById("acXScrollFixed");
@@ -1430,6 +1447,71 @@ async function deleteAcordo(id){
 </script>
 
 <script>
+/* ===================== AUTO-CÁLCULO HONORÁRIOS (30%) e REPASSE (70%) ===================== */
+(function(){
+  const elValor = document.getElementById("acValorAcordo");
+  const elHon = document.getElementById("acHonorarios");
+  const elRep = document.getElementById("acRepasse");
+
+  if(!elValor || !elHon || !elRep){
+    console.warn("Auto-cálculo: inputs não encontrados (acValorAcordo/acHonorarios/acRepasse).");
+    return;
+  }
+
+  let honorariosManual = false;
+  let repasseManual = false;
+
+  function parseForCalc(raw){
+    const n = acParseAnyNumber(raw);
+    return (n === null) ? null : n;
+  }
+
+  function fmtBR(n){
+    const v = Number.isFinite(n) ? n : 0;
+    return AC_BR_NUMBER.format(v);
+  }
+
+  function applySuggestion(){
+    const base = parseForCalc(elValor.value);
+    if(base === null) return;
+
+    const h = base * 0.30;
+    const r = base * 0.70;
+
+    if(!honorariosManual) elHon.value = fmtBR(h);
+    if(!repasseManual) elRep.value = fmtBR(r);
+  }
+
+  elValor.addEventListener("input", () => {
+    applySuggestion();
+  });
+
+  elHon.addEventListener("input", () => {
+    honorariosManual = true;
+    if((elHon.value || "").trim() === "") honorariosManual = false;
+  });
+
+  elRep.addEventListener("input", () => {
+    repasseManual = true;
+    if((elRep.value || "").trim() === "") repasseManual = false;
+  });
+
+  window.AC_AUTOCALC = {
+    resetForCreate(){
+      honorariosManual = false;
+      repasseManual = false;
+      applySuggestion();
+    },
+    initForEdit(existingHonorarios, existingRepasse){
+      honorariosManual = !!(String(existingHonorarios ?? "").trim());
+      repasseManual = !!(String(existingRepasse ?? "").trim());
+      applySuggestion();
+    },
+  };
+})();
+</script>
+
+<script>
 /* ===================== MODAL + DROPDOWNS + CRUD ===================== */
 (function(){
   function _showError(msg){
@@ -1456,6 +1538,18 @@ async function deleteAcordo(id){
       return `${dd}/${mm}/${yyyy}`;
     }
     return raw;
+  }
+
+  // converte entrada "pt-BR" -> dot-decimal pro backend (remove milhares e troca vírgula por ponto)
+  function toDotDecimal(s){
+    if(s === null || s === undefined) return "";
+    let v = String(s).trim();
+    if(!v) return "";
+    v = v.replace(/\s/g,'');
+    // aqui é OK remover '.' porque no modal o usuário digita pt-BR
+    v = v.replace(/\./g,'');
+    v = v.replace(',', '.');
+    return v;
   }
 
   const sel = {
@@ -1526,6 +1620,7 @@ async function deleteAcordo(id){
       document.getElementById("acId").value = "";
       saveBtn.textContent = "Criar";
       _fillForm({});
+      window.AC_AUTOCALC?.resetForCreate?.();
     } else {
       badge.textContent = "Editar";
       title.textContent = "Editar acordo";
@@ -1568,8 +1663,8 @@ async function deleteAcordo(id){
     document.getElementById("acAutor").value = row?.autor ?? "";
     document.getElementById("acTel").value = row?.tel ?? "";
 
-    // Exibição no modal com separador pt-BR (só estética)
-    document.getElementById("acValorAcordo").value = (row?.valor_acordo ?? "") !== "" ? formatBR(row?.valor_acordo) : "";
+    // ✅ aqui usa parser robusto (se vier 20541.49 ele vira 20.541,49)
+    document.getElementById("acValorAcordo").value = (row?.valor_acordo ?? "") !== "" ? acFormatBR(row?.valor_acordo) : "";
 
     setSelectValue(sel.prazo_estimado, row?.prazo_estimado ?? "");
     document.getElementById("acPrazoReal").value = toBRDateText(row?.prazo_real ?? "");
@@ -1578,23 +1673,12 @@ async function deleteAcordo(id){
     setSelectValue(sel.local, row?.local ?? "");
     document.getElementById("acTipo").value = row?.tipo ?? "";
 
-    document.getElementById("acHonorarios").value = (row?.honorarios ?? "") !== "" ? formatBR(row?.honorarios) : "";
-    document.getElementById("acAudiencista").value = (row?.audiencista ?? "") !== "" ? formatBR(row?.audiencista) : "";
-    document.getElementById("acRepasse").value = (row?.repasse ?? "") !== "" ? formatBR(row?.repasse) : "";
+    document.getElementById("acHonorarios").value = (row?.honorarios ?? "") !== "" ? acFormatBR(row?.honorarios) : "";
+    document.getElementById("acAudiencista").value = (row?.audiencista ?? "") !== "" ? acFormatBR(row?.audiencista) : "";
+    document.getElementById("acRepasse").value = (row?.repasse ?? "") !== "" ? acFormatBR(row?.repasse) : "";
     document.getElementById("acChavePix").value = row?.chave_pix ?? "";
-    document.getElementById("acSucumbencia").value = (row?.sucumbencia ?? "") !== "" ? formatBR(row?.sucumbencia) : "";
+    document.getElementById("acSucumbencia").value = (row?.sucumbencia ?? "") !== "" ? acFormatBR(row?.sucumbencia) : "";
     document.getElementById("acObservacoes").value = row?.observacoes ?? "";
-  }
-
-  // converte entrada pt-BR para formato "numérico" que o backend espera (ponto decimal)
-  function toDotDecimal(s){
-    if(s === null || s === undefined) return "";
-    let v = String(s).trim();
-    if(!v) return "";
-    v = v.replace(/\s/g,'');
-    v = v.replace(/\./g,'');
-    v = v.replace(',', '.');
-    return v;
   }
 
   function _collectForm(){
@@ -1610,7 +1694,6 @@ async function deleteAcordo(id){
       tel: document.getElementById("acTel").value.trim(),
       escritorio_reu: (sel.escritorio_reu?.value || "").trim(),
 
-      // envia em formato numérico (1.234,56 -> 1234.56)
       valor_acordo: toDotDecimal(document.getElementById("acValorAcordo").value),
 
       status_id: (sel.status?.value || "").trim(),
@@ -1657,6 +1740,9 @@ async function deleteAcordo(id){
       const row = JSON.parse(raw);
       openModal("edit");
       _fillForm(row);
+
+      window.AC_AUTOCALC?.initForEdit?.(row?.honorarios, row?.repasse);
+
     }catch(err){
       console.error("Erro openEditModalFromRow:", err);
       _showError("Não foi possível abrir edição (dados inválidos).");
@@ -1719,23 +1805,5 @@ async function deleteAcordo(id){
       _showError("Falha de rede ao criar.");
     }
   }
-})();
-</script>
-
-<script>
-/* ===================== DOUBLE CLICK NA LINHA PARA EDITAR (MANTÉM) ===================== */
-(function(){
-  const tbody = document.getElementById("acTbody");
-  if(!tbody) return;
-
-  tbody.addEventListener("dblclick", (e)=>{
-    const tr = e.target.closest("tr");
-    if(!tr) return;
-
-    if (e.target.closest("button, a, input, select, textarea")) return;
-    if(!tr.querySelector(".ac-edit-btn")) return;
-
-    openEditModalFromRow(tr);
-  });
 })();
 </script>

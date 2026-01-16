@@ -469,7 +469,6 @@
   </div>
   {% endif %}
 
-
   <div class="md-table-wrap">
     <table class="md-table" id="mdTable">
       <thead>
@@ -519,10 +518,10 @@
           <td style="min-width:220px; max-width:340px;"><div class="clamp-2">{{ r.autor or "-" }}</div></td>
           <td><div class="clamp-2">{{ r.tel or "-" }}</div></td>
 
-          <td style="min-width:260px; max-width:360px;"><div class="clamp-2">{{ r.sentenca or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.quitacao or "-" }}</div></td>
+          <td style="min-width:260px; max-width:360px;"><div class="clamp-2 md-money">{{ r.sentenca or "-" }}</div></td>
+          <td><div class="clamp-2 md-money">{{ r.quitacao or "-" }}</div></td>
           <td style="min-width:260px; max-width:360px;"><div class="clamp-2">{{ r.status or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.previsao or "-" }}</div></td>
+          <td><div class="clamp-2 md-date">{{ r.previsao or "-" }}</div></td>
           <td class="whitespace-nowrap"><div class="clamp-2 md-date">{{ r.data_pagamento or "-" }}</div></td>
           <td><div class="clamp-2">{{ r.local or "-" }}</div></td>
           <td><div class="clamp-2">{{ r.tipo or "-" }}</div></td>
@@ -639,7 +638,7 @@
 
         <div class="md-field col-4">
           <label>Previsão</label>
-          <input class="md-input" id="mdPrevisao" placeholder="Previsão">
+          <input class="md-input" id="mdPrevisao" placeholder="dd/mm/aaaa">
         </div>
 
         <div class="md-field col-4">
@@ -717,16 +716,91 @@
 </div>
 
 <script>
-/* ===================== FORMATADORES pt-BR (MILHAR '.' / DECIMAL ',') ===================== */
-const MD_NUMBER = new Intl.NumberFormat('pt-BR', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2
-});
+/* ===================== FORMATADORES / PARSER ROBUSTO ===================== */
+window.MD = window.MD || {};
+
+MD.NUMBER = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/**
+ * Parser inteligente:
+ * Aceita:
+ *  - 20541.49 (decimal '.')
+ *  - 20000.0 / 20000.00
+ *  - 20.541,49 (pt-BR)
+ *  - 20000
+ *  - "R$ 20.541,49"
+ * Retorna Number (ou NaN se não der).
+ */
+MD.parseSmartNumber = function(input){
+  if(input === null || input === undefined) return NaN;
+  if(typeof input === 'number') return Number.isFinite(input) ? input : NaN;
+
+  let s = String(input).trim();
+  if(!s || s === '-') return NaN;
+
+  // remove moeda e espaços
+  s = s.replace(/\s/g,'').replace(/^R\$/i,'').trim();
+
+  // mantém só dígitos, separadores e sinal
+  s = s.replace(/[^0-9.,-]/g,'');
+
+  if(!s || s === '-' || s === '.' || s === ',') return NaN;
+
+  const hasDot = s.includes('.');
+  const hasComma = s.includes(',');
+
+  // Caso 1: tem '.' e ',', decide pelo ÚLTIMO separador ser o decimal
+  if(hasDot && hasComma){
+    const lastDot = s.lastIndexOf('.');
+    const lastComma = s.lastIndexOf(',');
+    if(lastDot > lastComma){
+      // decimal = '.', então ',' é milhar -> remove ','
+      s = s.replace(/,/g,'');
+    }else{
+      // decimal = ',', então '.' é milhar -> remove '.' e troca ',' por '.'
+      s = s.replace(/\./g,'').replace(',', '.');
+    }
+    const n = Number(s);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  // Caso 2: só vírgula -> decimal ',' (pt-BR)
+  if(hasComma && !hasDot){
+    s = s.replace(',', '.');
+    const n = Number(s);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  // Caso 3: só ponto -> pode ser decimal '.' OU milhar (ex: 20.000)
+  if(hasDot && !hasComma){
+    const parts = s.split('.');
+    if(parts.length === 2){
+      const frac = parts[1];
+      // se tiver exatamente 3 dígitos depois do ponto e antes só dígitos,
+      // provavelmente era milhar (20.000) -> remove ponto
+      if(/^\d+$/.test(parts[0].replace('-','')) && /^\d{3}$/.test(frac)){
+        const n = Number(parts[0] + frac);
+        return Number.isFinite(n) ? n : NaN;
+      }
+    }
+    const n = Number(s);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  // Caso 4: só dígitos (ou sinal)
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+};
 
 function formatBR_MD(v){
   if(v === null || v === undefined || v === '' || v === '-') return '-';
-  const n = Number(String(v).replace(/\s/g,'').replace(/\./g,'').replace(',', '.'));
-  return Number.isFinite(n) ? MD_NUMBER.format(n) : String(v);
+  const n = MD.parseSmartNumber(v);
+  return Number.isFinite(n) ? MD.NUMBER.format(n) : String(v);
+}
+
+function formatBRL_MD(n){
+  const v = Number.isFinite(n) ? n : 0;
+  return v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 }
 </script>
 
@@ -756,6 +830,7 @@ async function deleteMandado(id){
 (function(){
   // índices (0-based) das colunas monetárias no seu THEAD atual
   const numericCols = [
+    6,   // SENTENÇA
     7,   // QUITAÇÃO
     13,  // DEPÓSITO
     14,  // CORREÇÃO
@@ -826,42 +901,6 @@ async function deleteMandado(id){
     return `${mm}/${yyyy}`;
   }
 
-  function parseNumberBR(raw){
-    if(raw === null || raw === undefined) return 0;
-    let s = String(raw).trim();
-    if(!s || s === '-') return 0;
-
-    s = s.replace(/\s/g,'').replace(/^R\$/i,'').trim();
-
-    // remove tudo que não é dígito, ponto, vírgula, sinal
-    s = s.replace(/[^0-9.,-]/g,'');
-
-    if(s.includes(',') && s.includes('.')){
-      // pt-BR típico: 1.234,56
-      if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
-        s = s.replace(/\./g,'').replace(',', '.');
-      } else {
-        // caso raro: 1,234.56
-        s = s.replace(/,/g,'');
-      }
-      const n = Number(s);
-      return Number.isFinite(n) ? n : 0;
-    }
-
-    if(s.includes(',') && !s.includes('.')){
-      const n = Number(s.replace(',', '.'));
-      return Number.isFinite(n) ? n : 0;
-    }
-
-    const n = Number(s);
-    return Number.isFinite(n) ? n : 0;
-  }
-
-  function formatBRL(n){
-    const v = Number.isFinite(n) ? n : 0;
-    return v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-  }
-
   // aplica formatação BR nos campos marcados como data
   tbody.querySelectorAll('.md-date').forEach(el=>{
     el.textContent = toBRDateText(el.textContent);
@@ -921,6 +960,7 @@ async function deleteMandado(id){
     if (headerText.includes('data')) return true;
     if (headerText.includes('criado')) return true;
     if (headerText.includes('atualizado')) return true;
+    if (headerText.includes('previsão') || headerText.includes('previsao')) return true;
     return false;
   }
 
@@ -957,19 +997,19 @@ async function deleteMandado(id){
     let sCor = 0, sHon = 0, sAud = 0, sSuc = 0;
 
     vis.forEach(r=>{
-      sCor += parseNumberBR(textOfCell(r, COL_CORRECAO));
-      sHon += parseNumberBR(textOfCell(r, COL_HONORARIOS));
-      sAud += parseNumberBR(textOfCell(r, COL_AUDIENCISTA));
-      sSuc += parseNumberBR(textOfCell(r, COL_SUCUMBENCIA));
+      sCor += (MD.parseSmartNumber(textOfCell(r, COL_CORRECAO))    || 0);
+      sHon += (MD.parseSmartNumber(textOfCell(r, COL_HONORARIOS))  || 0);
+      sAud += (MD.parseSmartNumber(textOfCell(r, COL_AUDIENCISTA)) || 0);
+      sSuc += (MD.parseSmartNumber(textOfCell(r, COL_SUCUMBENCIA)) || 0);
     });
 
     const total = sCor + sHon + sAud + sSuc;
 
-    if(sumEls.correcao)    sumEls.correcao.textContent    = formatBRL(sCor);
-    if(sumEls.honorarios)  sumEls.honorarios.textContent  = formatBRL(sHon);
-    if(sumEls.audiencista) sumEls.audiencista.textContent = formatBRL(sAud);
-    if(sumEls.sucumbencia) sumEls.sucumbencia.textContent = formatBRL(sSuc);
-    if(sumEls.total)       sumEls.total.textContent       = formatBRL(total);
+    if(sumEls.correcao)    sumEls.correcao.textContent    = formatBRL_MD(sCor);
+    if(sumEls.honorarios)  sumEls.honorarios.textContent  = formatBRL_MD(sHon);
+    if(sumEls.audiencista) sumEls.audiencista.textContent = formatBRL_MD(sAud);
+    if(sumEls.sucumbencia) sumEls.sucumbencia.textContent = formatBRL_MD(sSuc);
+    if(sumEls.total)       sumEls.total.textContent       = formatBRL_MD(total);
   }
 
   function apply(){
@@ -993,12 +1033,10 @@ async function deleteMandado(id){
           return dir === 'asc' ? cmp : -cmp;
         }
 
-        // se a coluna parecer moeda/número, usa parser pt-BR
-        const aHasDigit = /\d/.test(A);
-        const bHasDigit = /\d/.test(B);
-        if(aHasDigit && bHasDigit){
-          const aNum = parseNumberBR(A);
-          const bNum = parseNumberBR(B);
+        // se tiver dígito em ambos, tenta ordenar como número (robusto)
+        if (/\d/.test(A) && /\d/.test(B)){
+          const aNum = MD.parseSmartNumber(A);
+          const bNum = MD.parseSmartNumber(B);
           if(Number.isFinite(aNum) && Number.isFinite(bNum)){
             const cmp = aNum - bNum;
             return dir === 'asc' ? cmp : -cmp;
@@ -1026,7 +1064,6 @@ async function deleteMandado(id){
 
     window.MD_XSCROLL?.refresh?.();
 
-    // atualiza cards sempre que filtrar/ordenar
     updateSums();
   }
 
@@ -1247,7 +1284,6 @@ async function deleteMandado(id){
 
   window.addEventListener('resize', ()=>{ if(openCol!==null){ closePanel(); } });
 
-  window.MD = window.MD || {};
   window.MD.clearAll = function(){
     filters = {};
     sort = null;
@@ -1261,7 +1297,7 @@ async function deleteMandado(id){
   };
 
   buildHeaderUI();
-  apply(); // já chama updateSums()
+  apply();
 })();
 </script>
 
@@ -1392,15 +1428,10 @@ async function deleteMandado(id){
     return raw;
   }
 
-  // converte entrada pt-BR para formato "numérico" (ponto decimal) pro backend
+  // converte entrada para dot-decimal pro backend (aceita pt-BR ou dot)
   function toDotDecimalMD(s){
-    if(s === null || s === undefined) return "";
-    let v = String(s).trim();
-    if(!v) return "";
-    v = v.replace(/\s/g,'');
-    v = v.replace(/\./g,'');
-    v = v.replace(',', '.');
-    return v;
+    const n = MD.parseSmartNumber(s);
+    return Number.isFinite(n) ? String(n) : "";
   }
 
   const sel = {
@@ -1508,9 +1539,8 @@ async function deleteMandado(id){
     document.getElementById("mdAutor").value = row?.autor ?? "";
     document.getElementById("mdTel").value = row?.tel ?? "";
 
-    document.getElementById("mdSentenca").value = row?.sentenca ?? "";
+    document.getElementById("mdSentenca").value = (row?.sentenca ?? "") !== "" ? formatBR_MD(row?.sentenca) : "";
 
-    // exibição BR no modal
     document.getElementById("mdQuitacao").value = (row?.quitacao ?? "") !== "" ? formatBR_MD(row?.quitacao) : "";
     document.getElementById("mdDeposito").value = (row?.deposito ?? "") !== "" ? formatBR_MD(row?.deposito) : "";
     document.getElementById("mdCorrecao").value = (row?.correcao ?? "") !== "" ? formatBR_MD(row?.correcao) : "";
@@ -1519,7 +1549,7 @@ async function deleteMandado(id){
     document.getElementById("mdRepasse").value = (row?.repasse ?? "") !== "" ? formatBR_MD(row?.repasse) : "";
     document.getElementById("mdSucumbencia").value = (row?.sucumbencia ?? "") !== "" ? formatBR_MD(row?.sucumbencia) : "";
 
-    document.getElementById("mdPrevisao").value = row?.previsao ?? "";
+    document.getElementById("mdPrevisao").value = toBRDateText(row?.previsao ?? "");
     document.getElementById("mdDataPagamento").value = toBRDateText(row?.data_pagamento ?? "");
 
     setSelectValue(sel.local, row?.local ?? "");
@@ -1542,9 +1572,8 @@ async function deleteMandado(id){
       autor: document.getElementById("mdAutor").value.trim(),
       tel: document.getElementById("mdTel").value.trim(),
 
-      sentenca: document.getElementById("mdSentenca").value.trim(),
+      sentenca: toDotDecimalMD(document.getElementById("mdSentenca").value),
 
-      // envia números em formato "dot-decimal" pro backend
       quitacao: toDotDecimalMD(document.getElementById("mdQuitacao").value),
       deposito: toDotDecimalMD(document.getElementById("mdDeposito").value),
       correcao: toDotDecimalMD(document.getElementById("mdCorrecao").value),
