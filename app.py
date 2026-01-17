@@ -117,6 +117,7 @@ def _password_ok(raw_password: str, stored_password: str) -> bool:
         except Exception:
             return False
 
+
     # legado (texto simples)
     return raw_password == stored_password
 
