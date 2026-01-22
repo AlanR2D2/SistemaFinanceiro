@@ -56,7 +56,7 @@
   .ac-totals{
     width:100%;
     display:grid;
-    grid-template-columns: repeat(5, minmax(160px, 1fr));
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
     gap:10px;
     padding:12px 16px;
     border-bottom:1px solid #e5e7eb;
@@ -135,7 +135,6 @@
     color:#111827;
   }
 
-  /* hover só se NÃO tiver cor aplicada */
   table.ac-table tbody tr:not(.ac-colored):hover{ background:#fafafa; cursor:default; }
   table.ac-table tbody tr.ac-colored:hover{ filter: brightness(0.98); }
 
@@ -350,7 +349,9 @@
   .ac-field.col-3{ grid-column: span 3; }
   .ac-field.col-8{ grid-column: span 8; }
   .ac-field label{
-    display:block;
+    display:flex;
+    align-items:center;
+    gap:8px;
     font-size:11px;
     font-weight:950;
     color:#374151;
@@ -433,14 +434,84 @@
   .ac-row-iddeposito{ background:#00b050 !important; }
   .ac-row-aguardando-pix{ background:#0070c0 !important; }
   .ac-row-aguardando-retorno{ background:#a2c4c9 !important; }
-
   .ac-row-aguardando-pix td{ color:#ffffff !important; }
-
   .ac-colored .ac-btn{
     background: rgba(255,255,255,0.88);
     border-color: rgba(17,24,39,0.15);
   }
   .ac-colored .ac-btn:hover{ background: rgba(255,255,255,0.96); }
+
+  /* ===================== AUTO INDICATORS ===================== */
+  .ac-info{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:18px;height:18px;
+    border-radius:999px;
+    border:1px solid #c7d2fe;
+    background:#eef2ff;
+    color:#4338ca;
+    font-weight:950;
+    font-size:12px;
+    line-height:1;
+    cursor:help;
+    user-select:none;
+  }
+  .ac-auto-badge{
+    display:none;
+    margin-left:2px;
+    font-size:10px;
+    font-weight:950;
+    padding:2px 8px;
+    border-radius:999px;
+    border:1px solid #c7d2fe;
+    background:#eef2ff;
+    color:#4338ca;
+    letter-spacing:.05em;
+    white-space:nowrap;
+  }
+  .ac-field.is-auto .ac-auto-badge{ display:inline-flex; }
+  .ac-field.is-auto .ac-input{
+    border-color:#c7d2fe;
+    background:#f8fafc;
+  }
+
+  /* ===================== TIPO_RÉU (PRIMEIRO) - SINALIZAÇÃO ===================== */
+  .ac-required-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:2px 8px;
+    border-radius:999px;
+    border:1px solid #fecaca;
+    background:#fff1f2;
+    color:#be123c;
+    font-size:10px;
+    font-weight:950;
+    letter-spacing:.06em;
+    white-space:nowrap;
+  }
+  .ac-first-tip{
+    display:none;
+    margin-top:6px;
+    font-size:12px;
+    font-weight:800;
+    color:#be123c;
+  }
+  .ac-field.first-required .ac-select{
+    border-color:#fecaca;
+    background:#fff7f7;
+  }
+  .ac-field.first-required .ac-first-tip{
+    display:block;
+  }
+  .ac-field.first-required .ac-required-badge{
+    display:inline-flex;
+  }
+  .ac-field.first-ok .ac-select{
+    border-color:#c7d2fe;
+    background:#f8fafc;
+  }
 </style>
 
 <div class="ac-card">
@@ -456,17 +527,9 @@
     </div>
   </div>
 
-  {# ✅ mesma lógica “admin” dos mandados (role) #}
   {% set _role = (current_user.role if (current_user is defined and current_user.is_authenticated and current_user.role is defined) else (current_user.hierarquia if (current_user is defined and current_user.is_authenticated and current_user.hierarquia is defined) else '')) %}
   {% if _role|string|lower == 'admin' %}
-  <!-- ===== Totais dinâmicos (CORREÇÃO, HONORÁRIOS, AUDIENCISTA, SUCUMBÊNCIA + TOTAL) ===== -->
   <div class="ac-totals" id="acTotalsBar" aria-live="polite">
-    <div class="ac-total-box">
-      <div class="ac-total-label">Correção</div>
-      <div class="ac-total-value" id="acSumCorrecao">R$ 0,00</div>
-      <div class="ac-total-sub">Somatório dos visíveis</div>
-    </div>
-
     <div class="ac-total-box">
       <div class="ac-total-label">Honorários</div>
       <div class="ac-total-value" id="acSumHonorarios">R$ 0,00</div>
@@ -488,7 +551,7 @@
     <div class="ac-total-box total">
       <div class="ac-total-label">Total geral</div>
       <div class="ac-total-value" id="acSumTotalGeral">R$ 0,00</div>
-      <div class="ac-total-sub">Soma dos 4 campos</div>
+      <div class="ac-total-sub">Soma dos 3 campos</div>
     </div>
   </div>
   {% endif %}
@@ -534,7 +597,6 @@
           <td><div class="clamp-2">{{ r.tel or "-" }}</div></td>
           <td><div class="clamp-2">{{ r.escritorio_reu or "-" }}</div></td>
 
-          {# ✅ marca como money pra formatar de forma robusta #}
           <td><div class="clamp-2 ac-money">{{ r.valor_acordo or "-" }}</div></td>
 
           <td style="min-width:260px; max-width:360px;"><div class="clamp-2">{{ r.status or "-" }}</div></td>
@@ -571,7 +633,6 @@
   </div>
 </div>
 
-<!-- SCROLL HORIZONTAL FIXO NO RODAPÉ -->
 <div id="acXScrollFixed" class="ac-xscroll-fixed" aria-hidden="true">
   <div id="acXScrollInner" class="ac-xscroll-inner"></div>
 </div>
@@ -636,7 +697,21 @@
           </select>
         </div>
 
-        <div class="ac-field col-4">
+        <!-- ✅ TIPO RÉU: PRIMEIRO A SER PREENCHIDO (SINALIZAÇÃO) -->
+        <div class="ac-field col-4" id="acTipoReuField">
+          <label>
+            Tipo réu
+            
+          </label>
+          <select class="ac-select" id="acTipoReu">
+            <option value="">Selecione...</option>
+            <option value="aereo">Aéreo</option>
+            <option value="onibus">Ônibus</option>
+          </select>
+          <div class="ac-first-tip" id="acTipoReuTip">Preencha este campo primeiro para liberar os cálculos automáticos.</div>
+        </div>
+
+        <div class="ac-field col-8">
           <label>Valor acordo</label>
           <input class="ac-input" id="acValorAcordo" placeholder="Ex: 1500,00">
         </div>
@@ -677,8 +752,12 @@
           <input class="ac-input" id="acTipo" placeholder="Tipo">
         </div>
 
-        <div class="ac-field col-4">
-          <label>Honorários</label>
+        <div class="ac-field col-4" id="acFieldHonorarios">
+          <label>
+            Honorários
+            <span class="ac-info" title="Automático: 30% (aéreo) ou 40% (ônibus) do Valor">i</span>
+            <span class="ac-auto-badge">AUTO</span>
+          </label>
           <input class="ac-input" id="acHonorarios" placeholder="Ex: 500,00">
         </div>
 
@@ -687,8 +766,12 @@
           <input class="ac-input" id="acAudiencista" placeholder="Ex: 300,00">
         </div>
 
-        <div class="ac-field col-4">
-          <label>Repasse</label>
+        <div class="ac-field col-4" id="acFieldRepasse">
+          <label>
+            Repasse
+            <span class="ac-info" title="Automático: (Valor * 70%) (aéreo) ou (Valor * 60%) (ônibus)">i</span>
+            <span class="ac-auto-badge">AUTO</span>
+          </label>
           <input class="ac-input" id="acRepasse" placeholder="Ex: 250,00">
         </div>
 
@@ -721,16 +804,6 @@
 
 <script>
 /* ===================== FORMATADORES pt-BR + PARSER ROBUSTO ===================== */
-/*
-  Problema que você descreveu:
-  - Supabase manda 20541.49
-  - Seu formatador antigo removia TODOS os pontos antes de transformar, virando 2054149
-  - Resultado: 2.054.149,00 (errado)
-
-  Solução:
-  - Se vier "com ponto e sem vírgula" => interpretar como decimal americano (.) e NÃO remover o ponto
-  - Se vier "com vírgula" => interpretar como pt-BR (milhar '.' e decimal ',')
-*/
 const AC_BR_NUMBER = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2
@@ -744,27 +817,22 @@ function acParseAnyNumber(raw){
   if(!s || s === '-') return null;
 
   s = s.replace(/\s/g,'').replace(/^R\$/i,'').trim();
-  // mantém só dígitos e separadores comuns
   s = s.replace(/[^0-9.,-]/g,'');
   if(!s || s === '-' || s === ',' || s === '.') return null;
 
   const hasComma = s.includes(',');
   const hasDot = s.includes('.');
 
-  // Caso 1: "20541.49" (decimal com ponto) -> só converter direto
   if(hasDot && !hasComma){
     const n = Number(s);
     return Number.isFinite(n) ? n : null;
   }
 
-  // Caso 2: "20.000,00" (pt-BR) ou "1.234.567,89"
   if(hasComma){
-    // remove separadores de milhar '.' e troca vírgula por ponto
     const n = Number(s.replace(/\./g,'').replace(',', '.'));
     return Number.isFinite(n) ? n : null;
   }
 
-  // Caso 3: só número "20000" (inteiro)
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
 }
@@ -780,7 +848,6 @@ function acMoneyBRL(n){
   return v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 }
 
-// expõe pra outros scripts (auto-cálculo usa)
 window.AC_BR_NUMBER = AC_BR_NUMBER;
 </script>
 
@@ -811,7 +878,6 @@ async function deleteAcordo(id){
   const tbody = document.getElementById("acTbody");
   if(!tbody) return;
 
-  // Formata qualquer célula com .ac-money (mais seguro do que índices fixos)
   tbody.querySelectorAll(".ac-money").forEach(div=>{
     div.textContent = acFormatBR(div.textContent.trim());
   });
@@ -848,9 +914,7 @@ async function deleteAcordo(id){
     clearColorClasses(tr);
 
     let rowObj = {};
-    try{
-      rowObj = JSON.parse(tr.dataset.row || "{}");
-    }catch(_){ rowObj = {}; }
+    try{ rowObj = JSON.parse(tr.dataset.row || "{}"); }catch(_){ rowObj = {}; }
 
     const tipo   = norm(rowObj.tipo   ?? tr.cells[13]?.innerText);
     const status = norm(rowObj.status ?? tr.cells[8]?.innerText);
@@ -892,7 +956,7 @@ async function deleteAcordo(id){
 </script>
 
 <script>
-/* ===================== TABELA + FILTROS + DATAS BR + TOTAIS (COR/HON/AUD/SUC) ===================== */
+/* ===================== TABELA + FILTROS + DATAS BR + TOTAIS (HON/AUD/SUC + TOTAL) ===================== */
 (function(){
   const table = document.getElementById('acTable');
   const thead = table?.tHead?.rows?.[0];
@@ -901,7 +965,6 @@ async function deleteAcordo(id){
   const countEl = document.getElementById('acRowsCount');
 
   const sumEls = {
-    correcao: document.getElementById("acSumCorrecao"),
     honorarios: document.getElementById("acSumHonorarios"),
     audiencista: document.getElementById("acSumAudiencista"),
     sucumbencia: document.getElementById("acSumSucumbencia"),
@@ -939,7 +1002,6 @@ async function deleteAcordo(id){
     el.textContent = toBRDateText(el.textContent);
   });
 
-  // ===== painel =====
   let panel = document.getElementById('acGlobalFilterPanel');
   if (!panel) {
     panel = document.createElement('div');
@@ -1025,16 +1087,11 @@ async function deleteAcordo(id){
   }
 
   function computeTotalsFromVisibleRows(visibleRows){
-    let sCor = 0, sHon = 0, sAud = 0, sSuc = 0;
+    let sHon = 0, sAud = 0, sSuc = 0;
 
     for (const tr of visibleRows){
       const obj = readRowObj(tr);
 
-      const vCor = (obj.correcao ?? obj.correção ?? obj["correção"] ?? obj["correcao"] ?? null);
-      if (vCor !== null && vCor !== undefined) sCor += numFromAny(vCor);
-
-      // índices conforme seu THEAD:
-      // 14 honorários, 15 audiencista, 18 sucumbência
       const vHon = (obj.honorarios ?? textOfCell(tr, 14));
       const vAud = (obj.audiencista ?? textOfCell(tr, 15));
       const vSuc = (obj.sucumbencia ?? textOfCell(tr, 18));
@@ -1044,15 +1101,14 @@ async function deleteAcordo(id){
       sSuc += numFromAny(vSuc);
     }
 
-    const total = sCor + sHon + sAud + sSuc;
-    return { sCor, sHon, sAud, sSuc, total };
+    const total = sHon + sAud + sSuc;
+    return { sHon, sAud, sSuc, total };
   }
 
   function renderTotals(){
     const vis = getVisibleRows();
     const t = computeTotalsFromVisibleRows(vis);
 
-    if (sumEls.correcao) sumEls.correcao.textContent = acMoneyBRL(t.sCor);
     if (sumEls.honorarios) sumEls.honorarios.textContent = acMoneyBRL(t.sHon);
     if (sumEls.audiencista) sumEls.audiencista.textContent = acMoneyBRL(t.sAud);
     if (sumEls.sucumbencia) sumEls.sucumbencia.textContent = acMoneyBRL(t.sSuc);
@@ -1080,7 +1136,6 @@ async function deleteAcordo(id){
           return dir === 'asc' ? cmp : -cmp;
         }
 
-        // se parece número/moeda, compara como número (robusto p/ 20541.49)
         const aNum = acParseAnyNumber(A);
         const bNum = acParseAnyNumber(B);
         if (aNum !== null && bNum !== null){
@@ -1343,26 +1398,42 @@ async function deleteAcordo(id){
     deleteAcordo(id);
   };
 
+  const KEY = "acordos.filters.v1";
+  function saveState(){
+    const safeFilters = {};
+    for (const [k,v] of Object.entries(filters)){
+      safeFilters[k] = { ...v, set: Array.from(v.set || []) };
+    }
+    try{
+      localStorage.setItem(KEY, JSON.stringify({ filters: safeFilters, sort }));
+    }catch(_){}
+  }
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(KEY);
+      if(!raw) return;
+      const st = JSON.parse(raw);
+      if(st?.filters){
+        const rebuilt = {};
+        for(const [k,v] of Object.entries(st.filters)){
+          rebuilt[k] = { ...v, set: new Set(v.set || []) };
+        }
+        filters = rebuilt;
+      }
+      if(st?.sort) sort = st.sort;
+    }catch(_){}
+  }
+
+  const _applyOrig = apply;
+  function applyWithPersist(){
+    saveState();
+    _applyOrig();
+  }
+  apply = applyWithPersist;
+
   buildHeaderUI();
+  loadState();
   apply();
-})();
-</script>
-
-<script>
-/* ===================== DOUBLE CLICK NA LINHA PARA EDITAR ===================== */
-(function(){
-  const tbody = document.getElementById("acTbody");
-  if(!tbody) return;
-
-  tbody.addEventListener("dblclick", (e)=>{
-    const tr = e.target.closest("tr");
-    if(!tr) return;
-
-    if (e.target.closest("button, a, input, select, textarea")) return;
-    if(!tr.querySelector(".ac-edit-btn")) return;
-
-    openEditModalFromRow(tr);
-  });
 })();
 </script>
 
@@ -1447,14 +1518,20 @@ async function deleteAcordo(id){
 </script>
 
 <script>
-/* ===================== AUTO-CÁLCULO HONORÁRIOS (30%) e REPASSE (70%) ===================== */
+/* ===================== AUTO-CÁLCULO HONORÁRIOS/REPASSE (TIPO RÉU) + INDICATIVO VISUAL ===================== */
 (function(){
   const elValor = document.getElementById("acValorAcordo");
+  const elTipoReu = document.getElementById("acTipoReu");
   const elHon = document.getElementById("acHonorarios");
   const elRep = document.getElementById("acRepasse");
 
-  if(!elValor || !elHon || !elRep){
-    console.warn("Auto-cálculo: inputs não encontrados (acValorAcordo/acHonorarios/acRepasse).");
+  const fieldHon = document.getElementById("acFieldHonorarios");
+  const fieldRep = document.getElementById("acFieldRepasse");
+
+  const tipoField = document.getElementById("acTipoReuField");
+
+  if(!elValor || !elTipoReu || !elHon || !elRep){
+    console.warn("Auto-cálculo: inputs não encontrados (acValorAcordo/acTipoReu/acHonorarios/acRepasse).");
     return;
   }
 
@@ -1471,43 +1548,105 @@ async function deleteAcordo(id){
     return AC_BR_NUMBER.format(v);
   }
 
-  function applySuggestion(){
-    const base = parseForCalc(elValor.value);
-    if(base === null) return;
-
-    const h = base * 0.30;
-    const r = base * 0.70;
-
-    if(!honorariosManual) elHon.value = fmtBR(h);
-    if(!repasseManual) elRep.value = fmtBR(r);
+  function getPercents(){
+    const tipo = String(elTipoReu.value || "").toLowerCase().trim();
+    const isOnibus = (tipo === "onibus" || tipo === "ônibus");
+    return {
+      hon: isOnibus ? 0.40 : 0.30,
+      rep: isOnibus ? 0.60 : 0.70
+    };
   }
 
-  elValor.addEventListener("input", () => {
-    applySuggestion();
-  });
+  function setAutoVisual(fieldEl, isAuto){
+    if(!fieldEl) return;
+    fieldEl.classList.toggle("is-auto", !!isAuto);
+  }
 
-  elHon.addEventListener("input", () => {
-    honorariosManual = true;
-    if((elHon.value || "").trim() === "") honorariosManual = false;
-  });
+  /* ✅ sinaliza que tipo_reu deve ser preenchido primeiro */
+  function updateTipoReuSignal(){
+    const hasTipo = !!String(elTipoReu.value || "").trim();
+    if(!tipoField) return;
 
-  elRep.addEventListener("input", () => {
-    repasseManual = true;
-    if((elRep.value || "").trim() === "") repasseManual = false;
-  });
+    tipoField.classList.toggle("first-required", !hasTipo);
+    tipoField.classList.toggle("first-ok", hasTipo);
+
+    // Se não tem tipo, não deixa marcar auto em hon/rep (porque depende de tipo)
+    if(!hasTipo){
+      setAutoVisual(fieldHon, false);
+      setAutoVisual(fieldRep, false);
+    }
+  }
+
+  function applySuggestion(){
+    updateTipoReuSignal();
+
+    const hasTipo = !!String(elTipoReu.value || "").trim();
+    if(!hasTipo){
+      // sem tipo_reu, não calcula
+      return;
+    }
+
+    const base = parseForCalc(elValor.value);
+    if(base === null){
+      if(!honorariosManual){ elHon.value = ""; setAutoVisual(fieldHon, false); }
+      if(!repasseManual){ elRep.value = ""; setAutoVisual(fieldRep, false); }
+      return;
+    }
+
+    const p = getPercents();
+    const h = base * p.hon;
+    const r = base * p.rep;
+
+    if(!honorariosManual){
+      elHon.value = fmtBR(h);
+      setAutoVisual(fieldHon, true);
+    }
+    if(!repasseManual){
+      elRep.value = fmtBR(r);
+      setAutoVisual(fieldRep, true);
+    }
+  }
+
+  function bindManualBehavior(inputEl, setManualFn, fieldEl){
+    inputEl.addEventListener("input", ()=>{
+      const v = (inputEl.value || "").trim();
+      if(v === ""){
+        setManualFn(false);
+        applySuggestion();
+        return;
+      }
+      setManualFn(true);
+      setAutoVisual(fieldEl, false);
+    });
+  }
+
+  elValor.addEventListener("input", ()=> applySuggestion());
+  elTipoReu.addEventListener("change", ()=> applySuggestion());
+
+  bindManualBehavior(elHon, (x)=> honorariosManual = x, fieldHon);
+  bindManualBehavior(elRep, (x)=> repasseManual = x, fieldRep);
 
   window.AC_AUTOCALC = {
     resetForCreate(){
       honorariosManual = false;
       repasseManual = false;
+      updateTipoReuSignal();
+      setAutoVisual(fieldHon, false);
+      setAutoVisual(fieldRep, false);
       applySuggestion();
     },
     initForEdit(existingHonorarios, existingRepasse){
       honorariosManual = !!(String(existingHonorarios ?? "").trim());
       repasseManual = !!(String(existingRepasse ?? "").trim());
+      updateTipoReuSignal();
+      setAutoVisual(fieldHon, !honorariosManual);
+      setAutoVisual(fieldRep, !repasseManual);
       applySuggestion();
     },
+    refreshTipoReuSignal: updateTipoReuSignal
   };
+
+  updateTipoReuSignal();
 })();
 </script>
 
@@ -1540,13 +1679,11 @@ async function deleteAcordo(id){
     return raw;
   }
 
-  // converte entrada "pt-BR" -> dot-decimal pro backend (remove milhares e troca vírgula por ponto)
   function toDotDecimal(s){
     if(s === null || s === undefined) return "";
     let v = String(s).trim();
     if(!v) return "";
     v = v.replace(/\s/g,'');
-    // aqui é OK remover '.' porque no modal o usuário digita pt-BR
     v = v.replace(/\./g,'');
     v = v.replace(',', '.');
     return v;
@@ -1621,12 +1758,17 @@ async function deleteAcordo(id){
       saveBtn.textContent = "Criar";
       _fillForm({});
       window.AC_AUTOCALC?.resetForCreate?.();
+
+      // ✅ foca e sinaliza tipo_reu
+      document.getElementById("acTipoReu")?.focus();
+      window.AC_AUTOCALC?.refreshTipoReuSignal?.();
     } else {
       badge.textContent = "Editar";
       title.textContent = "Editar acordo";
       sub.textContent = "Ajuste os campos e clique em salvar.";
       formMode.value = "edit";
       saveBtn.textContent = "Salvar";
+      window.AC_AUTOCALC?.refreshTipoReuSignal?.();
     }
 
     overlay.style.display = "flex";
@@ -1663,7 +1805,6 @@ async function deleteAcordo(id){
     document.getElementById("acAutor").value = row?.autor ?? "";
     document.getElementById("acTel").value = row?.tel ?? "";
 
-    // ✅ aqui usa parser robusto (se vier 20541.49 ele vira 20.541,49)
     document.getElementById("acValorAcordo").value = (row?.valor_acordo ?? "") !== "" ? acFormatBR(row?.valor_acordo) : "";
 
     setSelectValue(sel.prazo_estimado, row?.prazo_estimado ?? "");
@@ -1679,6 +1820,14 @@ async function deleteAcordo(id){
     document.getElementById("acChavePix").value = row?.chave_pix ?? "";
     document.getElementById("acSucumbencia").value = (row?.sucumbencia ?? "") !== "" ? acFormatBR(row?.sucumbencia) : "";
     document.getElementById("acObservacoes").value = row?.observacoes ?? "";
+
+    const tr = document.getElementById("acTipoReu");
+    if(tr){
+      const rawTipo = (row?.tipo_reu ?? row?.tipoReu ?? "").toString().trim().toLowerCase();
+      if(rawTipo === "aereo" || rawTipo === "aéreo") tr.value = "aereo";
+      else if(rawTipo === "onibus" || rawTipo === "ônibus") tr.value = "onibus";
+      else tr.value = "";
+    }
   }
 
   function _collectForm(){
@@ -1693,6 +1842,8 @@ async function deleteAcordo(id){
       autor: document.getElementById("acAutor").value.trim(),
       tel: document.getElementById("acTel").value.trim(),
       escritorio_reu: (sel.escritorio_reu?.value || "").trim(),
+
+      tipo_reu: (document.getElementById("acTipoReu")?.value || "").trim(),
 
       valor_acordo: toDotDecimal(document.getElementById("acValorAcordo").value),
 
@@ -1714,16 +1865,9 @@ async function deleteAcordo(id){
     };
   }
 
-  document.addEventListener("click", (e)=>{
-    const overlay = document.getElementById("acModalOverlay");
-    if(!overlay || overlay.style.display !== "flex") return;
-    if(e.target === overlay) closeModal();
-  });
-
   document.addEventListener("keydown", (e)=>{
     if(e.key !== "Escape") return;
-    const overlay = document.getElementById("acModalOverlay");
-    if(overlay && overlay.style.display === "flex") closeModal();
+    // NÃO fecha propositalmente
   });
 
   window.closeModal = closeModal;
@@ -1740,9 +1884,7 @@ async function deleteAcordo(id){
       const row = JSON.parse(raw);
       openModal("edit");
       _fillForm(row);
-
       window.AC_AUTOCALC?.initForEdit?.(row?.honorarios, row?.repasse);
-
     }catch(err){
       console.error("Erro openEditModalFromRow:", err);
       _showError("Não foi possível abrir edição (dados inválidos).");
@@ -1759,6 +1901,13 @@ async function deleteAcordo(id){
     const payload = _collectForm();
     if(!payload.id){
       _showError("ID do acordo não encontrado.");
+      return;
+    }
+
+    if(!payload.tipo_reu){
+      _showError("Preencha primeiro o Tipo Réu (Aéreo/Ônibus).");
+      document.getElementById("acTipoReu")?.focus();
+      window.AC_AUTOCALC?.refreshTipoReuSignal?.();
       return;
     }
 
@@ -1786,6 +1935,13 @@ async function deleteAcordo(id){
     const payload = _collectForm();
     payload.id = null;
 
+    if(!payload.tipo_reu){
+      _showError("Preencha primeiro o Tipo Réu (Aéreo/Ônibus).");
+      document.getElementById("acTipoReu")?.focus();
+      window.AC_AUTOCALC?.refreshTipoReuSignal?.();
+      return;
+    }
+
     try{
       const resp = await fetch(`/acordos`, {
         method: "POST",
@@ -1798,7 +1954,6 @@ async function deleteAcordo(id){
         _showError(txt || "Erro ao criar acordo.");
         return;
       }
-      
 
       window.location.reload();
     }catch(err){
@@ -1806,5 +1961,116 @@ async function deleteAcordo(id){
       _showError("Falha de rede ao criar.");
     }
   }
+})();
+
+(function(){
+  const tbody = document.getElementById("acTbody");
+  if(!tbody) return;
+
+  // evita anexar 2x se o partial for recarregado
+  if (tbody.dataset.dblClickBound === "1") return;
+  tbody.dataset.dblClickBound = "1";
+
+  tbody.addEventListener("dblclick", (e)=>{
+    const tr = e.target.closest && e.target.closest("tr.ac-row");
+    if(!tr) return;
+
+    // se clicou em botões/inputs/links, não dispara o dblclick da linha
+    const interactive = e.target.closest('button, a, input, select, textarea, label, .ac-th-btn, #acGlobalFilterPanel');
+    if(interactive) return;
+
+    // garante que a linha tem dataset.row
+    if(!tr.dataset.row) return;
+
+    // abre edição (função já existente no seu código)
+    if(typeof window.openEditModalFromRow === "function"){
+      window.openEditModalFromRow(tr);
+    }
+  });
+})();
+(function(){
+  const tipoEl =
+    document.getElementById("acTipoReu") ||
+    document.getElementById("acTipoReuSelect") ||
+    document.querySelector('[data-field="tipo_reu"]');
+
+  if(!tipoEl) return;
+
+  const wrap =
+    document.getElementById("acTipoReuWrap") ||
+    tipoEl.closest(".ac-field") ||
+    tipoEl.parentElement;
+
+  function getHint(){
+    return document.getElementById("acTipoReuHint") || wrap?.querySelector(".ac-first-hint");
+  }
+
+  function hasValue(){
+    const v = (tipoEl.value ?? "").toString().trim();
+    return v !== "";
+  }
+
+  function ensureHint(){
+    if(!wrap) return;
+    let hint = getHint();
+    if(!hint){
+      hint = document.createElement("div");
+      hint.id = "acTipoReuHint";
+      hint.className = "ac-first-hint";
+      hint.style.marginTop = "6px";
+      hint.style.fontSize = "12px";
+      hint.style.fontWeight = "900";
+      hint.style.color = "#b45309";
+      hint.style.display = "flex";
+      hint.style.alignItems = "center";
+      hint.style.gap = "8px";
+      hint.innerHTML = `<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:999px;background:#fff7ed;border:1px solid #fed7aa;">!</span>
+                        <span>Preencha este campo primeiro.</span>`;
+      wrap.appendChild(hint);
+    }
+    return hint;
+  }
+
+  function refresh(){
+    const hint = ensureHint();
+    if(!hint) return;
+    hint.style.display = hasValue() ? "none" : "flex";
+
+    // opcional: destaque no campo enquanto vazio
+    if(!hasValue()){
+      tipoEl.style.borderColor = "#f59e0b";
+      tipoEl.style.boxShadow = "0 0 0 4px rgba(245,158,11,.15)";
+    } else {
+      tipoEl.style.borderColor = "";
+      tipoEl.style.boxShadow = "";
+    }
+  }
+
+  // atualiza ao digitar/selecionar
+  tipoEl.addEventListener("input", refresh);
+  tipoEl.addEventListener("change", refresh);
+
+  // garante que ao abrir modal (create/edit) o aviso reflita o valor já preenchido
+  const _openCreate = window.openCreateModal;
+  const _openEdit = window.openEditModalFromRow;
+
+  if(typeof _openCreate === "function"){
+    window.openCreateModal = async function(...args){
+      const r = await _openCreate.apply(this, args);
+      refresh();
+      return r;
+    };
+  }
+
+  if(typeof _openEdit === "function"){
+    window.openEditModalFromRow = async function(...args){
+      const r = await _openEdit.apply(this, args);
+      refresh();
+      return r;
+    };
+  }
+
+  // estado inicial
+  refresh();
 })();
 </script>

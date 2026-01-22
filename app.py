@@ -40,7 +40,6 @@ TABLE_MANDADOS = "fin_mandados"
 class User(UserMixin):
     def __init__(self, data: dict):
         self.data = data or {}
-        # Flask-Login usa self.id internamente
         self.id = str(self.data.get("login", ""))
 
     @property
@@ -55,9 +54,7 @@ class User(UserMixin):
     @property
     def email(self): return self.data.get("email")
 
-    # ✅ COMPATIBILIDADE COM SEUS TEMPLATES:
-    # Alguns templates estão verificando current_user.role == "admin".
-    # No seu banco/código, o campo é "hierarquia".
+    # Compat com templates
     @property
     def role(self):
         return (self.data.get("hierarquia") or "").strip().lower()
@@ -69,19 +66,12 @@ class User(UserMixin):
 
 @app.context_processor
 def inject_user_flags():
-    """
-    ✅ Disponibiliza no Jinja:
-      - is_admin: bool
-      - user_role: string
-    Assim você pode usar tanto:
-      {% if current_user.role == "admin" %}  (vai funcionar)
-    quanto:
-      {% if is_admin %}  (mais limpo)
-    """
     try:
         if current_user and current_user.is_authenticated:
-            return {"is_admin": bool(getattr(current_user, "is_admin", False)),
-                    "user_role": getattr(current_user, "role", "")}
+            return {
+                "is_admin": bool(getattr(current_user, "is_admin", False)),
+                "user_role": getattr(current_user, "role", "")
+            }
     except Exception:
         pass
     return {"is_admin": False, "user_role": ""}
@@ -102,10 +92,6 @@ def _is_hash(stored_password: str) -> bool:
 
 
 def _password_ok(raw_password: str, stored_password: str) -> bool:
-    """
-    Padrão: HASH.
-    Compat: se ainda tiver senha em texto simples no banco, valida e depois migra pra hash.
-    """
     raw_password = (raw_password or "").strip()
     stored_password = (stored_password or "").strip()
     if not raw_password or not stored_password:
@@ -116,7 +102,6 @@ def _password_ok(raw_password: str, stored_password: str) -> bool:
             return check_password_hash(stored_password, raw_password)
         except Exception:
             return False
-
 
     # legado (texto simples)
     return raw_password == stored_password
@@ -134,7 +119,7 @@ def _maybe_migrate_plain_password_to_hash(user_row: dict, raw_password_ok: bool)
     if not stored or _is_hash(stored):
         return
     try:
-        new_hash = _hash_password(stored)  # stored == senha em texto simples
+        new_hash = _hash_password(stored)
         supabase.table(TABLE_USERS).update({"senha": new_hash}).eq("login", user_row["login"]).execute()
     except Exception:
         pass
@@ -364,6 +349,7 @@ def sb_select_or_like(table: str, columns="*", limit=300, order_col=None, desc=T
     res = query.execute()
     return getattr(res, "data", None) or []
 
+
 # ===================== STATIC FIX (logo case-sensitive) =====================
 
 @app.get("/static/images/logo.png")
@@ -378,6 +364,7 @@ def static_logo_lowercase_fix():
     if os.path.exists(os.path.join(lower_dir, "logo.png")):
         return send_from_directory(lower_dir, "logo.png")
     return send_from_directory(upper_dir, "logo.png")
+
 
 # ===================== DASHBOARD =====================
 
@@ -489,7 +476,8 @@ def dashboard():
     selected_ufs = request.args.getlist("uf")
     selected_reus = request.args.getlist("reu")
 
-    cols = "uf, reu, status, data_pagamento, finalizado"
+    # ✅ adiciona tipo_reu também
+    cols = "uf, reu, status, data_pagamento, finalizado, tipo_reu"
     acordos_all = sb_select(TABLE_ACORDOS, columns=cols, limit=50000)
     mandados_all = sb_select(TABLE_MANDADOS, columns=cols, limit=50000)
 
@@ -601,6 +589,10 @@ def acordos_create():
         "data_pagamento": br_to_iso_date(data.get("data_pagamento")),
         "local": data.get("local"),
         "tipo": data.get("tipo"),
+
+        # ✅ NOVO: tipo_reu
+        "tipo_reu": data.get("tipo_reu"),
+
         "honorarios": data.get("honorarios"),
         "audiencista": data.get("audiencista"),
         "repasse": data.get("repasse"),
@@ -640,6 +632,10 @@ def acordos_update(acordo_id: int):
         "data_pagamento": br_to_iso_date(data.get("data_pagamento")),
         "local": data.get("local"),
         "tipo": data.get("tipo"),
+
+        # ✅ NOVO: tipo_reu
+        "tipo_reu": data.get("tipo_reu"),
+
         "honorarios": data.get("honorarios"),
         "audiencista": data.get("audiencista"),
         "repasse": data.get("repasse"),
@@ -717,10 +713,13 @@ def mandados_create():
         "sentenca": data.get("sentenca"),
         "quitacao": data.get("quitacao"),
         "status": status_txt,
-        "previsao": br_to_iso_date(data.get("previsao")),        
+        "previsao": br_to_iso_date(data.get("previsao")),
         "data_pagamento": br_to_iso_date(data.get("data_pagamento")),
         "local": data.get("local"),
         "tipo": data.get("tipo"),
+
+        # ✅ NOVO: tipo_reu
+        "tipo_reu": data.get("tipo_reu"),
 
         "deposito": data.get("deposito"),
         "correcao": data.get("correcao"),
@@ -761,10 +760,13 @@ def mandados_update(mandado_id: int):
         "sentenca": data.get("sentenca"),
         "quitacao": data.get("quitacao"),
         "status": status_txt,
-        "previsao": br_to_iso_date(data.get("previsao")),        
+        "previsao": br_to_iso_date(data.get("previsao")),
         "data_pagamento": br_to_iso_date(data.get("data_pagamento")),
         "local": data.get("local"),
         "tipo": data.get("tipo"),
+
+        # ✅ NOVO: tipo_reu
+        "tipo_reu": data.get("tipo_reu"),
 
         "deposito": data.get("deposito"),
         "correcao": data.get("correcao"),
@@ -800,9 +802,8 @@ def mandados_delete(mandado_id: int):
 
 def require_admin():
     """
-    ✅ Regra atual:
+    Regra atual:
       - admin, financeiro e gestor têm permissão
-    OBS: Seus cards você quer APENAS admin -> isso fica no template usando is_admin/current_user.role.
     """
     h = (current_user.hierarquia or "").strip().lower()
     if h not in ("admin", "financeiro", "gestor"):
@@ -959,7 +960,11 @@ def cadastros_update(table):
         return redirect(url_for("cadastros", table=table, error="Valor inválido."))
 
     if _cad_value_in_use(table, old_value) and new_value != old_value:
-        return redirect(url_for("cadastros", table=table, error="Este valor está em uso. Alteração do texto bloqueada; apenas 'Ativo' pode ser alterado."))
+        return redirect(url_for(
+            "cadastros",
+            table=table,
+            error="Este valor está em uso. Alteração do texto bloqueada; apenas 'Ativo' pode ser alterado."
+        ))
 
     if new_value != old_value:
         try:

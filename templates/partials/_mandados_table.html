@@ -51,11 +51,11 @@
   }
   .md-btn-primary:hover{ background:#4338ca; }
 
-  /* ======= CARDS DE SOMATÓRIO (MESMO TAMANHO “BOM” DOS ACORDOS) ======= */
+  /* ======= CARDS DE SOMATÓRIO ======= */
   .md-sums{ padding: 14px 16px 0 16px; }
   .md-sums-grid{
     display:grid;
-    grid-template-columns: repeat(5, minmax(180px, 1fr));
+    grid-template-columns: repeat(6, minmax(180px, 1fr));
     gap:12px;
     align-items:stretch;
   }
@@ -99,6 +99,59 @@
   .md-sum-card.total .md-sum-label{ color:#4338ca; }
   .md-sum-card.total .md-sum-value{ color:#111827; }
 
+  /* info tooltip */
+  .md-info{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:18px;height:18px;
+    border-radius:999px;
+    border:1px solid #c7d2fe;
+    background:#eef2ff;
+    color:#4338ca;
+    font-weight:950;
+    font-size:12px;
+    margin-left:6px;
+    cursor:help;
+    user-select:none;
+  }
+
+  /* ======= AVISO / OBRIGATÓRIO (TIPO RÉU) ======= */
+  .md-warn{
+    border-color:#fecaca;
+    background:#fff1f2;
+    color:#be123c;
+  }
+  .md-required-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:10px;
+    font-weight:950;
+    padding:2px 8px;
+    border-radius:999px;
+    border:1px solid #fecaca;
+    background:#fff1f2;
+    color:#be123c;
+    letter-spacing:.06em;
+    white-space:nowrap;
+    margin-left:6px;
+  }
+  .md-hint{
+    margin-top:8px;
+    font-size:12px;
+    color:#6b7280;
+  }
+  .md-hint.warn{
+    color:#be123c;
+    font-weight:800;
+  }
+  .md-invalid{
+    border-color:#fecaca !important;
+    box-shadow:0 0 0 4px rgba(244,63,94,.10) !important;
+    background:#fff1f2 !important;
+  }
+
   @media (max-width: 1400px){
     .md-sums-grid{ grid-template-columns: repeat(3, minmax(220px, 1fr)); }
   }
@@ -139,8 +192,6 @@
     vertical-align:top;
     color:#111827;
   }
-
-  /* hover */
   table.md-table tbody tr:hover{ background:#fafafa; cursor:default; }
 
   .md-th-inner{ display:inline-flex; align-items:center; gap:8px; white-space:nowrap; }
@@ -257,7 +308,7 @@
 
   .clamp-2{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 
-  /* ===================== MODAL (SCROLL OK) ===================== */
+  /* ===================== MODAL ===================== */
   .md-modal-overlay{
     position:fixed; inset:0;
     background: rgba(17,24,39,.55);
@@ -325,20 +376,26 @@
     background:#fff;
   }
   .md-grid{ display:grid; grid-template-columns: repeat(12, 1fr); gap:12px; }
+
   .md-field{ grid-column: span 6; }
   .md-field.col-12{ grid-column: span 12; }
   .md-field.col-4{ grid-column: span 4; }
   .md-field.col-3{ grid-column: span 3; }
   .md-field.col-8{ grid-column: span 8; }
+
   .md-field label{
-    display:block;
+    display:flex;
+    align-items:center;
+    gap:6px;
     font-size:11px;
     font-weight:950;
     color:#374151;
     margin-bottom:6px;
     text-transform:uppercase;
     letter-spacing:.08em;
+    flex-wrap:wrap;
   }
+
   .md-input, .md-select, .md-textarea{
     width:100%;
     padding:10px 12px;
@@ -353,6 +410,7 @@
     box-shadow:0 0 0 4px rgba(79,70,229,.12);
   }
   .md-textarea{ min-height: 110px; resize: vertical; }
+
   .md-modal-f{
     flex: 0 0 auto;
     display:flex;
@@ -406,6 +464,26 @@
   }
   .md-xscroll-fixed .md-xscroll-inner{ height:1px; }
   body{ padding-bottom: 18px; }
+
+  /* ===================== AUTO LAYOUT (IGUAL ACORDOS) ===================== */
+  .md-auto-badge{
+    display:none;
+    margin-left:2px;
+    font-size:10px;
+    font-weight:950;
+    padding:2px 8px;
+    border-radius:999px;
+    border:1px solid #c7d2fe;
+    background:#eef2ff;
+    color:#4338ca;
+    letter-spacing:.05em;
+    white-space:nowrap;
+  }
+  .md-field.is-auto .md-auto-badge{ display:inline-flex; }
+  .md-field.is-auto .md-input{
+    border-color:#c7d2fe;
+    background:#f8fafc;
+  }
 </style>
 
 <div class="md-card">
@@ -423,47 +501,42 @@
 
   {% set _role = (current_user.role if (current_user is defined and current_user.is_authenticated and current_user.role is defined) else '') %}
   {% if _role|string|lower == 'admin' %}
-  <!-- ======= SOMATÓRIOS (VISÍVEIS / FILTRADOS) ======= -->
   <div class="md-sums">
     <div class="md-sums-grid">
       <div class="md-sum-card">
-        <div class="md-sum-top">
-          <div class="md-sum-label">Correção</div>
-        </div>
+        <div class="md-sum-top"><div class="md-sum-label">Correção</div></div>
         <div class="md-sum-value" id="mdSumCorrecao">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
       <div class="md-sum-card">
-        <div class="md-sum-top">
-          <div class="md-sum-label">Honorários</div>
-        </div>
+        <div class="md-sum-top"><div class="md-sum-label">Honorários</div></div>
         <div class="md-sum-value" id="mdSumHonorarios">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
       <div class="md-sum-card">
-        <div class="md-sum-top">
-          <div class="md-sum-label">Audiencista</div>
-        </div>
+        <div class="md-sum-top"><div class="md-sum-label">Audiencista</div></div>
         <div class="md-sum-value" id="mdSumAudiencista">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
       <div class="md-sum-card">
-        <div class="md-sum-top">
-          <div class="md-sum-label">Sucumbência</div>
-        </div>
+        <div class="md-sum-top"><div class="md-sum-label">Sucumbência</div></div>
         <div class="md-sum-value" id="mdSumSucumbencia">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
       <div class="md-sum-card total">
-        <div class="md-sum-top">
-          <div class="md-sum-label">Total final</div>
-        </div>
+        <div class="md-sum-top"><div class="md-sum-label">Total final</div></div>
         <div class="md-sum-value" id="mdSumTotalFinal">R$ 0,00</div>
         <div class="md-sum-sub">Soma dos 4 campos</div>
+      </div>
+
+      <div class="md-sum-card">
+        <div class="md-sum-top"><div class="md-sum-label">Depósito</div></div>
+        <div class="md-sum-value" id="mdSumDeposito">R$ 0,00</div>
+        <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
     </div>
   </div>
@@ -487,6 +560,8 @@
           <th>DATA PAGAMENTO</th>
           <th>LOCAL</th>
           <th>TIPO</th>
+
+          <th>TIPO RÉU</th>
 
           <th>DEPÓSITO</th>
           <th>CORREÇÃO</th>
@@ -526,6 +601,8 @@
           <td><div class="clamp-2">{{ r.local or "-" }}</div></td>
           <td><div class="clamp-2">{{ r.tipo or "-" }}</div></td>
 
+          <td><div class="clamp-2">{{ r.tipo_reu or "-" }}</div></td>
+
           <td><div class="clamp-2 md-money">{{ r.deposito or "-" }}</div></td>
           <td><div class="clamp-2 md-money">{{ r.correcao or "-" }}</div></td>
           <td><div class="clamp-2 md-money">{{ r.honorarios or "-" }}</div></td>
@@ -543,18 +620,14 @@
           <td><div class="clamp-2">{{ r.id or "-" }}</div></td>
 
           <td style="text-align:right; white-space:nowrap;">
-            <button class="md-btn md-edit-btn" type="button"
-              onclick="openEditModalFromRowMD(this.closest('tr'))">Editar</button>
-
-            <button class="md-btn" type="button"
-              style="margin-left:8px;border-color:#fecaca;color:#dc2626;"
-              onclick="MD.deleteFromBtn(event, {{ r.id }})">Excluir</button>
+            <button class="md-btn md-edit-btn" type="button" onclick="openEditModalFromRowMD(this.closest('tr'))">Editar</button>
+            <button class="md-btn" type="button" style="margin-left:8px;border-color:#fecaca;color:#dc2626;" onclick="MD.deleteFromBtn(event, {{ r.id }})">Excluir</button>
           </td>
         </tr>
         {% endfor %}
 
         {% if rows|length == 0 %}
-        <tr><td colspan="27" style="padding:18px; color:#6b7280;">Nenhum registro encontrado.</td></tr>
+        <tr><td colspan="28" style="padding:18px; color:#6b7280;">Nenhum registro encontrado.</td></tr>
         {% endif %}
       </tbody>
     </table>
@@ -585,120 +658,158 @@
       <input type="hidden" id="mdId" value="">
 
       <div class="md-grid">
-        <div class="md-field col-3">
+
+        <!-- ✅ TIPO RÉU PRIMEIRO (AVISO PARA PREENCHER PRIMEIRO) -->
+        <div class="md-field col-6" id="mdFieldTipoReu">
+          <label>
+            Tipo réu
+            
+            <span class="md-info md-warn" title="Obrigatório para o cálculo automático de Honorários e Repasse.">!</span>
+          </label>
+          <select class="md-select" id="mdTipoReu">
+            <option value="">Selecione...</option>
+            <option value="aereo">Aéreo</option>
+            <option value="onibus">Ônibus</option>
+          </select>
+          <div id="mdTipoReuHint" class="md-hint warn" style="display:none;">
+            Preencha <b>Tipo réu</b> primeiro para habilitar/atualizar os cálculos automáticos (Honorários e Repasse).
+          </div>
+        </div>
+
+        <div class="md-field col-3" id="mdFieldDataQuitacao">
           <label>Data quitação (dd/mm/aaaa)</label>
           <input class="md-input" id="mdDataQuitacao" placeholder="dd/mm/aaaa">
         </div>
 
-        <div class="md-field col-3">
+        <div class="md-field col-3" id="mdFieldUf">
           <label>UF</label>
           <select class="md-select" id="mdUfSelect">
             <option value="">Selecione...</option>
           </select>
         </div>
 
-        <div class="md-field col-6">
+        <div class="md-field col-6" id="mdFieldNumeroProcesso">
           <label>Número processo</label>
           <input class="md-input" id="mdNumeroProcesso" placeholder="Número do processo">
         </div>
 
-        <div class="md-field col-6">
+        <div class="md-field col-6" id="mdFieldReu">
           <label>Réu</label>
           <select class="md-select" id="mdReuSelect">
             <option value="">Selecione...</option>
           </select>
         </div>
 
-        <div class="md-field col-6">
+        <div class="md-field col-6" id="mdFieldAutor">
           <label>Autor</label>
           <input class="md-input" id="mdAutor" placeholder="Autor">
         </div>
 
-        <div class="md-field col-4">
+        <div class="md-field col-4" id="mdFieldTel">
           <label>Telefone</label>
           <input class="md-input" id="mdTel" placeholder="Telefone">
         </div>
 
-        <div class="md-field col-8">
+        <div class="md-field col-8" id="mdFieldSentenca">
           <label>Sentença</label>
           <input class="md-input" id="mdSentenca" placeholder="Sentença">
         </div>
 
-        <div class="md-field col-4">
+        <div class="md-field col-4" id="mdFieldQuitacao">
           <label>Quitação</label>
           <input class="md-input" id="mdQuitacao" placeholder="Ex: 1.500,00">
         </div>
 
-        <div class="md-field col-8">
+        <div class="md-field col-8" id="mdFieldStatus">
           <label>Status</label>
           <select class="md-select" id="mdStatusSelect">
             <option value="">Selecione...</option>
           </select>
         </div>
 
-        <div class="md-field col-4">
-          <label>Previsão</label>
+        <!-- ✅ PREVISÃO (AUTO) - layout igual acordos -->
+        <div class="md-field col-4" id="mdFieldPrevisao">
+          <label>
+            Previsão
+            <span class="md-info" title="Automático: Data Quitação + 30 dias">i</span>
+            <span class="md-auto-badge">AUTO</span>
+          </label>
           <input class="md-input" id="mdPrevisao" placeholder="dd/mm/aaaa">
         </div>
 
-        <div class="md-field col-4">
+        <div class="md-field col-4" id="mdFieldDataPagamento">
           <label>Data pagamento (dd/mm/aaaa)</label>
           <input class="md-input" id="mdDataPagamento" placeholder="dd/mm/aaaa">
         </div>
 
-        <div class="md-field col-4">
+        <div class="md-field col-4" id="mdFieldLocal">
           <label>Local</label>
           <select class="md-select" id="mdLocalSelect">
             <option value="">Selecione...</option>
           </select>
         </div>
 
-        <div class="md-field col-6">
+        <div class="md-field col-6" id="mdFieldTipo">
           <label>Tipo</label>
           <input class="md-input" id="mdTipo" placeholder="Tipo">
         </div>
 
-        <div class="md-field col-3">
+        <div class="md-field col-3" id="mdFieldDeposito">
           <label>Depósito</label>
           <input class="md-input" id="mdDeposito" placeholder="Ex: 1.000,00">
         </div>
 
-        <div class="md-field col-3">
-          <label>Correção</label>
+        <!-- ✅ CORREÇÃO (AUTO) -->
+        <div class="md-field col-3" id="mdFieldCorrecao">
+          <label>
+            Correção
+            <span class="md-info" title="Automático: Depósito − Sentença − Sucumbência">i</span>
+            <span class="md-auto-badge">AUTO</span>
+          </label>
           <input class="md-input" id="mdCorrecao" placeholder="Ex: 120,00">
         </div>
 
-        <div class="md-field col-3">
-          <label>Honorários</label>
+        <!-- ✅ HONORÁRIOS (AUTO) -->
+        <div class="md-field col-3" id="mdFieldHonorarios">
+          <label>
+            Honorários
+            <span class="md-info" title="Automático: Sentença × 30% (aéreo) ou × 40% (ônibus)">i</span>
+            <span class="md-auto-badge">AUTO</span>
+          </label>
           <input class="md-input" id="mdHonorarios" placeholder="Ex: 500,00">
         </div>
 
-        <div class="md-field col-3">
+        <div class="md-field col-3" id="mdFieldAudiencista">
           <label>Audiencista</label>
           <input class="md-input" id="mdAudiencista" placeholder="Ex: 300,00">
         </div>
 
-        <div class="md-field col-3">
-          <label>Repasse</label>
+        <!-- ✅ REPASSE (AUTO) -->
+        <div class="md-field col-3" id="mdFieldRepasse">
+          <label>
+            Repasse
+            <span class="md-info" title="Automático: (Sentença × 70% − Audiencista) (aéreo) ou (Sentença × 60% − Audiencista) (ônibus)">i</span>
+            <span class="md-auto-badge">AUTO</span>
+          </label>
           <input class="md-input" id="mdRepasse" placeholder="Ex: 250,00">
         </div>
 
-        <div class="md-field col-9">
+        <div class="md-field col-9" id="mdFieldChavePix">
           <label>Chave PIX</label>
           <input class="md-input" id="mdChavePix" placeholder="Chave PIX">
         </div>
 
-        <div class="md-field col-6">
+        <div class="md-field col-6" id="mdFieldSucumbencia">
           <label>Sucumbência</label>
           <input class="md-input" id="mdSucumbencia" placeholder="Ex: 1.000,00">
         </div>
 
-        <div class="md-field col-6">
+        <div class="md-field col-6" id="mdFieldMesPg">
           <label>Mês PG</label>
           <input class="md-input" id="mdMesPg" placeholder="Ex: jan/26 ou 01/2026">
         </div>
 
-        <div class="md-field col-12">
+        <div class="md-field col-12" id="mdFieldObservacoes">
           <label>Observações</label>
           <textarea class="md-textarea" id="mdObservacoes" placeholder="Escreva aqui..."></textarea>
         </div>
@@ -718,19 +829,8 @@
 <script>
 /* ===================== FORMATADORES / PARSER ROBUSTO ===================== */
 window.MD = window.MD || {};
-
 MD.NUMBER = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/**
- * Parser inteligente:
- * Aceita:
- *  - 20541.49 (decimal '.')
- *  - 20000.0 / 20000.00
- *  - 20.541,49 (pt-BR)
- *  - 20000
- *  - "R$ 20.541,49"
- * Retorna Number (ou NaN se não der).
- */
 MD.parseSmartNumber = function(input){
   if(input === null || input === undefined) return NaN;
   if(typeof input === 'number') return Number.isFinite(input) ? input : NaN;
@@ -738,10 +838,7 @@ MD.parseSmartNumber = function(input){
   let s = String(input).trim();
   if(!s || s === '-') return NaN;
 
-  // remove moeda e espaços
   s = s.replace(/\s/g,'').replace(/^R\$/i,'').trim();
-
-  // mantém só dígitos, separadores e sinal
   s = s.replace(/[^0-9.,-]/g,'');
 
   if(!s || s === '-' || s === '.' || s === ',') return NaN;
@@ -749,35 +846,28 @@ MD.parseSmartNumber = function(input){
   const hasDot = s.includes('.');
   const hasComma = s.includes(',');
 
-  // Caso 1: tem '.' e ',', decide pelo ÚLTIMO separador ser o decimal
   if(hasDot && hasComma){
     const lastDot = s.lastIndexOf('.');
     const lastComma = s.lastIndexOf(',');
     if(lastDot > lastComma){
-      // decimal = '.', então ',' é milhar -> remove ','
       s = s.replace(/,/g,'');
     }else{
-      // decimal = ',', então '.' é milhar -> remove '.' e troca ',' por '.'
       s = s.replace(/\./g,'').replace(',', '.');
     }
     const n = Number(s);
     return Number.isFinite(n) ? n : NaN;
   }
 
-  // Caso 2: só vírgula -> decimal ',' (pt-BR)
   if(hasComma && !hasDot){
     s = s.replace(',', '.');
     const n = Number(s);
     return Number.isFinite(n) ? n : NaN;
   }
 
-  // Caso 3: só ponto -> pode ser decimal '.' OU milhar (ex: 20.000)
   if(hasDot && !hasComma){
     const parts = s.split('.');
     if(parts.length === 2){
       const frac = parts[1];
-      // se tiver exatamente 3 dígitos depois do ponto e antes só dígitos,
-      // provavelmente era milhar (20.000) -> remove ponto
       if(/^\d+$/.test(parts[0].replace('-','')) && /^\d{3}$/.test(frac)){
         const n = Number(parts[0] + frac);
         return Number.isFinite(n) ? n : NaN;
@@ -787,13 +877,12 @@ MD.parseSmartNumber = function(input){
     return Number.isFinite(n) ? n : NaN;
   }
 
-  // Caso 4: só dígitos (ou sinal)
   const n = Number(s);
   return Number.isFinite(n) ? n : NaN;
 };
 
 function formatBR_MD(v){
-  if(v === null || v === undefined || v === '' || v === '-') return '-';
+  if(v === null || v === undefined || v === '' || v === '-') return '';
   const n = MD.parseSmartNumber(v);
   return Number.isFinite(n) ? MD.NUMBER.format(n) : String(v);
 }
@@ -828,17 +917,7 @@ async function deleteMandado(id){
 <script>
 /* ===================== FORMATA NÚMEROS DA TABELA (APENAS EXIBIÇÃO) ===================== */
 (function(){
-  // índices (0-based) das colunas monetárias no seu THEAD atual
-  const numericCols = [
-    6,   // SENTENÇA
-    7,   // QUITAÇÃO
-    13,  // DEPÓSITO
-    14,  // CORREÇÃO
-    15,  // HONORÁRIOS
-    16,  // AUDIENCISTA
-    17,  // REPASSE
-    19   // SUCUMBÊNCIA
-  ];
+  const numericCols = [6,7,14,15,16,17,18,20];
 
   const tbody = document.getElementById("mdTbody");
   if(!tbody) return;
@@ -850,14 +929,14 @@ async function deleteMandado(id){
       const div = td.querySelector("div");
       if(!div) return;
       const raw = div.textContent.trim();
-      div.textContent = formatBR_MD(raw);
+      div.textContent = raw === '-' ? '-' : (formatBR_MD(raw) || raw);
     });
   });
 })();
 </script>
 
 <script>
-/* ===================== TABELA + FILTROS + DATAS BR + SOMATÓRIOS ===================== */
+/* ===================== TABELA + FILTROS + SOMATÓRIOS + PERSISTÊNCIA ===================== */
 (function(){
   const table = document.getElementById('mdTable');
   const thead = table?.tHead?.rows?.[0];
@@ -867,16 +946,15 @@ async function deleteMandado(id){
 
   if (!thead || !tbody) return;
 
-  // ===== refs somatórios =====
   const sumEls = {
     correcao: document.getElementById("mdSumCorrecao"),
     honorarios: document.getElementById("mdSumHonorarios"),
     audiencista: document.getElementById("mdSumAudiencista"),
     sucumbencia: document.getElementById("mdSumSucumbencia"),
     total: document.getElementById("mdSumTotalFinal"),
+    deposito: document.getElementById("mdSumDeposito"),
   };
 
-  // ===== helpers =====
   function toBRDateText(raw){
     if(!raw) return '-';
     raw = String(raw).trim();
@@ -889,7 +967,6 @@ async function deleteMandado(id){
     }
     return raw;
   }
-
   function toDayKey(raw){
     const br = toBRDateText(raw);
     return br === '-' ? '-' : br;
@@ -901,12 +978,10 @@ async function deleteMandado(id){
     return `${mm}/${yyyy}`;
   }
 
-  // aplica formatação BR nos campos marcados como data
   tbody.querySelectorAll('.md-date').forEach(el=>{
     el.textContent = toBRDateText(el.textContent);
   });
 
-  // ===== painel =====
   let panel = document.getElementById('mdGlobalFilterPanel');
   if (!panel) {
     panel = document.createElement('div');
@@ -931,10 +1006,6 @@ async function deleteMandado(id){
     document.body.appendChild(panel);
   }
 
-  panel.addEventListener('wheel', (e)=> e.stopPropagation(), { passive:true });
-  panel.addEventListener('mousedown', (e)=> e.stopPropagation());
-  panel.addEventListener('touchstart', (e)=> e.stopPropagation(), { passive:true });
-
   const allRows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector('.md-edit-btn'));
 
   const FILTERABLE_COLS = [];
@@ -947,6 +1018,44 @@ async function deleteMandado(id){
   let filters = {};
   let sort = null;
   let openCol = null;
+
+  const MD_STATE_KEY = "MD_FILTER_STATE_v3_auto_layout_like_acordos";
+
+  function serializeState(){
+    const f = {};
+    for(const [k, obj] of Object.entries(filters)){
+      if(!obj?.set) continue;
+      f[k] = { type: obj.type, mode: obj.mode || null, set: Array.from(obj.set) };
+    }
+    return { filters: f, sort };
+  }
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(MD_STATE_KEY);
+      if(!raw) return;
+      const st = JSON.parse(raw);
+
+      if(st?.filters){
+        const f2 = {};
+        for(const [k, obj] of Object.entries(st.filters)){
+          if(!obj?.set) continue;
+          f2[k] = {
+            type: obj.type || "set",
+            mode: obj.mode || (obj.type === "date" ? "day" : null),
+            set: new Set(obj.set || []),
+          };
+        }
+        filters = f2;
+      }
+      if(st?.sort) sort = st.sort;
+    }catch(e){}
+  }
+  function saveState(){
+    try{ localStorage.setItem(MD_STATE_KEY, JSON.stringify(serializeState())); }catch(e){}
+  }
+
+  window.MD = window.MD || {};
+  window.MD.persistStateNow = saveState;
 
   function textOfCell(row, col){
     const cell = row.cells[col];
@@ -985,18 +1094,19 @@ async function deleteMandado(id){
     return allRows.filter(r => matchesFilters(r));
   }
 
-  // ===== colunas numéricas (0-based) do seu THEAD atual =====
-  const COL_CORRECAO    = 14;
-  const COL_HONORARIOS  = 15;
-  const COL_AUDIENCISTA = 16;
-  const COL_SUCUMBENCIA = 19;
+  const COL_DEPOSITO    = 14;
+  const COL_CORRECAO    = 15;
+  const COL_HONORARIOS  = 16;
+  const COL_AUDIENCISTA = 17;
+  const COL_SUCUMBENCIA = 20;
 
   function updateSums(){
     const vis = getVisibleRows();
 
-    let sCor = 0, sHon = 0, sAud = 0, sSuc = 0;
+    let sDep = 0, sCor = 0, sHon = 0, sAud = 0, sSuc = 0;
 
     vis.forEach(r=>{
+      sDep += (MD.parseSmartNumber(textOfCell(r, COL_DEPOSITO))    || 0);
       sCor += (MD.parseSmartNumber(textOfCell(r, COL_CORRECAO))    || 0);
       sHon += (MD.parseSmartNumber(textOfCell(r, COL_HONORARIOS))  || 0);
       sAud += (MD.parseSmartNumber(textOfCell(r, COL_AUDIENCISTA)) || 0);
@@ -1010,6 +1120,7 @@ async function deleteMandado(id){
     if(sumEls.audiencista) sumEls.audiencista.textContent = formatBRL_MD(sAud);
     if(sumEls.sucumbencia) sumEls.sucumbencia.textContent = formatBRL_MD(sSuc);
     if(sumEls.total)       sumEls.total.textContent       = formatBRL_MD(total);
+    if(sumEls.deposito)    sumEls.deposito.textContent    = formatBRL_MD(sDep);
   }
 
   function apply(){
@@ -1033,7 +1144,6 @@ async function deleteMandado(id){
           return dir === 'asc' ? cmp : -cmp;
         }
 
-        // se tiver dígito em ambos, tenta ordenar como número (robusto)
         if (/\d/.test(A) && /\d/.test(B)){
           const aNum = MD.parseSmartNumber(A);
           const bNum = MD.parseSmartNumber(B);
@@ -1054,7 +1164,7 @@ async function deleteMandado(id){
     if (countEl) countEl.textContent = visCount;
 
     const hasFilters = Object.keys(filters).length > 0;
-    if (badge) badge.style.display = hasFilters ? 'inline-block' : 'none';
+    if (badge) badge.style.display = hasFilters ? 'inline-flex' : 'none';
 
     FILTERABLE_COLS.forEach(i=>{
       const th = thead.cells[i];
@@ -1063,8 +1173,8 @@ async function deleteMandado(id){
     });
 
     window.MD_XSCROLL?.refresh?.();
-
     updateSums();
+    saveState();
   }
 
   function valuesForColumn(col, forcedDateMode = null){
@@ -1127,6 +1237,7 @@ async function deleteMandado(id){
     wrap.querySelectorAll('button').forEach(b=>{
       b.classList.toggle('active', b.dataset.mode === activeMode);
     });
+    panel.dataset.dateMode = show ? activeMode : "";
   }
 
   function populatePanel(col, forcedDateMode = null){
@@ -1180,6 +1291,13 @@ async function deleteMandado(id){
   }
 
   function buildHeaderUI(){
+    const FILTERABLE_COLS = [];
+    Array.from(thead.cells).forEach((th, idx) => {
+      const title = (th.innerText || '').trim().toLowerCase();
+      if (title === 'ações' || th.classList.contains('no-filter')) return;
+      FILTERABLE_COLS.push(idx);
+    });
+
     FILTERABLE_COLS.forEach((col)=>{
       const th = thead.cells[col];
       if (!th) return;
@@ -1288,6 +1406,7 @@ async function deleteMandado(id){
     filters = {};
     sort = null;
     closePanel();
+    try{ localStorage.removeItem(MD_STATE_KEY); }catch(e){}
     apply();
   };
   window.MD.deleteFromBtn = function(ev, id){
@@ -1297,6 +1416,7 @@ async function deleteMandado(id){
   };
 
   buildHeaderUI();
+  loadState();
   apply();
 })();
 </script>
@@ -1310,10 +1430,8 @@ async function deleteMandado(id){
   tbody.addEventListener("dblclick", (e)=>{
     const tr = e.target.closest("tr");
     if(!tr) return;
-
     if (e.target.closest("button, a, input, select, textarea")) return;
     if(!tr.querySelector(".md-edit-btn")) return;
-
     openEditModalFromRowMD(tr);
   });
 })();
@@ -1331,40 +1449,32 @@ async function deleteMandado(id){
 
   let syncing = false;
 
-  function getMaxScroll(el){
-    return Math.max(0, el.scrollWidth - el.clientWidth);
-  }
-
+  function getMaxScroll(el){ return Math.max(0, el.scrollWidth - el.clientWidth); }
   function positionFixedOverWrap(){
     const r = wrap.getBoundingClientRect();
     fixed.style.left = Math.max(0, r.left) + "px";
     fixed.style.width = Math.max(0, r.width) + "px";
   }
-
   function updateInnerWidth(){
     const w = Math.max(table.scrollWidth, wrap.scrollWidth);
     inner.style.width = w + "px";
   }
-
   function toggleIfOverflow(){
     const hasOverflow = table.scrollWidth > wrap.clientWidth + 2;
     fixed.style.display = hasOverflow ? "block" : "none";
   }
-
   function syncFixedToWrap(){
     const maxW = getMaxScroll(wrap);
     const maxF = getMaxScroll(fixed);
     if (maxW <= 0 || maxF <= 0) return;
     fixed.scrollLeft = (wrap.scrollLeft / maxW) * maxF;
   }
-
   function syncWrapToFixed(){
     const maxW = getMaxScroll(wrap);
     const maxF = getMaxScroll(fixed);
     if (maxW <= 0 || maxF <= 0) return;
     wrap.scrollLeft = (fixed.scrollLeft / maxF) * maxW;
   }
-
   function refresh(){
     positionFixedOverWrap();
     updateInnerWidth();
@@ -1374,43 +1484,33 @@ async function deleteMandado(id){
 
   fixed.addEventListener("scroll", ()=>{
     if(syncing) return;
-    syncing = true;
-    syncWrapToFixed();
-    syncing = false;
+    syncing = true; syncWrapToFixed(); syncing = false;
   }, { passive:true });
 
   wrap.addEventListener("scroll", ()=>{
     if(syncing) return;
-    syncing = true;
-    syncFixedToWrap();
-    syncing = false;
+    syncing = true; syncFixedToWrap(); syncing = false;
   }, { passive:true });
 
   const ro = new ResizeObserver(()=> refresh());
-  ro.observe(wrap);
-  ro.observe(table);
+  ro.observe(wrap); ro.observe(table);
 
   window.addEventListener("resize", ()=> refresh());
   window.addEventListener("scroll", ()=> positionFixedOverWrap(), { passive:true });
 
   window.MD_XSCROLL = { refresh };
-
   refresh();
 })();
 </script>
 
 <script>
-/* ===================== MODAL + DROPDOWNS + CRUD (MANDADOS) ===================== */
+/* ===================== MODAL + DROPDOWNS + CRUD + AUTOCÁLCULOS (TIPO RÉU PRIMEIRO + AUTO FLAGS EM TODOS) ===================== */
 (function(){
   function _showError(msg){
     const el = document.getElementById("mdError");
     if(!el) return;
-    if(!msg){
-      el.style.display = "none";
-      el.textContent = "";
-      return;
-    }
-    el.style.display = "block";
+    if(!msg){ el.style.display="none"; el.textContent=""; return; }
+    el.style.display="block";
     el.textContent = msg;
   }
 
@@ -1419,19 +1519,268 @@ async function deleteMandado(id){
     raw = String(raw).trim();
     if(raw === '-' || raw === '') return '';
     if(/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
-
     const m1 = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if(m1){
-      const yyyy = m1[1], mm = m1[2], dd = m1[3];
-      return `${dd}/${mm}/${yyyy}`;
-    }
+    if(m1) return `${m1[3]}/${m1[2]}/${m1[1]}`;
     return raw;
   }
 
-  // converte entrada para dot-decimal pro backend (aceita pt-BR ou dot)
   function toDotDecimalMD(s){
     const n = MD.parseSmartNumber(s);
     return Number.isFinite(n) ? String(n) : "";
+  }
+
+  function parseBRDateToDate(s){
+    if(!s) return null;
+    s = String(s).trim();
+    const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if(!m) return null;
+    const dd = Number(m[1]), mm = Number(m[2]), yyyy = Number(m[3]);
+    const d = new Date(yyyy, mm - 1, dd);
+    if(d.getFullYear() !== yyyy || d.getMonth() !== (mm - 1) || d.getDate() !== dd) return null;
+    return d;
+  }
+  function formatDateToBR(d){
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  }
+  function addDaysBRDate(br, days){
+    const d = parseBRDateToDate(br);
+    if(!d) return "";
+    d.setDate(d.getDate() + (days||0));
+    return formatDateToBR(d);
+  }
+
+  // ======= AUTO FIELDS (com dependências) =======
+  const AUTO = [
+    { inputId: "mdPrevisao",   fieldId: "mdFieldPrevisao"   },
+    { inputId: "mdCorrecao",   fieldId: "mdFieldCorrecao"   },
+    { inputId: "mdHonorarios", fieldId: "mdFieldHonorarios" },
+    { inputId: "mdRepasse",    fieldId: "mdFieldRepasse"    },
+  ];
+
+  // Campo auto -> quais campos disparam recálculo forçado (e reativam flag)
+  const AUTO_DEPS = {
+    mdPrevisao:   ["mdDataQuitacao"],
+    mdCorrecao:   ["mdDeposito","mdSentenca","mdSucumbencia"],
+    mdHonorarios: ["mdSentenca","mdTipoReu"],
+    mdRepasse:    ["mdSentenca","mdAudiencista","mdTipoReu"],
+  };
+
+  // Se o usuário editar manualmente um auto-field, ele perde a flag.
+  // Quando algum dependente muda, esse auto-field volta a ser calculado e volta a ter flag (forçado).
+  const dirty = new Set();
+
+  function setFieldAuto(fieldId, on){
+    const field = document.getElementById(fieldId);
+    if(!field) return;
+    field.classList.toggle("is-auto", !!on);
+  }
+
+  function normalizeTipoReu(){
+    const t = (document.getElementById("mdTipoReu")?.value || "").trim().toLowerCase();
+    if(t === "onibus") return "onibus";
+    if(t === "aereo") return "aereo";
+    return "";
+  }
+
+  function setTipoReuFirstUI(){
+    const tipo = normalizeTipoReu();
+    const sel = document.getElementById("mdTipoReu");
+    const hint = document.getElementById("mdTipoReuHint");
+    if(!sel || !hint) return;
+
+    const need = !tipo;
+    hint.style.display = need ? "block" : "none";
+    sel.classList.toggle("md-invalid", need);
+  }
+
+  function computeAutoValues(){
+    const dataQuit = document.getElementById("mdDataQuitacao")?.value?.trim() || "";
+    const sentenca = MD.parseSmartNumber(document.getElementById("mdSentenca")?.value);
+    const deposito = MD.parseSmartNumber(document.getElementById("mdDeposito")?.value);
+    const sucumb   = MD.parseSmartNumber(document.getElementById("mdSucumbencia")?.value);
+    const aud      = MD.parseSmartNumber(document.getElementById("mdAudiencista")?.value);
+
+    const tipoReu = normalizeTipoReu();
+
+    const vDeposito = Number.isFinite(deposito) ? deposito : 0;
+    const vSent     = Number.isFinite(sentenca) ? sentenca : 0;
+    const vSuc      = Number.isFinite(sucumb)   ? sucumb   : 0;
+    const vAud      = Number.isFinite(aud)      ? aud      : 0;
+
+    // PREVISÃO: independe do tipo_reu
+    const previsao = addDaysBRDate(dataQuit, 30);
+
+    // CORREÇÃO: independe do tipo_reu
+    const correcaoNum = vDeposito - vSent - vSuc;
+    const correcao = Number.isFinite(correcaoNum) ? formatBR_MD(correcaoNum) : "";
+
+    // HONORÁRIOS: depende do tipo_reu
+    let percHon = 0;
+    if(tipoReu === "aereo")  percHon = 0.30;
+    if(tipoReu === "onibus") percHon = 0.40;
+    const honorariosNum = percHon ? (vSent * percHon) : NaN;
+    const honorarios = Number.isFinite(honorariosNum) ? formatBR_MD(honorariosNum) : "";
+
+    // REPASSE: depende do tipo_reu
+    let percRep = 0;
+    if(tipoReu === "aereo")  percRep = 0.70;
+    if(tipoReu === "onibus") percRep = 0.60;
+    const repasseNum = percRep ? ((vSent * percRep) - vAud) : NaN;
+    const repasse = Number.isFinite(repasseNum) ? formatBR_MD(repasseNum) : "";
+
+    return { previsao: previsao || "", correcao, honorarios, repasse, tipoReu };
+  }
+
+  function getAutoMap(vals){
+    return {
+      mdPrevisao:   vals.previsao,
+      mdCorrecao:   vals.correcao,
+      mdHonorarios: vals.honorarios,
+      mdRepasse:    vals.repasse,
+    };
+  }
+
+  // policy:
+  // - "fillEmpty": no edit, só preenche se estiver vazio (e marca auto)
+  // - "forceAll": no create, força todos (e marca auto quando tiver valor)
+  // - "forceIds": força apenas alguns ids (por dependência), e reativa flag
+  function recalcAutoFields(policy="fillEmpty", forceIds=[]){
+    const mode = document.getElementById("mdFormMode")?.value || "edit";
+    const vals = computeAutoValues();
+    const map = getAutoMap(vals);
+
+    setTipoReuFirstUI();
+
+    const toForce = new Set(forceIds || []);
+    AUTO.forEach(({inputId, fieldId})=>{
+      const input = document.getElementById(inputId);
+      if(!input) return;
+
+      const computed = (map[inputId] || "").toString();
+      const hasComputed = computed.trim() !== "";
+
+      if(policy === "forceAll"){
+        input.value = computed;
+        dirty.delete(inputId);
+        setFieldAuto(fieldId, hasComputed);
+        return;
+      }
+
+      if(policy === "forceIds"){
+        if(toForce.has(inputId)){
+          input.value = computed;
+          dirty.delete(inputId);
+          setFieldAuto(fieldId, hasComputed);
+        } else {
+          // mantém estado atual (auto flag depende se está marcado ou não)
+          // se o usuário já tinha editado manualmente, mantemos sem auto
+          // se não está dirty e está vazio, ainda podemos auto-marcar se tiver computed
+          if(!dirty.has(inputId) && (input.value || "").trim() === "" && hasComputed){
+            input.value = computed;
+            setFieldAuto(fieldId, true);
+          }
+        }
+        return;
+      }
+
+      // fillEmpty (default)
+      if(mode === "create"){
+        input.value = computed;
+        dirty.delete(inputId);
+        setFieldAuto(fieldId, hasComputed);
+        return;
+      }
+
+      // edit + fillEmpty
+      if(dirty.has(inputId)){
+        setFieldAuto(fieldId, false);
+        return;
+      }
+
+      const current = (input.value || "").toString().trim();
+      if(current !== ""){
+        setFieldAuto(fieldId, false);
+        return;
+      }
+
+      if(hasComputed){
+        input.value = computed;
+        setFieldAuto(fieldId, true);
+      }else{
+        setFieldAuto(fieldId, false);
+      }
+    });
+  }
+
+  function markDirty(inputId, fieldId){
+    dirty.add(inputId);
+    setFieldAuto(fieldId, false);
+  }
+
+  // Ao alterar qualquer campo que é dependência, recalcula apenas os autos afetados e REATIVA flag.
+  function onDependencyChanged(depId){
+    const affected = [];
+    for(const [autoId, deps] of Object.entries(AUTO_DEPS)){
+      if((deps || []).includes(depId)) affected.push(autoId);
+    }
+    if(!affected.length) return;
+    recalcAutoFields("forceIds", affected);
+  }
+
+  function bindAutoBehaviorOnce(){
+    // Dependências (ao mudar -> força recálculo e reativa flag)
+    const depIds = Array.from(new Set(Object.values(AUTO_DEPS).flat()));
+    depIds.forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el || el.dataset.autoDepBound === "1") return;
+      el.dataset.autoDepBound = "1";
+      const handler = ()=>{
+        onDependencyChanged(id);
+      };
+      el.addEventListener("input", handler);
+      el.addEventListener("change", handler);
+    });
+
+    // Se o usuário mexer no próprio auto-field, ele vira "manual" (dirty) e perde flag.
+    AUTO.forEach(({inputId, fieldId})=>{
+      const el = document.getElementById(inputId);
+      if(!el || el.dataset.autoSelfBound === "1") return;
+      el.dataset.autoSelfBound = "1";
+
+      el.addEventListener("input", ()=>{
+        const val = (el.value || "").toString().trim();
+        if(val !== ""){
+          markDirty(inputId, fieldId);
+        }
+      });
+
+      el.addEventListener("change", ()=>{
+        const val = (el.value || "").toString().trim();
+        if(val !== ""){
+          markDirty(inputId, fieldId);
+        }
+      });
+
+      // Se apagar o valor do auto-field, volta a auto imediatamente (com computed atual)
+      el.addEventListener("blur", ()=>{
+        const val = (el.value || "").toString().trim();
+        if(val === ""){
+          dirty.delete(inputId);
+          recalcAutoFields("forceIds", [inputId]);
+        }
+      });
+    });
+
+    // Aviso tipo_reu sempre atualizado visualmente
+    const tipoEl = document.getElementById("mdTipoReu");
+    if(tipoEl && tipoEl.dataset.tipoWarnBound !== "1"){
+      tipoEl.dataset.tipoWarnBound = "1";
+      tipoEl.addEventListener("input", setTipoReuFirstUI);
+      tipoEl.addEventListener("change", setTipoReuFirstUI);
+    }
   }
 
   const sel = {
@@ -1489,6 +1838,11 @@ async function deleteMandado(id){
     const saveBtn = document.getElementById("mdSaveBtn");
 
     _showError("");
+    bindAutoBehaviorOnce();
+
+    // limpa flags
+    AUTO.forEach(({fieldId})=> setFieldAuto(fieldId, false));
+    dirty.clear();
 
     if(mode === "create"){
       badge.textContent = "Novo";
@@ -1498,6 +1852,11 @@ async function deleteMandado(id){
       document.getElementById("mdId").value = "";
       saveBtn.textContent = "Criar";
       _fillForm({});
+
+      // create: força tudo e marca todos os que tiverem valor calculado
+      recalcAutoFields("forceAll");
+      // foco no tipo_reu (primeiro)
+      setTimeout(()=> document.getElementById("mdTipoReu")?.focus(), 0);
     } else {
       badge.textContent = "Editar";
       title.textContent = "Editar mandado";
@@ -1509,6 +1868,7 @@ async function deleteMandado(id){
     overlay.style.display = "flex";
     overlay.setAttribute("aria-hidden", "false");
     document.body.classList.add("md-modal-open");
+    setTipoReuFirstUI();
   }
 
   function closeModal(){
@@ -1529,6 +1889,11 @@ async function deleteMandado(id){
   function _fillForm(row){
     document.getElementById("mdId").value = row?.id ?? "";
 
+    const trv = (row?.tipo_reu ?? "").toString().trim().toLowerCase();
+    if(trv.includes("onib")) document.getElementById("mdTipoReu").value = "onibus";
+    else if(trv.includes("aer")) document.getElementById("mdTipoReu").value = "aereo";
+    else document.getElementById("mdTipoReu").value = "";
+
     document.getElementById("mdDataQuitacao").value = toBRDateText(row?.data_quitacao ?? "");
     document.getElementById("mdNumeroProcesso").value = row?.numero_processo ?? "";
 
@@ -1540,8 +1905,8 @@ async function deleteMandado(id){
     document.getElementById("mdTel").value = row?.tel ?? "";
 
     document.getElementById("mdSentenca").value = (row?.sentenca ?? "") !== "" ? formatBR_MD(row?.sentenca) : "";
-
     document.getElementById("mdQuitacao").value = (row?.quitacao ?? "") !== "" ? formatBR_MD(row?.quitacao) : "";
+
     document.getElementById("mdDeposito").value = (row?.deposito ?? "") !== "" ? formatBR_MD(row?.deposito) : "";
     document.getElementById("mdCorrecao").value = (row?.correcao ?? "") !== "" ? formatBR_MD(row?.correcao) : "";
     document.getElementById("mdHonorarios").value = (row?.honorarios ?? "") !== "" ? formatBR_MD(row?.honorarios) : "";
@@ -1558,22 +1923,23 @@ async function deleteMandado(id){
     document.getElementById("mdChavePix").value = row?.chave_pix ?? "";
     document.getElementById("mdMesPg").value = row?.mes_pg ?? "";
     document.getElementById("mdObservacoes").value = row?.observacoes ?? "";
+
+    // Edit: só preenche auto se estiver vazio (mas mantém a capacidade de "forçar" quando dependências mudarem)
+    recalcAutoFields("fillEmpty");
+    setTipoReuFirstUI();
   }
 
   function _collectForm(){
     return {
       id: document.getElementById("mdId").value || null,
-
+      tipo_reu: (document.getElementById("mdTipoReu")?.value || "").trim(),
       data_quitacao: document.getElementById("mdDataQuitacao").value.trim(),
       numero_processo: document.getElementById("mdNumeroProcesso").value.trim(),
-
       uf_id: (sel.uf?.value || "").trim(),
       reu: (sel.reu?.value || "").trim(),
       autor: document.getElementById("mdAutor").value.trim(),
       tel: document.getElementById("mdTel").value.trim(),
-
       sentenca: toDotDecimalMD(document.getElementById("mdSentenca").value),
-
       quitacao: toDotDecimalMD(document.getElementById("mdQuitacao").value),
       deposito: toDotDecimalMD(document.getElementById("mdDeposito").value),
       correcao: toDotDecimalMD(document.getElementById("mdCorrecao").value),
@@ -1581,25 +1947,34 @@ async function deleteMandado(id){
       audiencista: toDotDecimalMD(document.getElementById("mdAudiencista").value),
       repasse: toDotDecimalMD(document.getElementById("mdRepasse").value),
       sucumbencia: toDotDecimalMD(document.getElementById("mdSucumbencia").value),
-
       status_id: (sel.status?.value || "").trim(),
       previsao: document.getElementById("mdPrevisao").value.trim(),
       data_pagamento: document.getElementById("mdDataPagamento").value.trim(),
-
       local: (sel.local?.value || "").trim(),
       tipo: document.getElementById("mdTipo").value.trim(),
-
       chave_pix: document.getElementById("mdChavePix").value.trim(),
       mes_pg: document.getElementById("mdMesPg").value.trim(),
       observacoes: document.getElementById("mdObservacoes").value.trim(),
     };
   }
 
-  document.addEventListener("click", (e)=>{
-    const overlay = document.getElementById("mdModalOverlay");
-    if(!overlay || overlay.style.display !== "flex") return;
-    if(e.target === overlay) closeModal();
-  });
+  function validateBeforeSave(){
+    const tipoEl = document.getElementById("mdTipoReu");
+    const tipo = (tipoEl?.value || "").trim();
+
+    // "tipo_reu para que seja preenchido primeiro" => obrigatório
+    if(!tipo){
+      _showError("Preencha o campo 'Tipo réu' primeiro.");
+      tipoEl?.classList.add("md-invalid");
+      document.getElementById("mdTipoReuHint")?.style && (document.getElementById("mdTipoReuHint").style.display = "block");
+      tipoEl?.focus?.();
+      return false;
+    }
+
+    tipoEl?.classList.remove("md-invalid");
+    _showError("");
+    return true;
+  }
 
   document.addEventListener("keydown", (e)=>{
     if(e.key !== "Escape") return;
@@ -1621,6 +1996,11 @@ async function deleteMandado(id){
       const row = JSON.parse(raw);
       openModal("edit");
       _fillForm(row);
+      // foco no tipo_reu se estiver vazio (pra garantir “preencher primeiro”)
+      const tipoEl = document.getElementById("mdTipoReu");
+      if(tipoEl && !(tipoEl.value || "").trim()){
+        setTimeout(()=> tipoEl.focus(), 0);
+      }
     }catch(err){
       console.error("Erro openEditModalFromRowMD:", err);
       _showError("Não foi possível abrir edição (dados inválidos).");
@@ -1628,6 +2008,8 @@ async function deleteMandado(id){
   };
 
   window.submitModalMD = async function(){
+    if(!validateBeforeSave()) return;
+
     const mode = document.getElementById("mdFormMode").value;
     if(mode === "create") return saveCreate();
     return saveEdit();
@@ -1635,10 +2017,7 @@ async function deleteMandado(id){
 
   async function saveEdit(){
     const payload = _collectForm();
-    if(!payload.id){
-      _showError("ID do mandado não encontrado.");
-      return;
-    }
+    if(!payload.id){ _showError("ID do mandado não encontrado."); return; }
 
     try{
       const resp = await fetch(`/mandados/${payload.id}`, {
@@ -1653,6 +2032,7 @@ async function deleteMandado(id){
         return;
       }
 
+      window.MD?.persistStateNow?.();
       window.location.reload();
     }catch(err){
       console.error(err);
@@ -1677,13 +2057,12 @@ async function deleteMandado(id){
         return;
       }
 
-
+      window.MD?.persistStateNow?.();
       window.location.reload();
     }catch(err){
       console.error(err);
       _showError("Falha de rede ao criar.");
     }
   }
-
 })();
 </script>
