@@ -184,6 +184,7 @@
     color:#374151;
     padding:10px 14px;
     white-space:nowrap;
+    text-align:center;
   }
   table.md-table tbody td{
     padding:10px 14px;
@@ -192,7 +193,10 @@
     vertical-align:top;
     color:#111827;
   }
-  table.md-table tbody tr:hover{ background:#fafafa; cursor:default; }
+  table.md-table tbody tr:not(.md-colored):hover{ background:#fafafa; cursor:default; }
+  table.md-table tbody tr.md-colored:hover{ filter: brightness(0.98); }
+
+  .md-number{ text-align:center; }
 
   .md-th-inner{ display:inline-flex; align-items:center; gap:8px; white-space:nowrap; }
   .md-th-tools{ display:inline-flex; align-items:center; gap:6px; flex:0 0 auto; }
@@ -484,6 +488,20 @@
     border-color:#c7d2fe;
     background:#f8fafc;
   }
+
+  /* ===================== REGRAS DE COR (CLASSES) ===================== */
+  .ac-row-cnpj{ background:#ff00ff !important; }
+  .ac-row-arepassar{ background:#ffff00 !important; }
+  .ac-row-repassado{ background:#c27ba0 !important; }
+  .ac-row-iddeposito{ background:#00b050 !important; }
+  .ac-row-aguardando-pix{ background:#0070c0 !important; }
+  .ac-row-aguardando-retorno{ background:#a2c4c9 !important; }
+  .ac-row-aguardando-pix td{ color:#ffffff !important; }
+  .md-colored .md-btn{
+    background: rgba(255,255,255,0.88);
+    border-color: rgba(17,24,39,0.15);
+  }
+  .md-colored .md-btn:hover{ background: rgba(255,255,255,0.96); }
 </style>
 
 <div class="md-card">
@@ -522,6 +540,12 @@
       </div>
 
       <div class="md-sum-card">
+        <div class="md-sum-top"><div class="md-sum-label">Repasse</div></div>
+        <div class="md-sum-value" id="mdSumRepasse">R$ 0,00</div>
+        <div class="md-sum-sub">Somatório dos visíveis</div>
+      </div>
+
+      <div class="md-sum-card">
         <div class="md-sum-top"><div class="md-sum-label">Sucumbência</div></div>
         <div class="md-sum-value" id="mdSumSucumbencia">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
@@ -530,7 +554,7 @@
       <div class="md-sum-card total">
         <div class="md-sum-top"><div class="md-sum-label">Total final</div></div>
         <div class="md-sum-value" id="mdSumTotalFinal">R$ 0,00</div>
-        <div class="md-sum-sub">Soma dos 4 campos</div>
+        <div class="md-sum-sub">Soma dos 5 campos</div>
       </div>
 
       <div class="md-sum-card">
@@ -573,13 +597,10 @@
           <th>SUCUMBÊNCIA</th>
           <th style="min-width:320px;">OBSERVAÇÕES</th>
 
-          <th>MÊS PG</th>
-          <th>FINALIZADO</th>
           <th>CRIADO EM</th>
           <th>ATUALIZADO EM</th>
-          <th>ID</th>
 
-          <th style="text-align:right;" class="no-filter">Ações</th>
+          <th class="no-filter">Ações</th>
         </tr>
       </thead>
 
@@ -593,8 +614,8 @@
           <td style="min-width:220px; max-width:340px;"><div class="clamp-2">{{ r.autor or "-" }}</div></td>
           <td><div class="clamp-2">{{ r.tel or "-" }}</div></td>
 
-          <td style="min-width:260px; max-width:360px;"><div class="clamp-2 md-money">{{ r.sentenca or "-" }}</div></td>
-          <td><div class="clamp-2 md-money">{{ r.quitacao or "-" }}</div></td>
+          <td class="md-number" style="min-width:260px; max-width:360px;"><div class="clamp-2 md-money">{{ r.sentenca or "-" }}</div></td>
+          <td class="md-number"><div class="clamp-2 md-money">{{ r.quitacao or "-" }}</div></td>
           <td style="min-width:260px; max-width:360px;"><div class="clamp-2">{{ r.status or "-" }}</div></td>
           <td><div class="clamp-2 md-date">{{ r.previsao or "-" }}</div></td>
           <td class="whitespace-nowrap"><div class="clamp-2 md-date">{{ r.data_pagamento or "-" }}</div></td>
@@ -603,21 +624,18 @@
 
           <td><div class="clamp-2">{{ r.tipo_reu or "-" }}</div></td>
 
-          <td><div class="clamp-2 md-money">{{ r.deposito or "-" }}</div></td>
-          <td><div class="clamp-2 md-money">{{ r.correcao or "-" }}</div></td>
-          <td><div class="clamp-2 md-money">{{ r.honorarios or "-" }}</div></td>
-          <td><div class="clamp-2 md-money">{{ r.audiencista or "-" }}</div></td>
-          <td><div class="clamp-2 md-money">{{ r.repasse or "-" }}</div></td>
+          <td class="md-number"><div class="clamp-2 md-money">{{ r.deposito or "-" }}</div></td>
+          <td class="md-number"><div class="clamp-2 md-money">{{ r.correcao or "-" }}</div></td>
+          <td class="md-number"><div class="clamp-2 md-money">{{ r.honorarios or "-" }}</div></td>
+          <td class="md-number"><div class="clamp-2 md-money">{{ r.audiencista or "-" }}</div></td>
+          <td class="md-number"><div class="clamp-2 md-money">{{ r.repasse or "-" }}</div></td>
 
           <td><div class="clamp-2">{{ r.chave_pix or "-" }}</div></td>
-          <td><div class="clamp-2 md-money">{{ r.sucumbencia or "-" }}</div></td>
+          <td class="md-number"><div class="clamp-2 md-money">{{ r.sucumbencia or "-" }}</div></td>
           <td style="min-width:320px; max-width:520px;"><div class="clamp-2">{{ r.observacoes or "-" }}</div></td>
 
-          <td><div class="clamp-2">{{ r.mes_pg or "-" }}</div></td>
-          <td><div class="clamp-2">{{ "SIM" if (r.finalizado|int == 1) else "NÃO" }}</div></td>
           <td class="whitespace-nowrap"><div class="clamp-2 md-date">{{ r.created_at or "-" }}</div></td>
           <td class="whitespace-nowrap"><div class="clamp-2 md-date">{{ r.updated_at or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.id or "-" }}</div></td>
 
           <td style="text-align:right; white-space:nowrap;">
             <button class="md-btn md-edit-btn" type="button" onclick="openEditModalFromRowMD(this.closest('tr'))">Editar</button>
@@ -627,7 +645,7 @@
         {% endfor %}
 
         {% if rows|length == 0 %}
-        <tr><td colspan="28" style="padding:18px; color:#6b7280;">Nenhum registro encontrado.</td></tr>
+        <tr><td colspan="25" style="padding:18px; color:#6b7280;">Nenhum registro encontrado.</td></tr>
         {% endif %}
       </tbody>
     </table>
@@ -936,6 +954,76 @@ async function deleteMandado(id){
 </script>
 
 <script>
+/* ===================== APLICA REGRAS DE COR (HIERARQUIA) ===================== */
+(function(){
+  const tbody = document.getElementById("mdTbody");
+  if(!tbody) return;
+
+  function norm(s){
+    return String(s ?? "")
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, " ");
+  }
+
+  function clearColorClasses(tr){
+    tr.classList.remove(
+      "md-colored",
+      "ac-row-cnpj",
+      "ac-row-arepassar",
+      "ac-row-repassado",
+      "ac-row-iddeposito",
+      "ac-row-aguardando-pix",
+      "ac-row-aguardando-retorno"
+    );
+  }
+
+  function applyRule(tr){
+    clearColorClasses(tr);
+
+    let rowObj = {};
+    try{ rowObj = JSON.parse(tr.dataset.row || "{}"); }catch(_){ rowObj = {}; }
+
+    const tipo   = norm(rowObj.tipo   ?? tr.cells[12]?.innerText);
+    const status = norm(rowObj.status ?? tr.cells[8]?.innerText);
+    const local  = norm(rowObj.local  ?? tr.cells[11]?.innerText);
+
+    if (tipo === "CNPJ"){
+      tr.classList.add("md-colored", "ac-row-cnpj");
+      return;
+    }
+    if (status === "A REPASSAR"){
+      tr.classList.add("md-colored", "ac-row-arepassar");
+      return;
+    }
+    if (status === "REPASSADO"){
+      tr.classList.add("md-colored", "ac-row-repassado");
+      return;
+    }
+    if (local === "ID DEPÓSITO" || local === "ID DEPOSITO"){
+      tr.classList.add("md-colored", "ac-row-iddeposito");
+      return;
+    }
+    if (status === "AGUARDANDO AUTORIZAÇÃO PIX (BRADESCO)" || status === "AGUARDANDO AUTORIZACAO PIX (BRADESCO)"){
+      tr.classList.add("md-colored", "ac-row-aguardando-pix");
+      return;
+    }
+    if (status === "AGUARDANDO RETORNO DO CLIENTE"){
+      tr.classList.add("md-colored", "ac-row-aguardando-retorno");
+      return;
+    }
+  }
+
+  function applyAll(){
+    tbody.querySelectorAll("tr.md-row").forEach(tr => applyRule(tr));
+  }
+
+  applyAll();
+  window.MD_COLORS = { refresh: applyAll };
+})();
+</script>
+
+<script>
 /* ===================== TABELA + FILTROS + SOMATÓRIOS + PERSISTÊNCIA ===================== */
 (function(){
   const table = document.getElementById('mdTable');
@@ -950,6 +1038,7 @@ async function deleteMandado(id){
     correcao: document.getElementById("mdSumCorrecao"),
     honorarios: document.getElementById("mdSumHonorarios"),
     audiencista: document.getElementById("mdSumAudiencista"),
+    repasse: document.getElementById("mdSumRepasse"),
     sucumbencia: document.getElementById("mdSumSucumbencia"),
     total: document.getElementById("mdSumTotalFinal"),
     deposito: document.getElementById("mdSumDeposito"),
@@ -1098,26 +1187,29 @@ async function deleteMandado(id){
   const COL_CORRECAO    = 15;
   const COL_HONORARIOS  = 16;
   const COL_AUDIENCISTA = 17;
+  const COL_REPASSE     = 18;
   const COL_SUCUMBENCIA = 20;
 
   function updateSums(){
     const vis = getVisibleRows();
 
-    let sDep = 0, sCor = 0, sHon = 0, sAud = 0, sSuc = 0;
+    let sDep = 0, sCor = 0, sHon = 0, sAud = 0, sRep = 0, sSuc = 0;
 
     vis.forEach(r=>{
       sDep += (MD.parseSmartNumber(textOfCell(r, COL_DEPOSITO))    || 0);
       sCor += (MD.parseSmartNumber(textOfCell(r, COL_CORRECAO))    || 0);
       sHon += (MD.parseSmartNumber(textOfCell(r, COL_HONORARIOS))  || 0);
       sAud += (MD.parseSmartNumber(textOfCell(r, COL_AUDIENCISTA)) || 0);
+      sRep += (MD.parseSmartNumber(textOfCell(r, COL_REPASSE))     || 0);
       sSuc += (MD.parseSmartNumber(textOfCell(r, COL_SUCUMBENCIA)) || 0);
     });
 
-    const total = sCor + sHon + sAud + sSuc;
+    const total = sCor + sHon + sAud + sRep + sSuc;
 
     if(sumEls.correcao)    sumEls.correcao.textContent    = formatBRL_MD(sCor);
     if(sumEls.honorarios)  sumEls.honorarios.textContent  = formatBRL_MD(sHon);
     if(sumEls.audiencista) sumEls.audiencista.textContent = formatBRL_MD(sAud);
+    if(sumEls.repasse)     sumEls.repasse.textContent     = formatBRL_MD(sRep);
     if(sumEls.sucumbencia) sumEls.sucumbencia.textContent = formatBRL_MD(sSuc);
     if(sumEls.total)       sumEls.total.textContent       = formatBRL_MD(total);
     if(sumEls.deposito)    sumEls.deposito.textContent    = formatBRL_MD(sDep);
@@ -1596,6 +1688,22 @@ async function deleteMandado(id){
     sel.classList.toggle("md-invalid", need);
   }
 
+  function updateCorrecaoAvailability(){
+    const input = document.getElementById("mdCorrecao");
+    const depositoEl = document.getElementById("mdDeposito");
+    if(!input || !depositoEl) return;
+
+    const depositoVal = MD.parseSmartNumber(depositoEl.value);
+    const hasDeposito = Number.isFinite(depositoVal) && depositoVal > 0;
+
+    input.disabled = !hasDeposito;
+    if(!hasDeposito){
+      input.value = "";
+      dirty.delete("mdCorrecao");
+      setFieldAuto("mdFieldCorrecao", false);
+    }
+  }
+
   function computeAutoValues(){
     const dataQuit = document.getElementById("mdDataQuitacao")?.value?.trim() || "";
     const sentenca = MD.parseSmartNumber(document.getElementById("mdSentenca")?.value);
@@ -1605,7 +1713,8 @@ async function deleteMandado(id){
 
     const tipoReu = normalizeTipoReu();
 
-    const vDeposito = Number.isFinite(deposito) ? deposito : 0;
+    const hasDeposito = Number.isFinite(deposito) && deposito > 0;
+    const vDeposito = hasDeposito ? deposito : 0;
     const vSent     = Number.isFinite(sentenca) ? sentenca : 0;
     const vSuc      = Number.isFinite(sucumb)   ? sucumb   : 0;
     const vAud      = Number.isFinite(aud)      ? aud      : 0;
@@ -1614,7 +1723,7 @@ async function deleteMandado(id){
     const previsao = addDaysBRDate(dataQuit, 30);
 
     // CORREÇÃO: independe do tipo_reu
-    const correcaoNum = vDeposito - vSent - vSuc;
+    const correcaoNum = hasDeposito ? (vDeposito - vSent - vSuc) : NaN;
     const correcao = Number.isFinite(correcaoNum) ? formatBR_MD(correcaoNum) : "";
 
     // HONORÁRIOS: depende do tipo_reu
@@ -1728,6 +1837,7 @@ async function deleteMandado(id){
     }
     if(!affected.length) return;
     recalcAutoFields("forceIds", affected);
+    updateCorrecaoAvailability();
   }
 
   function bindAutoBehaviorOnce(){
@@ -1855,6 +1965,7 @@ async function deleteMandado(id){
 
       // create: força tudo e marca todos os que tiverem valor calculado
       recalcAutoFields("forceAll");
+      updateCorrecaoAvailability();
       // foco no tipo_reu (primeiro)
       setTimeout(()=> document.getElementById("mdTipoReu")?.focus(), 0);
     } else {
@@ -1927,6 +2038,7 @@ async function deleteMandado(id){
     // Edit: só preenche auto se estiver vazio (mas mantém a capacidade de "forçar" quando dependências mudarem)
     recalcAutoFields("fillEmpty");
     setTipoReuFirstUI();
+    updateCorrecaoAvailability();
   }
 
   function _collectForm(){
