@@ -126,7 +126,7 @@
     color:#374151;
     padding:10px 14px;
     white-space:nowrap;
-    text-align:center;
+    text-align:center; /* (5) todos cabeçalhos centralizados */
   }
   table.ac-table tbody td{
     padding:10px 14px;
@@ -136,6 +136,7 @@
     color:#111827;
   }
 
+  /* (6) todas colunas numéricas centralizadas */
   .ac-number{ text-align:center; }
 
   table.ac-table tbody tr:not(.ac-colored):hover{ background:#fafafa; cursor:default; }
@@ -431,6 +432,7 @@
   body{ padding-bottom: 18px; }
 
   /* ===================== REGRAS DE COR (CLASSES) ===================== */
+  /* (7..12) */
   .ac-row-cnpj{ background:#ff00ff !important; }
   .ac-row-arepassar{ background:#ffff00 !important; }
   .ac-row-repassado{ background:#c27ba0 !important; }
@@ -515,6 +517,9 @@
     border-color:#c7d2fe;
     background:#f8fafc;
   }
+
+  /* ===================== (4) OCULTAR COLUNAS NO FRONT ===================== */
+  .ac-hide-col{ display:none !important; }
 </style>
 
 <div class="ac-card">
@@ -608,7 +613,10 @@
           <td class="whitespace-nowrap"><div class="clamp-2 ac-date">{{ r.prazo_real or "-" }}</div></td>
           <td class="whitespace-nowrap"><div class="clamp-2 ac-date">{{ r.data_pagamento or "-" }}</div></td>
           <td><div class="clamp-2">{{ r.local or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.tipo or "-" }}</div></td>
+
+          {# (13) tipo precisa conseguir “limpar” e salvar vazio -> já garantido no JS _collectForm + backend,
+             e aqui mostramos r.tipo normalmente. #}
+          <td><div class="clamp-2">{{ r.tipo if (r.tipo is not none) else "-" }}</div></td>
 
           <td class="ac-number"><div class="clamp-2 ac-money">{{ r.honorarios or "-" }}</div></td>
           <td class="ac-number"><div class="clamp-2 ac-money">{{ r.audiencista or "-" }}</div></td>
@@ -704,7 +712,6 @@
         <div class="ac-field col-4" id="acTipoReuField">
           <label>
             Tipo réu
-            
           </label>
           <select class="ac-select" id="acTipoReu">
             <option value="">Selecione...</option>
@@ -792,6 +799,14 @@
           <label>Observações</label>
           <textarea class="ac-textarea" id="acObservacoes" placeholder="Escreva aqui..."></textarea>
         </div>
+
+        {# NOTA:
+           (2) "Correção" e "Valor de Depósito": como você não colou esses campos aqui,
+           eu NÃO criei inputs novos (pra não quebrar seu layout/tabela).
+           O JS abaixo aplica a regra se IDs existirem no DOM:
+           - acValorDeposito (ou acValorDepositoInput)
+           - acCorrecao (ou acCorrecaoInput)
+           Se já existirem no seu HTML real, a premissa passa a valer automaticamente. #}
       </div>
     </div>
 
@@ -888,6 +903,37 @@ async function deleteAcordo(id){
 </script>
 
 <script>
+/* ===================== (4) OCULTAR COLUNAS NO FRONT (sem quebrar índices/scripts) ===================== */
+(function(){
+  const table = document.getElementById("acTable");
+  const tbody = document.getElementById("acTbody");
+  const thead = table?.tHead?.rows?.[0];
+  if(!table || !thead || !tbody) return;
+
+  const HIDE = new Set(["MES PG", "MÊS PG", "FINALIZADO", "ID"]);
+
+  const ths = Array.from(thead.cells);
+  const hideIdx = [];
+
+  ths.forEach((th, idx)=>{
+    const t = (th.innerText || "").trim().toUpperCase();
+    if(HIDE.has(t)){
+      hideIdx.push(idx);
+      th.classList.add("ac-hide-col");
+    }
+  });
+
+  if(!hideIdx.length) return;
+
+  Array.from(tbody.rows).forEach(tr=>{
+    hideIdx.forEach(i=>{
+      if(tr.cells[i]) tr.cells[i].classList.add("ac-hide-col");
+    });
+  });
+})();
+</script>
+
+<script>
 /* ===================== APLICA REGRAS DE COR (HIERARQUIA) ===================== */
 (function(){
   const tbody = document.getElementById("acTbody");
@@ -923,26 +969,32 @@ async function deleteAcordo(id){
     const status = norm(rowObj.status ?? tr.cells[8]?.innerText);
     const local  = norm(rowObj.local  ?? tr.cells[12]?.innerText);
 
+    // (7) tipo = CNPJ
     if (tipo === "CNPJ"){
       tr.classList.add("ac-colored", "ac-row-cnpj");
       return;
     }
+    // (8) status = A REPASSAR
     if (status === "A REPASSAR"){
       tr.classList.add("ac-colored", "ac-row-arepassar");
       return;
     }
+    // (9) status = REPASSADO
     if (status === "REPASSADO"){
       tr.classList.add("ac-colored", "ac-row-repassado");
       return;
     }
+    // (10) local = ID DEPÓSITO
     if (local === "ID DEPÓSITO" || local === "ID DEPOSITO"){
       tr.classList.add("ac-colored", "ac-row-iddeposito");
       return;
     }
+    // (11) status = AGUARDANDO AUTORIZAÇÃO PIX (BRADESCO)
     if (status === "AGUARDANDO AUTORIZAÇÃO PIX (BRADESCO)" || status === "AGUARDANDO AUTORIZACAO PIX (BRADESCO)"){
       tr.classList.add("ac-colored", "ac-row-aguardando-pix");
       return;
     }
+    // (12) status = AGUARDANDO RETORNO DO CLIENTE
     if (status === "AGUARDANDO RETORNO DO CLIENTE"){
       tr.classList.add("ac-colored", "ac-row-aguardando-retorno");
       return;
@@ -1573,7 +1625,6 @@ async function deleteAcordo(id){
     tipoField.classList.toggle("first-required", !hasTipo);
     tipoField.classList.toggle("first-ok", hasTipo);
 
-    // Se não tem tipo, não deixa marcar auto em hon/rep (porque depende de tipo)
     if(!hasTipo){
       setAutoVisual(fieldHon, false);
       setAutoVisual(fieldRep, false);
@@ -1585,7 +1636,6 @@ async function deleteAcordo(id){
 
     const hasTipo = !!String(elTipoReu.value || "").trim();
     if(!hasTipo){
-      // sem tipo_reu, não calcula
       return;
     }
 
@@ -1650,6 +1700,108 @@ async function deleteAcordo(id){
   };
 
   updateTipoReuSignal();
+})();
+</script>
+
+<script>
+/* ===================== (2) REGRA "CORREÇÃO" DEPENDE DE "VALOR DE DEPÓSITO" (somente se existir no DOM) ===================== */
+/*
+  Premissa aplicada sem remover nada:
+  - Se existirem inputs no modal com IDs:
+      Valor Depósito:  acValorDeposito  (ou acValorDepositoInput)
+      Correção:        acCorrecao       (ou acCorrecaoInput)
+    então:
+    1) Correção fica DESABILITADA enquanto depósito estiver vazio/0
+    2) Se depósito virar vazio/0 em algum momento na edição:
+         - limpa Correção
+         - trava qualquer auto-preenchimento futuro (não "recalcula automaticamente novamente")
+    3) Não impõe fórmula (pra não inventar regra); só controla habilitação + trava.
+*/
+(function(){
+  const getEl = (...ids) => {
+    for(const id of ids){
+      const el = document.getElementById(id);
+      if(el) return el;
+    }
+    return null;
+  };
+
+  const depositEl = getEl("acValorDeposito", "acValorDepositoInput");
+  const corrEl = getEl("acCorrecao", "acCorrecaoInput");
+
+  if(!depositEl || !corrEl) return;
+
+  let lockedNoAuto = false;
+
+  function depNumber(){
+    const n = acParseAnyNumber(depositEl.value);
+    if(n === null) return null;
+    return n;
+  }
+
+  function setCorrEnabled(enabled){
+    corrEl.disabled = !enabled;
+    corrEl.style.opacity = enabled ? "" : "0.65";
+    corrEl.style.cursor = enabled ? "" : "not-allowed";
+  }
+
+  function clearCorr(){
+    corrEl.value = "";
+    corrEl.dispatchEvent(new Event("input", { bubbles:true }));
+  }
+
+  function refresh(){
+    const dep = depNumber();
+    const ok = (dep !== null && dep > 0);
+
+    // se depósito invalidou (vazio/0), trava auto para o resto da sessão
+    if(!ok){
+      lockedNoAuto = true;
+      setCorrEnabled(false);
+      clearCorr();
+      return;
+    }
+
+    // depósito ok: habilita, mas respeita trava (não tenta autocalcular)
+    setCorrEnabled(true);
+    if(lockedNoAuto){
+      // mantém como está (vazio até usuário preencher)
+      return;
+    }
+  }
+
+  // Se usuário digitar correção, consideramos manual e nunca auto (mesma ideia de trava)
+  corrEl.addEventListener("input", ()=>{
+    const v = (corrEl.value || "").trim();
+    if(v !== "") lockedNoAuto = true;
+  });
+
+  depositEl.addEventListener("input", refresh);
+  depositEl.addEventListener("change", refresh);
+
+  // Integra com abertura do modal (create/edit) sem mexer no seu fluxo
+  const _openCreate = window.openCreateModal;
+  const _openEdit = window.openEditModalFromRow;
+
+  if(typeof _openCreate === "function"){
+    window.openCreateModal = async function(...args){
+      const r = await _openCreate.apply(this, args);
+      lockedNoAuto = false; // novo: pode auto até invalidar
+      refresh();
+      return r;
+    };
+  }
+
+  if(typeof _openEdit === "function"){
+    window.openEditModalFromRow = async function(...args){
+      const r = await _openEdit.apply(this, args);
+      lockedNoAuto = false; // edição: pode auto até invalidar
+      refresh();
+      return r;
+    };
+  }
+
+  refresh();
 })();
 </script>
 
@@ -1762,7 +1914,6 @@ async function deleteAcordo(id){
       _fillForm({});
       window.AC_AUTOCALC?.resetForCreate?.();
 
-      // ✅ foca e sinaliza tipo_reu
       document.getElementById("acTipoReu")?.focus();
       window.AC_AUTOCALC?.refreshTipoReuSignal?.();
     } else {
@@ -1815,7 +1966,10 @@ async function deleteAcordo(id){
     document.getElementById("acDataPagamento").value = toBRDateText(row?.data_pagamento ?? "");
 
     setSelectValue(sel.local, row?.local ?? "");
-    document.getElementById("acTipo").value = row?.tipo ?? "";
+
+    // (13) garantir que consegue limpar Tipo: se vier null/undefined => "", se vier string => seta string
+    const tipoVal = (row?.tipo === null || row?.tipo === undefined) ? "" : String(row?.tipo);
+    document.getElementById("acTipo").value = tipoVal;
 
     document.getElementById("acHonorarios").value = (row?.honorarios ?? "") !== "" ? acFormatBR(row?.honorarios) : "";
     document.getElementById("acAudiencista").value = (row?.audiencista ?? "") !== "" ? acFormatBR(row?.audiencista) : "";
@@ -1857,6 +2011,8 @@ async function deleteAcordo(id){
       data_pagamento: document.getElementById("acDataPagamento").value.trim(),
 
       local: (sel.local?.value || "").trim(),
+
+      // (13) sempre enviar "tipo" (inclusive vazio) pra limpar valor antigo no banco
       tipo: document.getElementById("acTipo").value.trim(),
 
       honorarios: toDotDecimal(document.getElementById("acHonorarios").value),
@@ -1966,11 +2122,11 @@ async function deleteAcordo(id){
   }
 })();
 
+/* ===================== DOUBLE CLICK NA LINHA PARA EDITAR ===================== */
 (function(){
   const tbody = document.getElementById("acTbody");
   if(!tbody) return;
 
-  // evita anexar 2x se o partial for recarregado
   if (tbody.dataset.dblClickBound === "1") return;
   tbody.dataset.dblClickBound = "1";
 
@@ -1978,19 +2134,18 @@ async function deleteAcordo(id){
     const tr = e.target.closest && e.target.closest("tr.ac-row");
     if(!tr) return;
 
-    // se clicou em botões/inputs/links, não dispara o dblclick da linha
     const interactive = e.target.closest('button, a, input, select, textarea, label, .ac-th-btn, #acGlobalFilterPanel');
     if(interactive) return;
 
-    // garante que a linha tem dataset.row
     if(!tr.dataset.row) return;
 
-    // abre edição (função já existente no seu código)
     if(typeof window.openEditModalFromRow === "function"){
       window.openEditModalFromRow(tr);
     }
   });
 })();
+
+/* ===================== HINT EXTRA TIPO RÉU (MANTIDO) ===================== */
 (function(){
   const tipoEl =
     document.getElementById("acTipoReu") ||
@@ -2039,7 +2194,6 @@ async function deleteAcordo(id){
     if(!hint) return;
     hint.style.display = hasValue() ? "none" : "flex";
 
-    // opcional: destaque no campo enquanto vazio
     if(!hasValue()){
       tipoEl.style.borderColor = "#f59e0b";
       tipoEl.style.boxShadow = "0 0 0 4px rgba(245,158,11,.15)";
@@ -2049,11 +2203,9 @@ async function deleteAcordo(id){
     }
   }
 
-  // atualiza ao digitar/selecionar
   tipoEl.addEventListener("input", refresh);
   tipoEl.addEventListener("change", refresh);
 
-  // garante que ao abrir modal (create/edit) o aviso reflita o valor já preenchido
   const _openCreate = window.openCreateModal;
   const _openEdit = window.openEditModalFromRow;
 
@@ -2073,7 +2225,6 @@ async function deleteAcordo(id){
     };
   }
 
-  // estado inicial
   refresh();
 })();
 </script>

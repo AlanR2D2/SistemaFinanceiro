@@ -184,7 +184,7 @@
     color:#374151;
     padding:10px 14px;
     white-space:nowrap;
-    text-align:center;
+    text-align:center; /* (5) todos cabeçalhos centralizados */
   }
   table.md-table tbody td{
     padding:10px 14px;
@@ -192,10 +192,12 @@
     font-size:13px;
     vertical-align:top;
     color:#111827;
+    text-align:center; /* (6) garante centralização geral */
   }
   table.md-table tbody tr:not(.md-colored):hover{ background:#fafafa; cursor:default; }
   table.md-table tbody tr.md-colored:hover{ filter: brightness(0.98); }
 
+  /* (6) números centralizados */
   .md-number{ text-align:center; }
 
   .md-th-inner{ display:inline-flex; align-items:center; gap:8px; white-space:nowrap; }
@@ -386,6 +388,7 @@
   .md-field.col-4{ grid-column: span 4; }
   .md-field.col-3{ grid-column: span 3; }
   .md-field.col-8{ grid-column: span 8; }
+  .md-field.col-9{ grid-column: span 9; }
 
   .md-field label{
     display:flex;
@@ -450,7 +453,7 @@
   body.md-modal-open{ overflow:hidden; }
 
   @media (max-width: 900px){
-    .md-field, .md-field.col-4, .md-field.col-3, .md-field.col-8{ grid-column: span 12; }
+    .md-field, .md-field.col-4, .md-field.col-3, .md-field.col-8, .md-field.col-9{ grid-column: span 12; }
   }
 
   /* ===================== SCROLLBAR HORIZONTAL FIXA NO RODAPÉ ===================== */
@@ -490,18 +493,21 @@
   }
 
   /* ===================== REGRAS DE COR (CLASSES) ===================== */
-  .ac-row-cnpj{ background:#ff00ff !important; }
-  .ac-row-arepassar{ background:#ffff00 !important; }
-  .ac-row-repassado{ background:#c27ba0 !important; }
-  .ac-row-iddeposito{ background:#00b050 !important; }
-  .ac-row-aguardando-pix{ background:#0070c0 !important; }
-  .ac-row-aguardando-retorno{ background:#a2c4c9 !important; }
+  .ac-row-cnpj{ background:#ff00ff !important; } /* (7) */
+  .ac-row-arepassar{ background:#ffff00 !important; } /* (8) */
+  .ac-row-repassado{ background:#c27ba0 !important; } /* (9) */
+  .ac-row-iddeposito{ background:#00b050 !important; } /* (10) */
+  .ac-row-aguardando-pix{ background:#0070c0 !important; } /* (11) */
+  .ac-row-aguardando-retorno{ background:#a2c4c9 !important; } /* (12) */
   .ac-row-aguardando-pix td{ color:#ffffff !important; }
   .md-colored .md-btn{
     background: rgba(255,255,255,0.88);
     border-color: rgba(17,24,39,0.15);
   }
   .md-colored .md-btn:hover{ background: rgba(255,255,255,0.96); }
+
+  /* ===================== (4) OCULTAR CAMPOS/“COLUNAS” DO FRONT ===================== */
+  .md-hidden{ display:none !important; }
 </style>
 
 <div class="md-card">
@@ -539,6 +545,7 @@
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
+      <!-- (1) REPASSE: card existe e entra no TOTAL FINAL -->
       <div class="md-sum-card">
         <div class="md-sum-top"><div class="md-sum-label">Repasse</div></div>
         <div class="md-sum-value" id="mdSumRepasse">R$ 0,00</div>
@@ -681,7 +688,6 @@
         <div class="md-field col-6" id="mdFieldTipoReu">
           <label>
             Tipo réu
-            
             <span class="md-info md-warn" title="Obrigatório para o cálculo automático de Honorários e Repasse.">!</span>
           </label>
           <select class="md-select" id="mdTipoReu">
@@ -745,7 +751,7 @@
           </select>
         </div>
 
-        <!-- ✅ PREVISÃO (AUTO) - layout igual acordos -->
+        <!-- ✅ PREVISÃO (AUTO) -->
         <div class="md-field col-4" id="mdFieldPrevisao">
           <label>
             Previsão
@@ -777,7 +783,7 @@
           <input class="md-input" id="mdDeposito" placeholder="Ex: 1.000,00">
         </div>
 
-        <!-- ✅ CORREÇÃO (AUTO) -->
+        <!-- ✅ CORREÇÃO (AUTO) (2) só habilita se Depósito > 0 -->
         <div class="md-field col-3" id="mdFieldCorrecao">
           <label>
             Correção
@@ -822,7 +828,8 @@
           <input class="md-input" id="mdSucumbencia" placeholder="Ex: 1.000,00">
         </div>
 
-        <div class="md-field col-6" id="mdFieldMesPg">
+        <!-- (4) oculto no front, mas mantém no DOM pra não perder valor no edit -->
+        <div class="md-field col-6 md-hidden" id="mdFieldMesPg">
           <label>Mês PG</label>
           <input class="md-input" id="mdMesPg" placeholder="Ex: jan/26 ou 01/2026">
         </div>
@@ -1204,6 +1211,7 @@ async function deleteMandado(id){
       sSuc += (MD.parseSmartNumber(textOfCell(r, COL_SUCUMBENCIA)) || 0);
     });
 
+    /* (1) total final inclui repasse */
     const total = sCor + sHon + sAud + sRep + sSuc;
 
     if(sumEls.correcao)    sumEls.correcao.textContent    = formatBRL_MD(sCor);
@@ -1652,7 +1660,6 @@ async function deleteMandado(id){
     { inputId: "mdRepasse",    fieldId: "mdFieldRepasse"    },
   ];
 
-  // Campo auto -> quais campos disparam recálculo forçado (e reativam flag)
   const AUTO_DEPS = {
     mdPrevisao:   ["mdDataQuitacao"],
     mdCorrecao:   ["mdDeposito","mdSentenca","mdSucumbencia"],
@@ -1660,8 +1667,6 @@ async function deleteMandado(id){
     mdRepasse:    ["mdSentenca","mdAudiencista","mdTipoReu"],
   };
 
-  // Se o usuário editar manualmente um auto-field, ele perde a flag.
-  // Quando algum dependente muda, esse auto-field volta a ser calculado e volta a ter flag (forçado).
   const dirty = new Set();
 
   function setFieldAuto(fieldId, on){
@@ -1688,6 +1693,8 @@ async function deleteMandado(id){
     sel.classList.toggle("md-invalid", need);
   }
 
+  /* (2) Correção só habilita quando Depósito > 0.
+     Se Depósito voltar a vazio/0, Correção desabilita, zera e NÃO fica auto-calculando indevidamente. */
   function updateCorrecaoAvailability(){
     const input = document.getElementById("mdCorrecao");
     const depositoEl = document.getElementById("mdDeposito");
@@ -1697,6 +1704,7 @@ async function deleteMandado(id){
     const hasDeposito = Number.isFinite(depositoVal) && depositoVal > 0;
 
     input.disabled = !hasDeposito;
+
     if(!hasDeposito){
       input.value = "";
       dirty.delete("mdCorrecao");
@@ -1719,21 +1727,17 @@ async function deleteMandado(id){
     const vSuc      = Number.isFinite(sucumb)   ? sucumb   : 0;
     const vAud      = Number.isFinite(aud)      ? aud      : 0;
 
-    // PREVISÃO: independe do tipo_reu
     const previsao = addDaysBRDate(dataQuit, 30);
 
-    // CORREÇÃO: independe do tipo_reu
     const correcaoNum = hasDeposito ? (vDeposito - vSent - vSuc) : NaN;
     const correcao = Number.isFinite(correcaoNum) ? formatBR_MD(correcaoNum) : "";
 
-    // HONORÁRIOS: depende do tipo_reu
     let percHon = 0;
     if(tipoReu === "aereo")  percHon = 0.30;
     if(tipoReu === "onibus") percHon = 0.40;
     const honorariosNum = percHon ? (vSent * percHon) : NaN;
     const honorarios = Number.isFinite(honorariosNum) ? formatBR_MD(honorariosNum) : "";
 
-    // REPASSE: depende do tipo_reu
     let percRep = 0;
     if(tipoReu === "aereo")  percRep = 0.70;
     if(tipoReu === "onibus") percRep = 0.60;
@@ -1752,10 +1756,6 @@ async function deleteMandado(id){
     };
   }
 
-  // policy:
-  // - "fillEmpty": no edit, só preenche se estiver vazio (e marca auto)
-  // - "forceAll": no create, força todos (e marca auto quando tiver valor)
-  // - "forceIds": força apenas alguns ids (por dependência), e reativa flag
   function recalcAutoFields(policy="fillEmpty", forceIds=[]){
     const mode = document.getElementById("mdFormMode")?.value || "edit";
     const vals = computeAutoValues();
@@ -1784,9 +1784,6 @@ async function deleteMandado(id){
           dirty.delete(inputId);
           setFieldAuto(fieldId, hasComputed);
         } else {
-          // mantém estado atual (auto flag depende se está marcado ou não)
-          // se o usuário já tinha editado manualmente, mantemos sem auto
-          // se não está dirty e está vazio, ainda podemos auto-marcar se tiver computed
           if(!dirty.has(inputId) && (input.value || "").trim() === "" && hasComputed){
             input.value = computed;
             setFieldAuto(fieldId, true);
@@ -1795,7 +1792,6 @@ async function deleteMandado(id){
         return;
       }
 
-      // fillEmpty (default)
       if(mode === "create"){
         input.value = computed;
         dirty.delete(inputId);
@@ -1803,7 +1799,6 @@ async function deleteMandado(id){
         return;
       }
 
-      // edit + fillEmpty
       if(dirty.has(inputId)){
         setFieldAuto(fieldId, false);
         return;
@@ -1829,7 +1824,6 @@ async function deleteMandado(id){
     setFieldAuto(fieldId, false);
   }
 
-  // Ao alterar qualquer campo que é dependência, recalcula apenas os autos afetados e REATIVA flag.
   function onDependencyChanged(depId){
     const affected = [];
     for(const [autoId, deps] of Object.entries(AUTO_DEPS)){
@@ -1841,20 +1835,16 @@ async function deleteMandado(id){
   }
 
   function bindAutoBehaviorOnce(){
-    // Dependências (ao mudar -> força recálculo e reativa flag)
     const depIds = Array.from(new Set(Object.values(AUTO_DEPS).flat()));
     depIds.forEach(id=>{
       const el = document.getElementById(id);
       if(!el || el.dataset.autoDepBound === "1") return;
       el.dataset.autoDepBound = "1";
-      const handler = ()=>{
-        onDependencyChanged(id);
-      };
+      const handler = ()=>{ onDependencyChanged(id); };
       el.addEventListener("input", handler);
       el.addEventListener("change", handler);
     });
 
-    // Se o usuário mexer no próprio auto-field, ele vira "manual" (dirty) e perde flag.
     AUTO.forEach(({inputId, fieldId})=>{
       const el = document.getElementById(inputId);
       if(!el || el.dataset.autoSelfBound === "1") return;
@@ -1874,7 +1864,6 @@ async function deleteMandado(id){
         }
       });
 
-      // Se apagar o valor do auto-field, volta a auto imediatamente (com computed atual)
       el.addEventListener("blur", ()=>{
         const val = (el.value || "").toString().trim();
         if(val === ""){
@@ -1884,7 +1873,6 @@ async function deleteMandado(id){
       });
     });
 
-    // Aviso tipo_reu sempre atualizado visualmente
     const tipoEl = document.getElementById("mdTipoReu");
     if(tipoEl && tipoEl.dataset.tipoWarnBound !== "1"){
       tipoEl.dataset.tipoWarnBound = "1";
@@ -1950,7 +1938,6 @@ async function deleteMandado(id){
     _showError("");
     bindAutoBehaviorOnce();
 
-    // limpa flags
     AUTO.forEach(({fieldId})=> setFieldAuto(fieldId, false));
     dirty.clear();
 
@@ -1963,10 +1950,8 @@ async function deleteMandado(id){
       saveBtn.textContent = "Criar";
       _fillForm({});
 
-      // create: força tudo e marca todos os que tiverem valor calculado
       recalcAutoFields("forceAll");
       updateCorrecaoAvailability();
-      // foco no tipo_reu (primeiro)
       setTimeout(()=> document.getElementById("mdTipoReu")?.focus(), 0);
     } else {
       badge.textContent = "Editar";
@@ -2029,19 +2014,25 @@ async function deleteMandado(id){
     document.getElementById("mdDataPagamento").value = toBRDateText(row?.data_pagamento ?? "");
 
     setSelectValue(sel.local, row?.local ?? "");
-    document.getElementById("mdTipo").value = row?.tipo ?? "";
+
+    /* (13) garante que dá pra limpar o Tipo: se vier null, fica vazio */
+    document.getElementById("mdTipo").value = (row?.tipo ?? "");
 
     document.getElementById("mdChavePix").value = row?.chave_pix ?? "";
+
+    /* (4) mes_pg fica oculto, mas mantém o valor no DOM pra não perder em edit */
     document.getElementById("mdMesPg").value = row?.mes_pg ?? "";
+
     document.getElementById("mdObservacoes").value = row?.observacoes ?? "";
 
-    // Edit: só preenche auto se estiver vazio (mas mantém a capacidade de "forçar" quando dependências mudarem)
     recalcAutoFields("fillEmpty");
     setTipoReuFirstUI();
     updateCorrecaoAvailability();
   }
 
   function _collectForm(){
+    const tipoVal = document.getElementById("mdTipo").value.trim();
+
     return {
       id: document.getElementById("mdId").value || null,
       tipo_reu: (document.getElementById("mdTipoReu")?.value || "").trim(),
@@ -2063,9 +2054,15 @@ async function deleteMandado(id){
       previsao: document.getElementById("mdPrevisao").value.trim(),
       data_pagamento: document.getElementById("mdDataPagamento").value.trim(),
       local: (sel.local?.value || "").trim(),
-      tipo: document.getElementById("mdTipo").value.trim(),
+
+      /* (13) Se apagar e salvar, manda NULL pra garantir que limpa no banco */
+      tipo: (tipoVal === "" ? null : tipoVal),
+
       chave_pix: document.getElementById("mdChavePix").value.trim(),
-      mes_pg: document.getElementById("mdMesPg").value.trim(),
+
+      /* (4) mes_pg oculto no front, mas enviado (ou null) para não “reviver” valor antigo */
+      mes_pg: (document.getElementById("mdMesPg").value.trim() || null),
+
       observacoes: document.getElementById("mdObservacoes").value.trim(),
     };
   }
@@ -2074,11 +2071,11 @@ async function deleteMandado(id){
     const tipoEl = document.getElementById("mdTipoReu");
     const tipo = (tipoEl?.value || "").trim();
 
-    // "tipo_reu para que seja preenchido primeiro" => obrigatório
     if(!tipo){
       _showError("Preencha o campo 'Tipo réu' primeiro.");
       tipoEl?.classList.add("md-invalid");
-      document.getElementById("mdTipoReuHint")?.style && (document.getElementById("mdTipoReuHint").style.display = "block");
+      const hint = document.getElementById("mdTipoReuHint");
+      if(hint) hint.style.display = "block";
       tipoEl?.focus?.();
       return false;
     }
@@ -2108,7 +2105,7 @@ async function deleteMandado(id){
       const row = JSON.parse(raw);
       openModal("edit");
       _fillForm(row);
-      // foco no tipo_reu se estiver vazio (pra garantir “preencher primeiro”)
+
       const tipoEl = document.getElementById("mdTipoReu");
       if(tipoEl && !(tipoEl.value || "").trim()){
         setTimeout(()=> tipoEl.focus(), 0);

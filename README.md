@@ -117,3 +117,26 @@ financeiro.n8n-draconsumidor.com.br {
 ---
 
 Sistema pronto para produção.
+
+
+
+1 - Em mandados incluir um card que soma a coluna REPASSE e esse card entra no card total final também
+2 - Na edição o campo "Correção" só pode ser preenchida quando VALOR DE DEPÓSITO tenha valor inserido, caso seu valor seja zero ou vazio novamente a correção tem seu valo não calculado automaticamente novamente
+3 - anulada
+4 - Ocultar do front as colunas 'mes pg', 'finalizado', 'id'
+5 - todos cabeçalhos tem que ficar centralizados
+6 - todas colunas de números tem que ficar centralizadas
+7 - se a coluna Tipo = "CNPJ"
+→ aplica ac-row-cnpj (magenta #ff00ff)
+8 - Se a coluna Status = "A REPASSAR"
+→ aplica ac-row-arepassar (amarelo #ffff00)
+9 - Se a coluna Status = "REPASSADO"
+→ aplica ac-row-repassado (rosa/roxo #c27ba0)
+10 - Se a coluna Local = "ID DEPÓSITO" ou "ID DEPOSITO"
+→ aplica ac-row-iddeposito (verde #00b050)
+11 - Se a coluna Status = "AGUARDANDO AUTORIZAÇÃO PIX (BRADESCO)"
+(ou sem acento: "AGUARDANDO AUTORIZACAO PIX (BRADESCO)")
+→ aplica ac-row-aguardando-pix (azul #0070c0) e o texto vira branco
+12 - Se a coluna  Status = "AGUARDANDO RETORNO DO CLIENTE"
+→ aplica ac-row-aguardando-retorno (azul claro/cinza #a2c4c9)
+13 - Na edição o parametro tipo, se eu escrever CNPJ e salvar, depois abrir de novo e apagar seu valor e salvar, o valor antigo não sai
