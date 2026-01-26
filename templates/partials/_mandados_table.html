@@ -55,9 +55,12 @@
   .md-sums{ padding: 14px 16px 0 16px; }
   .md-sums-grid{
     display:grid;
-    grid-template-columns: repeat(6, minmax(180px, 1fr));
+    grid-template-columns: repeat(7, minmax(180px, 1fr)); /* (2) força 1 linha */
     gap:12px;
     align-items:stretch;
+    overflow-x:auto;                 /* (2) mantém em 1 linha com scroll se precisar */
+    padding-bottom:10px;
+    -webkit-overflow-scrolling: touch;
   }
   .md-sum-card{
     border:1px solid #e5e7eb;
@@ -152,14 +155,15 @@
     background:#fff1f2 !important;
   }
 
+  /* (2) não quebrar em 2 linhas em telas menores: mantém 1 linha com scroll */
   @media (max-width: 1400px){
-    .md-sums-grid{ grid-template-columns: repeat(3, minmax(220px, 1fr)); }
+    .md-sums-grid{ grid-template-columns: repeat(7, minmax(160px, 1fr)); }
   }
   @media (max-width: 900px){
-    .md-sums-grid{ grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+    .md-sums-grid{ grid-template-columns: repeat(7, minmax(160px, 1fr)); }
   }
   @media (max-width: 520px){
-    .md-sums-grid{ grid-template-columns: 1fr; }
+    .md-sums-grid{ grid-template-columns: repeat(7, minmax(150px, 1fr)); }
   }
 
   /* WRAP com altura fixa (~50 linhas) */
@@ -545,28 +549,29 @@
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
-      <!-- (1) REPASSE: card existe e entra no TOTAL FINAL -->
-      <div class="md-sum-card">
-        <div class="md-sum-top"><div class="md-sum-label">Repasse</div></div>
-        <div class="md-sum-value" id="mdSumRepasse">R$ 0,00</div>
-        <div class="md-sum-sub">Somatório dos visíveis</div>
-      </div>
-
       <div class="md-sum-card">
         <div class="md-sum-top"><div class="md-sum-label">Sucumbência</div></div>
         <div class="md-sum-value" id="mdSumSucumbencia">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
+      <!-- (1) TOTAL FINAL agora NÃO soma repasse -->
       <div class="md-sum-card total">
         <div class="md-sum-top"><div class="md-sum-label">Total final</div></div>
         <div class="md-sum-value" id="mdSumTotalFinal">R$ 0,00</div>
-        <div class="md-sum-sub">Soma dos 5 campos</div>
+        <div class="md-sum-sub">Soma dos 4 campos</div>
       </div>
 
+      <!-- (1) DEPÓSITO e REPASSE lado a lado -->
       <div class="md-sum-card">
         <div class="md-sum-top"><div class="md-sum-label">Depósito</div></div>
         <div class="md-sum-value" id="mdSumDeposito">R$ 0,00</div>
+        <div class="md-sum-sub">Somatório dos visíveis</div>
+      </div>
+
+      <div class="md-sum-card">
+        <div class="md-sum-top"><div class="md-sum-label">Repasse</div></div>
+        <div class="md-sum-value" id="mdSumRepasse">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
     </div>
@@ -598,6 +603,10 @@
           <th>CORREÇÃO</th>
           <th>HONORÁRIOS</th>
           <th>AUDIENCISTA</th>
+
+          <!-- (3) CONFERÊNCIA calculada no front: Correção + Honorários + Audiencista + Sucumbência -->
+          <th>CONFERÊNCIA</th>
+
           <th>REPASSE</th>
 
           <th>CHAVE PIX</th>
@@ -635,6 +644,10 @@
           <td class="md-number"><div class="clamp-2 md-money">{{ r.correcao or "-" }}</div></td>
           <td class="md-number"><div class="clamp-2 md-money">{{ r.honorarios or "-" }}</div></td>
           <td class="md-number"><div class="clamp-2 md-money">{{ r.audiencista or "-" }}</div></td>
+
+          <!-- (3) conferência calculada via JS -->
+          <td class="md-number"><div class="clamp-2 md-money">-</div></td>
+
           <td class="md-number"><div class="clamp-2 md-money">{{ r.repasse or "-" }}</div></td>
 
           <td><div class="clamp-2">{{ r.chave_pix or "-" }}</div></td>
@@ -652,7 +665,7 @@
         {% endfor %}
 
         {% if rows|length == 0 %}
-        <tr><td colspan="25" style="padding:18px; color:#6b7280;">Nenhum registro encontrado.</td></tr>
+        <tr><td colspan="26" style="padding:18px; color:#6b7280;">Nenhum registro encontrado.</td></tr>
         {% endif %}
       </tbody>
     </table>
@@ -940,14 +953,38 @@ async function deleteMandado(id){
 </script>
 
 <script>
-/* ===================== FORMATA NÚMEROS DA TABELA (APENAS EXIBIÇÃO) ===================== */
+/* ===================== FORMATA NÚMEROS DA TABELA (APENAS EXIBIÇÃO) + (3) CONFERÊNCIA CALCULADA ===================== */
 (function(){
-  const numericCols = [6,7,14,15,16,17,18,20];
+  /* colunas numéricas (índices) */
+  const numericCols = [6,7,14,15,16,17,18,19,21];
+
+  const COL_CORRECAO     = 15;
+  const COL_HONORARIOS   = 16;
+  const COL_AUDIENCISTA  = 17;
+  const COL_CONFERENCIA  = 18; /* (3) calculada */
+  const COL_REPASSE      = 19;
+  const COL_SUCUMBENCIA  = 21;
 
   const tbody = document.getElementById("mdTbody");
   if(!tbody) return;
 
+  function setCellText(tr, idx, text){
+    const td = tr.cells[idx];
+    if(!td) return;
+    const div = td.querySelector("div");
+    if(!div) return;
+    div.textContent = text;
+  }
+  function getCellText(tr, idx){
+    const td = tr.cells[idx];
+    if(!td) return '-';
+    const div = td.querySelector("div");
+    const raw = (div ? div.textContent : td.textContent || '').trim();
+    return raw === '' ? '-' : raw;
+  }
+
   tbody.querySelectorAll("tr").forEach(tr=>{
+    /* formata as colunas numéricas existentes (inclui repasse) */
     numericCols.forEach(idx=>{
       const td = tr.cells[idx];
       if(!td) return;
@@ -956,6 +993,27 @@ async function deleteMandado(id){
       const raw = div.textContent.trim();
       div.textContent = raw === '-' ? '-' : (formatBR_MD(raw) || raw);
     });
+
+    /* (3) CONFERÊNCIA = Correção + Honorários + Audiencista + Sucumbência */
+    const cor = MD.parseSmartNumber(getCellText(tr, COL_CORRECAO));
+    const hon = MD.parseSmartNumber(getCellText(tr, COL_HONORARIOS));
+    const aud = MD.parseSmartNumber(getCellText(tr, COL_AUDIENCISTA));
+    const suc = MD.parseSmartNumber(getCellText(tr, COL_SUCUMBENCIA));
+
+    const hasAny =
+      Number.isFinite(cor) || Number.isFinite(hon) || Number.isFinite(aud) || Number.isFinite(suc);
+
+    if(!hasAny){
+      setCellText(tr, COL_CONFERENCIA, "-");
+    }else{
+      const sum =
+        (Number.isFinite(cor) ? cor : 0) +
+        (Number.isFinite(hon) ? hon : 0) +
+        (Number.isFinite(aud) ? aud : 0) +
+        (Number.isFinite(suc) ? suc : 0);
+
+      setCellText(tr, COL_CONFERENCIA, formatBR_MD(sum) || "-");
+    }
   });
 })();
 </script>
@@ -1194,8 +1252,8 @@ async function deleteMandado(id){
   const COL_CORRECAO    = 15;
   const COL_HONORARIOS  = 16;
   const COL_AUDIENCISTA = 17;
-  const COL_REPASSE     = 18;
-  const COL_SUCUMBENCIA = 20;
+  const COL_REPASSE     = 19; /* repasse real */
+  const COL_SUCUMBENCIA = 21;
 
   function updateSums(){
     const vis = getVisibleRows();
@@ -1211,8 +1269,8 @@ async function deleteMandado(id){
       sSuc += (MD.parseSmartNumber(textOfCell(r, COL_SUCUMBENCIA)) || 0);
     });
 
-    /* (1) total final inclui repasse */
-    const total = sCor + sHon + sAud + sRep + sSuc;
+    /* (1) total final NÃO inclui repasse */
+    const total = sCor + sHon + sAud + sSuc;
 
     if(sumEls.correcao)    sumEls.correcao.textContent    = formatBRL_MD(sCor);
     if(sumEls.honorarios)  sumEls.honorarios.textContent  = formatBRL_MD(sHon);
