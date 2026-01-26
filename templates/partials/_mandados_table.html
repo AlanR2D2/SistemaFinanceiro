@@ -994,14 +994,19 @@ async function deleteMandado(id){
       div.textContent = raw === '-' ? '-' : (formatBR_MD(raw) || raw);
     });
 
-    /* (3) CONFERÊNCIA = Correção + Honorários + Audiencista + Sucumbência */
+    /* Conferência = Correção + Honorários + Audiencista + Sucumbência + Repasse */
     const cor = MD.parseSmartNumber(getCellText(tr, COL_CORRECAO));
     const hon = MD.parseSmartNumber(getCellText(tr, COL_HONORARIOS));
     const aud = MD.parseSmartNumber(getCellText(tr, COL_AUDIENCISTA));
     const suc = MD.parseSmartNumber(getCellText(tr, COL_SUCUMBENCIA));
+    const rep = MD.parseSmartNumber(getCellText(tr, COL_REPASSE));
 
     const hasAny =
-      Number.isFinite(cor) || Number.isFinite(hon) || Number.isFinite(aud) || Number.isFinite(suc);
+      Number.isFinite(cor) ||
+      Number.isFinite(hon) ||
+      Number.isFinite(aud) ||
+      Number.isFinite(suc) ||
+      Number.isFinite(rep);
 
     if(!hasAny){
       setCellText(tr, COL_CONFERENCIA, "-");
@@ -1010,10 +1015,12 @@ async function deleteMandado(id){
         (Number.isFinite(cor) ? cor : 0) +
         (Number.isFinite(hon) ? hon : 0) +
         (Number.isFinite(aud) ? aud : 0) +
-        (Number.isFinite(suc) ? suc : 0);
+        (Number.isFinite(suc) ? suc : 0) +
+        (Number.isFinite(rep) ? rep : 0);
 
       setCellText(tr, COL_CONFERENCIA, formatBR_MD(sum) || "-");
     }
+
   });
 })();
 </script>
