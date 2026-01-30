@@ -1821,6 +1821,11 @@ async function deleteMandado(id){
     };
   }
 
+  /* ===================== MELHORIA PEDIDA =====================
+     - NÃO recalcula/preenche automaticamente enquanto o input auto estiver focado/selecionado.
+     - Só volta a preencher automático quando o usuário LIMPA e SAI (blur).
+     - Mantém todas as demais regras/funcionalidades.
+  ============================================================ */
   function recalcAutoFields(policy="fillEmpty", forceIds=[]){
     const mode = document.getElementById("mdFormMode")?.value || "edit";
     const vals = computeAutoValues();
@@ -1829,6 +1834,7 @@ async function deleteMandado(id){
     setTipoReuFirstUI();
 
     const toForce = new Set(forceIds || []);
+
     AUTO.forEach(({inputId, fieldId})=>{
       const input = document.getElementById(inputId);
       if(!input) return;
@@ -1836,10 +1842,19 @@ async function deleteMandado(id){
       const computed = (map[inputId] || "").toString();
       const hasComputed = computed.trim() !== "";
 
+      const isFocused = (document.activeElement === input);
+
       if(policy === "forceAll"){
         input.value = computed;
         dirty.delete(inputId);
         setFieldAuto(fieldId, hasComputed);
+        return;
+      }
+
+      /* ✅ Se o campo auto estiver focado, NÃO preencher/alterar agora.
+         (usuário está digitando/planejando digitar manualmente) */
+      if(isFocused){
+        setFieldAuto(fieldId, false);
         return;
       }
 
@@ -1929,6 +1944,7 @@ async function deleteMandado(id){
         }
       });
 
+      /* ✅ Só recalcula automático se estiver vazio E o usuário SAIU do campo (blur). */
       el.addEventListener("blur", ()=>{
         const val = (el.value || "").toString().trim();
         if(val === ""){

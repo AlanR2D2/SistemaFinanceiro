@@ -1574,6 +1574,7 @@ async function deleteAcordo(id){
 
 <script>
 /* ===================== AUTO-CÁLCULO HONORÁRIOS/REPASSE (TIPO RÉU) + INDICATIVO VISUAL ===================== */
+/* ✅ MELHORIA: se usuário apagar tudo, só recalcula no BLUR (clicar fora), não enquanto estiver com foco */
 (function(){
   const elValor = document.getElementById("acValorAcordo");
   const elTipoReu = document.getElementById("acTipoReu");
@@ -1592,6 +1593,10 @@ async function deleteAcordo(id){
 
   let honorariosManual = false;
   let repasseManual = false;
+
+  // ✅ NOVO: quando o usuário zera o campo, aguarda BLUR para recalcular
+  let pendingAutoHon = false;
+  let pendingAutoRep = false;
 
   function parseForCalc(raw){
     const n = acParseAnyNumber(raw);
@@ -1631,6 +1636,10 @@ async function deleteAcordo(id){
     }
   }
 
+  function isEditing(inputEl){
+    return document.activeElement === inputEl;
+  }
+
   function applySuggestion(){
     updateTipoReuSignal();
 
@@ -1641,8 +1650,9 @@ async function deleteAcordo(id){
 
     const base = parseForCalc(elValor.value);
     if(base === null){
-      if(!honorariosManual){ elHon.value = ""; setAutoVisual(fieldHon, false); }
-      if(!repasseManual){ elRep.value = ""; setAutoVisual(fieldRep, false); }
+      // não briga com usuário se ele estiver editando
+      if(!honorariosManual && !isEditing(elHon)){ elHon.value = ""; setAutoVisual(fieldHon, false); }
+      if(!repasseManual && !isEditing(elRep)){ elRep.value = ""; setAutoVisual(fieldRep, false); }
       return;
     }
 
@@ -1650,39 +1660,78 @@ async function deleteAcordo(id){
     const h = base * p.hon;
     const r = base * p.rep;
 
-    if(!honorariosManual){
+    // ✅ REGRA: se estiver com foco OU estiver "pendente", não recalcula
+    if(!honorariosManual && !isEditing(elHon) && !pendingAutoHon){
       elHon.value = fmtBR(h);
       setAutoVisual(fieldHon, true);
     }
-    if(!repasseManual){
+    if(!repasseManual && !isEditing(elRep) && !pendingAutoRep){
       elRep.value = fmtBR(r);
       setAutoVisual(fieldRep, true);
     }
   }
 
-  function bindManualBehavior(inputEl, setManualFn, fieldEl){
+  function bindManualBehavior(inputEl, which){
+    // enquanto digita, não recalcula quando apagar: espera blur
     inputEl.addEventListener("input", ()=>{
       const v = (inputEl.value || "").trim();
+
+      // usuário apagou tudo: marca pendência, mas não recalcula agora
       if(v === ""){
-        setManualFn(false);
-        applySuggestion();
+        if(which === "hon"){
+          honorariosManual = false;
+          pendingAutoHon = true;
+          setAutoVisual(fieldHon, false);
+        } else {
+          repasseManual = false;
+          pendingAutoRep = true;
+          setAutoVisual(fieldRep, false);
+        }
         return;
       }
-      setManualFn(true);
-      setAutoVisual(fieldEl, false);
+
+      // usuário digitou algo: vira manual e cancela pendência
+      if(which === "hon"){
+        honorariosManual = true;
+        pendingAutoHon = false;
+        setAutoVisual(fieldHon, false);
+      } else {
+        repasseManual = true;
+        pendingAutoRep = false;
+        setAutoVisual(fieldRep, false);
+      }
+    });
+
+    // ✅ só aqui (clicar fora) é que pode recalcular se ainda estiver vazio
+    inputEl.addEventListener("blur", ()=>{
+      const v = (inputEl.value || "").trim();
+
+      if(which === "hon"){
+        if(pendingAutoHon && v === ""){
+          pendingAutoHon = false;
+          applySuggestion();
+        }
+      } else {
+        if(pendingAutoRep && v === ""){
+          pendingAutoRep = false;
+          applySuggestion();
+        }
+      }
     });
   }
 
   elValor.addEventListener("input", ()=> applySuggestion());
   elTipoReu.addEventListener("change", ()=> applySuggestion());
 
-  bindManualBehavior(elHon, (x)=> honorariosManual = x, fieldHon);
-  bindManualBehavior(elRep, (x)=> repasseManual = x, fieldRep);
+  bindManualBehavior(elHon, "hon");
+  bindManualBehavior(elRep, "rep");
 
   window.AC_AUTOCALC = {
     resetForCreate(){
       honorariosManual = false;
       repasseManual = false;
+      pendingAutoHon = false;
+      pendingAutoRep = false;
       updateTipoReuSignal();
       setAutoVisual(fieldHon, false);
       setAutoVisual(fieldRep, false);
@@ -1691,6 +1740,8 @@ async function deleteAcordo(id){
     initForEdit(existingHonorarios, existingRepasse){
       honorariosManual = !!(String(existingHonorarios ?? "").trim());
       repasseManual = !!(String(existingRepasse ?? "").trim());
+      pendingAutoHon = false;
+      pendingAutoRep = false;
       updateTipoReuSignal();
       setAutoVisual(fieldHon, !honorariosManual);
       setAutoVisual(fieldRep, !repasseManual);
@@ -1705,18 +1756,6 @@ async function deleteAcordo(id){
 
 <script>
 /* ===================== (2) REGRA "CORREÇÃO" DEPENDE DE "VALOR DE DEPÓSITO" (somente se existir no DOM) ===================== */
-/*
-  Premissa aplicada sem remover nada:
-  - Se existirem inputs no modal com IDs:
-      Valor Depósito:  acValorDeposito  (ou acValorDepositoInput)
-      Correção:        acCorrecao       (ou acCorrecaoInput)
-    então:
-    1) Correção fica DESABILITADA enquanto depósito estiver vazio/0
-    2) Se depósito virar vazio/0 em algum momento na edição:
-         - limpa Correção
-         - trava qualquer auto-preenchimento futuro (não "recalcula automaticamente novamente")
-    3) Não impõe fórmula (pra não inventar regra); só controla habilitação + trava.
-*/
 (function(){
   const getEl = (...ids) => {
     for(const id of ids){
@@ -1754,7 +1793,6 @@ async function deleteAcordo(id){
     const dep = depNumber();
     const ok = (dep !== null && dep > 0);
 
-    // se depósito invalidou (vazio/0), trava auto para o resto da sessão
     if(!ok){
       lockedNoAuto = true;
       setCorrEnabled(false);
@@ -1762,15 +1800,12 @@ async function deleteAcordo(id){
       return;
     }
 
-    // depósito ok: habilita, mas respeita trava (não tenta autocalcular)
     setCorrEnabled(true);
     if(lockedNoAuto){
-      // mantém como está (vazio até usuário preencher)
       return;
     }
   }
 
-  // Se usuário digitar correção, consideramos manual e nunca auto (mesma ideia de trava)
   corrEl.addEventListener("input", ()=>{
     const v = (corrEl.value || "").trim();
     if(v !== "") lockedNoAuto = true;
@@ -1779,14 +1814,13 @@ async function deleteAcordo(id){
   depositEl.addEventListener("input", refresh);
   depositEl.addEventListener("change", refresh);
 
-  // Integra com abertura do modal (create/edit) sem mexer no seu fluxo
   const _openCreate = window.openCreateModal;
   const _openEdit = window.openEditModalFromRow;
 
   if(typeof _openCreate === "function"){
     window.openCreateModal = async function(...args){
       const r = await _openCreate.apply(this, args);
-      lockedNoAuto = false; // novo: pode auto até invalidar
+      lockedNoAuto = false;
       refresh();
       return r;
     };
@@ -1795,7 +1829,7 @@ async function deleteAcordo(id){
   if(typeof _openEdit === "function"){
     window.openEditModalFromRow = async function(...args){
       const r = await _openEdit.apply(this, args);
-      lockedNoAuto = false; // edição: pode auto até invalidar
+      lockedNoAuto = false;
       refresh();
       return r;
     };
@@ -1967,7 +2001,6 @@ async function deleteAcordo(id){
 
     setSelectValue(sel.local, row?.local ?? "");
 
-    // (13) garantir que consegue limpar Tipo: se vier null/undefined => "", se vier string => seta string
     const tipoVal = (row?.tipo === null || row?.tipo === undefined) ? "" : String(row?.tipo);
     document.getElementById("acTipo").value = tipoVal;
 
@@ -2012,7 +2045,6 @@ async function deleteAcordo(id){
 
       local: (sel.local?.value || "").trim(),
 
-      // (13) sempre enviar "tipo" (inclusive vazio) pra limpar valor antigo no banco
       tipo: document.getElementById("acTipo").value.trim(),
 
       honorarios: toDotDecimal(document.getElementById("acHonorarios").value),
