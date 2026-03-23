@@ -248,8 +248,8 @@ def parse_numeric(v):
         return None
 
 
-NUMERIC_FIELDS_ACORDOS = {"valor_acordo", "honorarios", "repasse", "sucumbencia"}
-NUMERIC_FIELDS_MANDADOS = {"deposito", "correcao", "honorarios", "repasse", "sucumbencia"}
+NUMERIC_FIELDS_ACORDOS = {"valor_acordo", "deposito", "correcao", "honorarios", "repasse", "sucumbencia", "porcentagem_honorarios"}
+NUMERIC_FIELDS_MANDADOS = {"deposito", "correcao", "honorarios", "repasse", "sucumbencia", "porcentagem_honorarios"}
 
 
 def clean_payload(payload: dict, numeric_fields: set[str]):
@@ -593,6 +593,9 @@ def acordos_create():
         # ✅ NOVO: tipo_reu
         "tipo_reu": data.get("tipo_reu"),
 
+        "porcentagem_honorarios": data.get("porcentagem_honorarios"),
+        "deposito": data.get("deposito"),
+        "correcao": data.get("correcao"),
         "honorarios": data.get("honorarios"),
         "audiencista": data.get("audiencista"),
         "repasse": data.get("repasse"),
@@ -636,6 +639,9 @@ def acordos_update(acordo_id: int):
         # ✅ NOVO: tipo_reu
         "tipo_reu": data.get("tipo_reu"),
 
+        "porcentagem_honorarios": data.get("porcentagem_honorarios"),
+        "deposito": data.get("deposito"),
+        "correcao": data.get("correcao"),
         "honorarios": data.get("honorarios"),
         "audiencista": data.get("audiencista"),
         "repasse": data.get("repasse"),
@@ -721,6 +727,7 @@ def mandados_create():
         # ✅ NOVO: tipo_reu
         "tipo_reu": data.get("tipo_reu"),
 
+        "porcentagem_honorarios": data.get("porcentagem_honorarios"),
         "deposito": data.get("deposito"),
         "correcao": data.get("correcao"),
         "honorarios": data.get("honorarios"),
@@ -768,6 +775,7 @@ def mandados_update(mandado_id: int):
         # ✅ NOVO: tipo_reu
         "tipo_reu": data.get("tipo_reu"),
 
+        "porcentagem_honorarios": data.get("porcentagem_honorarios"),
         "deposito": data.get("deposito"),
         "correcao": data.get("correcao"),
         "honorarios": data.get("honorarios"),

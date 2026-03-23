@@ -1,525 +1,734 @@
 {# templates/partials/_acordos_table.html #}
 
 <style>
-  .ac-card{
-    background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius:14px;
-    overflow:hidden;
+  .ac-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
   }
-  .ac-card-h{
-    padding:14px 16px;
-    border-bottom:1px solid #e5e7eb;
-    display:flex;
-    align-items:flex-start;
-    justify-content:space-between;
-    gap:12px;
-    flex-wrap:wrap;
+
+  .ac-card-h {
+    padding: 14px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
   }
-  .ac-card-title{
-    font-weight:800;
-    color:#111827;
-    display:flex;
-    align-items:center;
-    gap:10px;
-    flex-wrap:wrap;
+
+  .ac-card-title {
+    font-weight: 800;
+    color: #111827;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
   }
-  .ac-pill{
-    display:none;
-    font-size:12px;
-    padding:2px 10px;
-    border-radius:999px;
-    background:#111827;
-    color:#fff;
-    font-weight:700;
+
+  .ac-pill {
+    display: none;
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: #111827;
+    color: #fff;
+    font-weight: 700;
   }
-  .ac-actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  .ac-btn{
-    padding:8px 12px;
-    border-radius:10px;
-    border:1px solid #e5e7eb;
-    background:#fff;
-    font-weight:700;
-    font-size:13px;
-    cursor:pointer;
-    white-space:nowrap;
+
+  .ac-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
   }
-  .ac-btn:hover{ background:#f9fafb; }
-  .ac-btn-primary{
-    background:#4f46e5;
-    border-color:#4f46e5;
-    color:#fff;
+
+  .ac-btn {
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
   }
-  .ac-btn-primary:hover{ background:#4338ca; }
+
+  .ac-btn:hover {
+    background: #f9fafb;
+  }
+
+  .ac-btn-primary {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    color: #fff;
+  }
+
+  .ac-btn-primary:hover {
+    background: #4338ca;
+  }
 
   /* ====== Barra de totais (responde aos filtros) ====== */
-  .ac-totals{
-    width:100%;
-    display:grid;
+  .ac-totals {
+    width: 100%;
+    display: grid;
     grid-template-columns: repeat(4, minmax(160px, 1fr));
-    gap:10px;
-    padding:12px 16px;
-    border-bottom:1px solid #e5e7eb;
-    background:#fafafa;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fafafa;
   }
-  .ac-total-box{
-    background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius:12px;
-    padding:10px 12px;
+
+  .ac-total-box {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 10px 12px;
     min-width: 160px;
   }
-  .ac-total-label{
-    font-size:11px;
-    font-weight:950;
-    letter-spacing:.08em;
-    color:#6b7280;
-    text-transform:uppercase;
-  }
-  .ac-total-value{
-    margin-top:6px;
-    font-size:16px;
-    font-weight:950;
-    color:#111827;
-    white-space:nowrap;
-  }
-  .ac-total-sub{
-    margin-top:4px;
-    font-size:12px;
-    color:#6b7280;
-  }
-  .ac-total-box.total{
-    border-color:#c7d2fe;
-    background:#eef2ff;
-  }
-  .ac-total-box.total .ac-total-label{ color:#4338ca; }
-  .ac-total-box.total .ac-total-value{ color:#111827; }
 
-  @media (max-width: 1200px){
-    .ac-totals{ grid-template-columns: repeat(3, minmax(160px, 1fr)); }
+  .ac-total-label {
+    font-size: 11px;
+    font-weight: 950;
+    letter-spacing: .08em;
+    color: #6b7280;
+    text-transform: uppercase;
   }
-  @media (max-width: 740px){
-    .ac-totals{ grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+
+  .ac-total-value {
+    margin-top: 6px;
+    font-size: 16px;
+    font-weight: 950;
+    color: #111827;
+    white-space: nowrap;
   }
-  @media (max-width: 480px){
-    .ac-totals{ grid-template-columns: 1fr; }
+
+  .ac-total-sub {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .ac-total-box.total {
+    border-color: #c7d2fe;
+    background: #eef2ff;
+  }
+
+  .ac-total-box.total .ac-total-label {
+    color: #4338ca;
+  }
+
+  .ac-total-box.total .ac-total-value {
+    color: #111827;
+  }
+
+  @media (max-width: 1200px) {
+    .ac-totals {
+      grid-template-columns: repeat(3, minmax(160px, 1fr));
+    }
+  }
+
+  @media (max-width: 740px) {
+    .ac-totals {
+      grid-template-columns: repeat(2, minmax(160px, 1fr));
+    }
+  }
+
+  @media (max-width: 480px) {
+    .ac-totals {
+      grid-template-columns: 1fr;
+    }
   }
 
   /* WRAP com altura fixa (~50 linhas) */
-  .ac-table-wrap{
-    overflow:auto;
+  .ac-table-wrap {
+    overflow: auto;
     min-height: 1100px;
     max-height: 1100px;
-    position:relative;
+    position: relative;
   }
 
-  table.ac-table{ width:100%; border-collapse:separate; border-spacing:0; }
-  table.ac-table thead th{
-    position:sticky;
-    top:0;
-    z-index:3;
-    background:#f9fafb;
-    border-bottom:1px solid #e5e7eb;
-    font-size:12px;
-    font-weight:800;
-    text-transform:uppercase;
-    color:#374151;
-    padding:10px 14px;
-    white-space:nowrap;
-    text-align:center; /* (5) todos cabeçalhos centralizados */
+  table.ac-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
   }
-  table.ac-table tbody td{
-    padding:10px 14px;
-    border-bottom:1px solid #f1f5f9;
-    font-size:13px;
-    vertical-align:top;
-    color:#111827;
+
+  table.ac-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #374151;
+    padding: 10px 14px;
+    white-space: nowrap;
+    text-align: center;
+    /* (5) todos cabeçalhos centralizados */
+  }
+
+  table.ac-table tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 13px;
+    vertical-align: top;
+    color: #111827;
   }
 
   /* (6) todas colunas numéricas centralizadas */
-  .ac-number{ text-align:center; }
+  .ac-number {
+    text-align: center;
+  }
 
-  table.ac-table tbody tr:not(.ac-colored):hover{ background:#fafafa; cursor:default; }
-  table.ac-table tbody tr.ac-colored:hover{ filter: brightness(0.98); }
+  table.ac-table tbody tr:not(.ac-colored):hover {
+    background: #fafafa;
+    cursor: default;
+  }
 
-  .ac-th-inner{
-    display:inline-flex;
-    align-items:center;
-    gap:8px;
-    white-space:nowrap;
+  table.ac-table tbody tr.ac-colored:hover {
+    filter: brightness(0.98);
   }
-  .ac-th-tools{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    flex:0 0 auto;
+
+  .ac-th-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
   }
-  .ac-dot{
-    width:8px; height:8px;
-    border-radius:999px;
-    background:#111827;
-    display:none;
-    flex:0 0 auto;
+
+  .ac-th-tools {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
   }
-  th.ac-filtered .ac-dot{ display:inline-block; }
-  .ac-th-btn{
-    font-size:12px;
-    line-height:1;
-    padding:2px 6px;
-    border-radius:8px;
-    cursor:pointer;
-    user-select:none;
+
+  .ac-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #111827;
+    display: none;
+    flex: 0 0 auto;
   }
-  .ac-th-btn:hover{ background:#e5e7eb; }
+
+  th.ac-filtered .ac-dot {
+    display: inline-block;
+  }
+
+  .ac-th-btn {
+    font-size: 12px;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .ac-th-btn:hover {
+    background: #e5e7eb;
+  }
 
   /* ===== Filter panel ===== */
-  .ac-panel{
-    position:fixed;
-    background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius:12px;
-    width:380px;
-    box-shadow:0 18px 60px rgba(0,0,0,.18);
-    z-index:2147483647;
-    display:none;
-    padding:10px;
+  .ac-panel {
+    position: fixed;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    width: 380px;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, .18);
+    z-index: 2147483647;
+    display: none;
+    padding: 10px;
   }
-  .ac-panel *{ box-sizing:border-box; }
-  .ac-panel-top{ display:flex; gap:10px; align-items:center; }
-  .ac-panel input[type="search"]{
-    width:100%;
-    padding:8px 10px;
-    border:1px solid #e5e7eb;
-    border-radius:10px;
-    outline:none;
-    font-size:13px;
-  }
-  .ac-mode{
-    display:none;
-    padding:4px;
-    border:1px solid #e5e7eb;
-    border-radius:999px;
-    background:#fff;
-    flex:0 0 auto;
-  }
-  .ac-mode button{
-    padding:7px 12px;
-    border-radius:999px;
-    border:1px solid transparent;
-    font-weight:900;
-    font-size:12px;
-    color:#6b7280;
-    background:transparent;
-    cursor:pointer;
-    white-space:nowrap;
-    line-height:1;
-  }
-  .ac-mode button.active{ background:#111827; color:#fff; }
-  .ac-panel-list{
-    margin-top:10px;
-    border:1px solid #e5e7eb;
-    border-radius:10px;
-    padding:8px;
-    overflow:auto;
-    min-height:520px;
-    max-height:520px;
-  }
-  .ac-panel-item{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    padding:6px 6px;
-    border-radius:8px;
-    font-size:13px;
-    cursor:pointer;
-    user-select:none;
-  }
-  .ac-panel-item:hover{ background:#f9fafb; }
-  .ac-panel-item input{ cursor:pointer; }
-  .ac-panel-actions{
-    margin-top:10px;
-    display:grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap:8px;
-  }
-  .ac-panel-actions button{
-    padding:7px 8px;
-    border-radius:10px;
-    border:1px solid #e5e7eb;
-    background:#fff;
-    font-weight:900;
-    font-size:12px;
-    cursor:pointer;
-  }
-  .ac-panel-actions button:hover{ background:#f9fafb; }
-  .ac-panel-actions .primary{
-    background:#4f46e5;
-    border-color:#4f46e5;
-    color:#fff;
-  }
-  .ac-panel-actions .primary:hover{ background:#4338ca; }
-  .ac-panel-actions .sort{
-    border-color:#c7d2fe;
-    color:#4338ca;
-  }
-  .ac-panel-actions .sort:hover{ background:#eef2ff; }
 
-  .clamp-2{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .ac-panel * {
+    box-sizing: border-box;
+  }
+
+  .ac-panel-top {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .ac-panel input[type="search"] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    outline: none;
+    font-size: 13px;
+  }
+
+  .ac-mode {
+    display: none;
+    padding: 4px;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    background: #fff;
+    flex: 0 0 auto;
+  }
+
+  .ac-mode button {
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-weight: 900;
+    font-size: 12px;
+    color: #6b7280;
+    background: transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    line-height: 1;
+  }
+
+  .ac-mode button.active {
+    background: #111827;
+    color: #fff;
+  }
+
+  .ac-panel-list {
+    margin-top: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 8px;
+    overflow: auto;
+    min-height: 520px;
+    max-height: 520px;
+  }
+
+  .ac-panel-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 6px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .ac-panel-item:hover {
+    background: #f9fafb;
+  }
+
+  .ac-panel-item input {
+    cursor: pointer;
+  }
+
+  .ac-panel-actions {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+
+  .ac-panel-actions button {
+    padding: 7px 8px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    font-weight: 900;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .ac-panel-actions button:hover {
+    background: #f9fafb;
+  }
+
+  .ac-panel-actions .primary {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    color: #fff;
+  }
+
+  .ac-panel-actions .primary:hover {
+    background: #4338ca;
+  }
+
+  .ac-panel-actions .sort {
+    border-color: #c7d2fe;
+    color: #4338ca;
+  }
+
+  .ac-panel-actions .sort:hover {
+    background: #eef2ff;
+  }
+
+  .clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
 
   /* ===================== MODAL (SCROLL OK) ===================== */
-  .ac-modal-overlay{
-    position:fixed; inset:0;
-    background: rgba(17,24,39,.55);
-    display:none;
-    align-items:center;
-    justify-content:center;
+  .ac-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, .55);
+    display: none;
+    align-items: center;
+    justify-content: center;
     z-index: 2147483646;
     padding: 16px;
   }
-  .ac-modal{
-    width:min(1100px, 100%);
-    max-height: calc(100vh - 32px);
-    background:#fff;
-    border-radius:18px;
-    border:1px solid #e5e7eb;
-    box-shadow:0 30px 90px rgba(0,0,0,.35);
-    overflow:hidden;
-    display:flex;
-    flex-direction:column;
-  }
-  .ac-modal-h{
-    flex: 0 0 auto;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-    padding:14px 16px;
-    border-bottom:1px solid #e5e7eb;
-    background:#f9fafb;
-  }
-  .ac-modal-h .left{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    min-width:0;
-  }
-  .ac-modal-badge{
-    font-size:12px;
-    font-weight:900;
-    color:#4338ca;
-    background:#eef2ff;
-    border:1px solid #c7d2fe;
-    padding:4px 10px;
-    border-radius:999px;
-    white-space:nowrap;
-  }
-  .ac-modal-title{
-    font-weight:950;
-    color:#111827;
-    font-size:15px;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-  }
-  .ac-modal-sub{
-    font-size:12px;
-    color:#6b7280;
-    margin-top:2px;
-  }
-  .ac-modal-close{
-    width:40px;height:40px;
-    border-radius:12px;
-    border:1px solid #e5e7eb;
-    background:#fff;
-    cursor:pointer;
-    font-weight:900;
-  }
-  .ac-modal-close:hover{ background:#f3f4f6; }
-  .ac-modal-b{
-    flex: 1 1 auto;
-    overflow:auto;
-    -webkit-overflow-scrolling: touch;
-    padding:16px;
-    background:#fff;
-  }
-  .ac-grid{
-    display:grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap:12px;
-  }
-  .ac-field{ grid-column: span 6; }
-  .ac-field.col-12{ grid-column: span 12; }
-  .ac-field.col-4{ grid-column: span 4; }
-  .ac-field.col-3{ grid-column: span 3; }
-  .ac-field.col-8{ grid-column: span 8; }
-  .ac-field label{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    font-size:11px;
-    font-weight:950;
-    color:#374151;
-    margin-bottom:6px;
-    text-transform:uppercase;
-    letter-spacing:.08em;
-  }
-  .ac-input, .ac-select, .ac-textarea{
-    width:100%;
-    padding:10px 12px;
-    border-radius:12px;
-    border:1px solid #e5e7eb;
-    outline:none;
-    font-size:14px;
-    background:#fff;
-  }
-  .ac-input:focus, .ac-select:focus, .ac-textarea:focus{
-    border-color:#c7d2fe;
-    box-shadow:0 0 0 4px rgba(79,70,229,.12);
-  }
-  .ac-textarea{ min-height: 110px; resize: vertical; }
-  .ac-modal-f{
-    flex: 0 0 auto;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:10px;
-    padding:14px 16px;
-    border-top:1px solid #e5e7eb;
-    background:#fff;
-  }
-  .ac-error{
-    display:none;
-    color:#b91c1c;
-    font-weight:800;
-    font-size:13px;
-  }
-  .ac-f-actions{ display:flex; gap:10px; align-items:center; }
-  .ac-mbtn{
-    padding:10px 14px;
-    border-radius:12px;
-    border:1px solid #e5e7eb;
-    background:#fff;
-    font-weight:900;
-    cursor:pointer;
-  }
-  .ac-mbtn:hover{ background:#f9fafb; }
-  .ac-mbtn.primary{
-    background:#4f46e5;
-    border-color:#4f46e5;
-    color:#fff;
-  }
-  .ac-mbtn.primary:hover{ background:#4338ca; }
-  body.ac-modal-open{ overflow:hidden; }
 
-  @media (max-width: 900px){
-    .ac-field, .ac-field.col-4, .ac-field.col-3, .ac-field.col-8{ grid-column: span 12; }
+  .ac-modal {
+    width: min(1100px, 100%);
+    max-height: calc(100vh - 32px);
+    background: #fff;
+    border-radius: 18px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, .35);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ac-modal-h {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+  }
+
+  .ac-modal-h .left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .ac-modal-badge {
+    font-size: 12px;
+    font-weight: 900;
+    color: #4338ca;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    padding: 4px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .ac-modal-title {
+    font-weight: 950;
+    color: #111827;
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ac-modal-sub {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+
+  .ac-modal-close {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    cursor: pointer;
+    font-weight: 900;
+  }
+
+  .ac-modal-close:hover {
+    background: #f3f4f6;
+  }
+
+  .ac-modal-b {
+    flex: 1 1 auto;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px;
+    background: #fff;
+  }
+
+  .ac-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 12px;
+  }
+
+  .ac-field {
+    grid-column: span 6;
+  }
+
+  .ac-field.col-12 {
+    grid-column: span 12;
+  }
+
+  .ac-field.col-4 {
+    grid-column: span 4;
+  }
+
+  .ac-field.col-3 {
+    grid-column: span 3;
+  }
+
+  .ac-field.col-8 {
+    grid-column: span 8;
+  }
+
+  .ac-field label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 950;
+    color: #374151;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+
+  .ac-input,
+  .ac-select,
+  .ac-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    outline: none;
+    font-size: 14px;
+    background: #fff;
+  }
+
+  .ac-input:focus,
+  .ac-select:focus,
+  .ac-textarea:focus {
+    border-color: #c7d2fe;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, .12);
+  }
+
+  .ac-textarea {
+    min-height: 110px;
+    resize: vertical;
+  }
+
+  .ac-modal-f {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-top: 1px solid #e5e7eb;
+    background: #fff;
+  }
+
+  .ac-error {
+    display: none;
+    color: #b91c1c;
+    font-weight: 800;
+    font-size: 13px;
+  }
+
+  .ac-f-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .ac-mbtn {
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .ac-mbtn:hover {
+    background: #f9fafb;
+  }
+
+  .ac-mbtn.primary {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    color: #fff;
+  }
+
+  .ac-mbtn.primary:hover {
+    background: #4338ca;
+  }
+
+  body.ac-modal-open {
+    overflow: hidden;
+  }
+
+  @media (max-width: 900px) {
+
+    .ac-field,
+    .ac-field.col-4,
+    .ac-field.col-3,
+    .ac-field.col-8 {
+      grid-column: span 12;
+    }
   }
 
   /* ===================== SCROLLBAR HORIZONTAL FIXA NO RODAPÉ ===================== */
-  .ac-xscroll-fixed{
-    position:fixed;
-    bottom:0;
-    height:14px;
-    overflow-x:auto;
-    overflow-y:hidden;
-    z-index:2147483645;
-    background: rgba(255,255,255,0.85);
-    border-top:1px solid #e5e7eb;
+  .ac-xscroll-fixed {
+    position: fixed;
+    bottom: 0;
+    height: 14px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    z-index: 2147483645;
+    background: rgba(255, 255, 255, 0.85);
+    border-top: 1px solid #e5e7eb;
     backdrop-filter: blur(6px);
-    display:none;
+    display: none;
   }
-  .ac-xscroll-fixed .ac-xscroll-inner{ height:1px; }
-  body{ padding-bottom: 18px; }
+
+  .ac-xscroll-fixed .ac-xscroll-inner {
+    height: 1px;
+  }
+
+  body {
+    padding-bottom: 18px;
+  }
 
   /* ===================== REGRAS DE COR (CLASSES) ===================== */
   /* (7..12) */
-  .ac-row-cnpj{ background:#ff00ff !important; }
-  .ac-row-arepassar{ background:#ffff00 !important; }
-  .ac-row-repassado{ background:#c27ba0 !important; }
-  .ac-row-iddeposito{ background:#00b050 !important; }
-  .ac-row-aguardando-pix{ background:#0070c0 !important; }
-  .ac-row-aguardando-retorno{ background:#a2c4c9 !important; }
-  .ac-row-aguardando-pix td{ color:#ffffff !important; }
-  .ac-colored .ac-btn{
-    background: rgba(255,255,255,0.88);
-    border-color: rgba(17,24,39,0.15);
+  .ac-row-cnpj {
+    background: #ff00ff !important;
   }
-  .ac-colored .ac-btn:hover{ background: rgba(255,255,255,0.96); }
+
+  .ac-row-arepassar {
+    background: #ffff00 !important;
+  }
+
+  .ac-row-repassado {
+    background: #c27ba0 !important;
+  }
+
+  .ac-row-iddeposito {
+    background: #00b050 !important;
+  }
+
+  .ac-row-aguardando-pix {
+    background: #0070c0 !important;
+  }
+
+  .ac-row-aguardando-retorno {
+    background: #a2c4c9 !important;
+  }
+
+  .ac-row-aguardando-pix td {
+    color: #ffffff !important;
+  }
+
+  .ac-colored .ac-btn {
+    background: rgba(255, 255, 255, 0.88);
+    border-color: rgba(17, 24, 39, 0.15);
+  }
+
+  .ac-colored .ac-btn:hover {
+    background: rgba(255, 255, 255, 0.96);
+  }
 
   /* ===================== AUTO INDICATORS ===================== */
-  .ac-info{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    width:18px;height:18px;
-    border-radius:999px;
-    border:1px solid #c7d2fe;
-    background:#eef2ff;
-    color:#4338ca;
-    font-weight:950;
-    font-size:12px;
-    line-height:1;
-    cursor:help;
-    user-select:none;
+  .ac-info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    border: 1px solid #c7d2fe;
+    background: #eef2ff;
+    color: #4338ca;
+    font-weight: 950;
+    font-size: 12px;
+    line-height: 1;
+    cursor: help;
+    user-select: none;
   }
-  .ac-auto-badge{
-    display:none;
-    margin-left:2px;
-    font-size:10px;
-    font-weight:950;
-    padding:2px 8px;
-    border-radius:999px;
-    border:1px solid #c7d2fe;
-    background:#eef2ff;
-    color:#4338ca;
-    letter-spacing:.05em;
-    white-space:nowrap;
+
+  .ac-auto-badge {
+    display: none;
+    margin-left: 2px;
+    font-size: 10px;
+    font-weight: 950;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid #c7d2fe;
+    background: #eef2ff;
+    color: #4338ca;
+    letter-spacing: .05em;
+    white-space: nowrap;
   }
-  .ac-field.is-auto .ac-auto-badge{ display:inline-flex; }
-  .ac-field.is-auto .ac-input{
-    border-color:#c7d2fe;
-    background:#f8fafc;
+
+  .ac-field.is-auto .ac-auto-badge {
+    display: inline-flex;
+  }
+
+  .ac-field.is-auto .ac-input {
+    border-color: #c7d2fe;
+    background: #f8fafc;
   }
 
   /* ===================== TIPO_RÉU (PRIMEIRO) - SINALIZAÇÃO ===================== */
-  .ac-required-badge{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    padding:2px 8px;
-    border-radius:999px;
-    border:1px solid #fecaca;
-    background:#fff1f2;
-    color:#be123c;
-    font-size:10px;
-    font-weight:950;
-    letter-spacing:.06em;
-    white-space:nowrap;
+  .ac-required-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid #fecaca;
+    background: #fff1f2;
+    color: #be123c;
+    font-size: 10px;
+    font-weight: 950;
+    letter-spacing: .06em;
+    white-space: nowrap;
   }
-  .ac-first-tip{
-    display:none;
-    margin-top:6px;
-    font-size:12px;
-    font-weight:800;
-    color:#be123c;
+
+  .ac-first-tip {
+    display: none;
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #be123c;
   }
-  .ac-field.first-required .ac-select{
-    border-color:#fecaca;
-    background:#fff7f7;
+
+  .ac-field.first-required .ac-select {
+    border-color: #fecaca;
+    background: #fff7f7;
   }
-  .ac-field.first-required .ac-first-tip{
-    display:block;
+
+  .ac-field.first-required .ac-first-tip {
+    display: block;
   }
-  .ac-field.first-required .ac-required-badge{
-    display:inline-flex;
+
+  .ac-field.first-required .ac-required-badge {
+    display: inline-flex;
   }
-  .ac-field.first-ok .ac-select{
-    border-color:#c7d2fe;
-    background:#f8fafc;
+
+  .ac-field.first-ok .ac-select {
+    border-color: #c7d2fe;
+    background: #f8fafc;
   }
 
   /* ===================== (4) OCULTAR COLUNAS NO FRONT ===================== */
-  .ac-hide-col{ display:none !important; }
+  .ac-hide-col {
+    display: none !important;
+  }
 </style>
 
 <div class="ac-card">
@@ -535,7 +744,9 @@
     </div>
   </div>
 
-  {% set _role = (current_user.role if (current_user is defined and current_user.is_authenticated and current_user.role is defined) else (current_user.hierarquia if (current_user is defined and current_user.is_authenticated and current_user.hierarquia is defined) else '')) %}
+  {% set _role = (current_user.role if (current_user is defined and current_user.is_authenticated and current_user.role
+  is defined) else (current_user.hierarquia if (current_user is defined and current_user.is_authenticated and
+  current_user.hierarquia is defined) else '')) %}
   {% if _role|string|lower == 'admin' %}
   <div class="ac-totals" id="acTotalsBar" aria-live="polite">
     <div class="ac-total-box">
@@ -583,8 +794,18 @@
           <th>DATA PAGAMENTO</th>
           <th>LOCAL</th>
           <th>TIPO</th>
+          <th>% HONORÁRIOS</th>
+          <th>DEPÓSITO</th>
+          <th>CORREÇÃO
+            <span class="ac-info" title="Automático: Depósito - Valor Acordo - Sucumbência">i</span>
+          </th>
           <th>HONORÁRIOS</th>
           <th>AUDIENCISTA</th>
+          <!-- Conferência calculada no front: Honorários + Audiencista + Sucumbência + Repasse -->
+          <th>
+            CONFERÊNCIA
+            <span class="ac-info" title="Soma: Honorários + Audiencista + Sucumbência + Repasse">i</span>
+          </th>
           <th>REPASSE</th>
           <th>CHAVE PIX</th>
           <th>SUCUMBÊNCIA</th>
@@ -597,47 +818,103 @@
       <tbody id="acTbody">
         {% for r in rows %}
         <tr data-row='{{ r|tojson|safe }}' data-id="{{ r.id }}" class="ac-row">
-          <td class="whitespace-nowrap"><div class="clamp-2 ac-date">{{ r.data_acordo or "-" }}</div></td>
-          <td class="font-medium whitespace-nowrap"><div class="clamp-2">{{ r.numero_processo or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.uf or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.reu or "-" }}</div></td>
-          <td style="min-width:220px; max-width:340px;"><div class="clamp-2">{{ r.autor or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.tel or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.escritorio_reu or "-" }}</div></td>
+          <td class="whitespace-nowrap">
+            <div class="clamp-2 ac-date">{{ r.data_acordo or "-" }}</div>
+          </td>
+          <td class="font-medium whitespace-nowrap">
+            <div class="clamp-2">{{ r.numero_processo or "-" }}</div>
+          </td>
+          <td>
+            <div class="clamp-2">{{ r.uf or "-" }}</div>
+          </td>
+          <td>
+            <div class="clamp-2">{{ r.reu or "-" }}</div>
+          </td>
+          <td style="min-width:220px; max-width:340px;">
+            <div class="clamp-2">{{ r.autor or "-" }}</div>
+          </td>
+          <td>
+            <div class="clamp-2">{{ r.tel or "-" }}</div>
+          </td>
+          <td>
+            <div class="clamp-2">{{ r.escritorio_reu or "-" }}</div>
+          </td>
 
-          <td class="ac-number"><div class="clamp-2 ac-money">{{ r.valor_acordo or "-" }}</div></td>
+          <td class="ac-number">
+            <div class="clamp-2 ac-money">{{ r.valor_acordo or "-" }}</div>
+          </td>
 
-          <td style="min-width:260px; max-width:360px;"><div class="clamp-2">{{ r.status or "-" }}</div></td>
+          <td style="min-width:260px; max-width:360px;">
+            <div class="clamp-2">{{ r.status or "-" }}</div>
+          </td>
 
-          <td><div class="clamp-2">{{ r.prazo_estimado or "-" }}</div></td>
-          <td class="whitespace-nowrap"><div class="clamp-2 ac-date">{{ r.prazo_real or "-" }}</div></td>
-          <td class="whitespace-nowrap"><div class="clamp-2 ac-date">{{ r.data_pagamento or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.local or "-" }}</div></td>
+          <td>
+            <div class="clamp-2">{{ r.prazo_estimado or "-" }}</div>
+          </td>
+          <td class="whitespace-nowrap">
+            <div class="clamp-2 ac-date">{{ r.prazo_real or "-" }}</div>
+          </td>
+          <td class="whitespace-nowrap">
+            <div class="clamp-2 ac-date">{{ r.data_pagamento or "-" }}</div>
+          </td>
+          <td>
+            <div class="clamp-2">{{ r.local or "-" }}</div>
+          </td>
 
           {# (13) tipo precisa conseguir “limpar” e salvar vazio -> já garantido no JS _collectForm + backend,
-             e aqui mostramos r.tipo normalmente. #}
-          <td><div class="clamp-2">{{ r.tipo if (r.tipo is not none) else "-" }}</div></td>
+          e aqui mostramos r.tipo normalmente. #}
+          <td>
+            <div class="clamp-2">{{ r.tipo if (r.tipo is not none) else "-" }}</div>
+          </td>
 
-          <td class="ac-number"><div class="clamp-2 ac-money">{{ r.honorarios or "-" }}</div></td>
-          <td class="ac-number"><div class="clamp-2 ac-money">{{ r.audiencista or "-" }}</div></td>
-          <td class="ac-number"><div class="clamp-2 ac-money">{{ r.repasse or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.chave_pix or "-" }}</div></td>
-          <td class="ac-number"><div class="clamp-2 ac-money">{{ r.sucumbencia or "-" }}</div></td>
-          <td style="min-width:320px; max-width:520px;"><div class="clamp-2">{{ r.observacoes or "-" }}</div></td>
+          <td class="ac-number">
+            <div class="clamp-2 ac-money">{{ r.porcentagem_honorarios or "-" }}</div>
+          </td>
+          <td class="ac-number">
+            <div class="clamp-2 ac-money">{{ r.deposito or "-" }}</div>
+          </td>
+          <td class="ac-number">
+            <div class="clamp-2 ac-money">{{ r.correcao or "-" }}</div>
+          </td>
+          <td class="ac-number">
+            <div class="clamp-2 ac-money">{{ r.honorarios or "-" }}</div>
+          </td>
+          <td class="ac-number">
+            <div class="clamp-2 ac-money">{{ r.audiencista or "-" }}</div>
+          </td>
+
+          <!-- Conferência calculada via JS -->
+          <td class="ac-number">
+            <div class="clamp-2 ac-money ac-conferencia">-</div>
+          </td>
+
+          <td class="ac-number">
+            <div class="clamp-2 ac-money">{{ r.repasse or "-" }}</div>
+          </td>
+          <td>
+            <div class="clamp-2">{{ r.chave_pix or "-" }}</div>
+          </td>
+          <td class="ac-number">
+            <div class="clamp-2 ac-money">{{ r.sucumbencia or "-" }}</div>
+          </td>
+          <td style="min-width:320px; max-width:520px;">
+            <div class="clamp-2">{{ r.observacoes or "-" }}</div>
+          </td>
 
           <td style="text-align:right; white-space:nowrap;">
             <button class="ac-btn ac-edit-btn" type="button"
               onclick="openEditModalFromRow(this.closest('tr'))">Editar</button>
 
-            <button class="ac-btn" type="button"
-              style="margin-left:8px;border-color:#fecaca;color:#dc2626;"
+            <button class="ac-btn" type="button" style="margin-left:8px;border-color:#fecaca;color:#dc2626;"
               onclick="AC.deleteFromBtn(event, {{ r.id }})">Excluir</button>
           </td>
         </tr>
         {% endfor %}
 
         {% if rows|length == 0 %}
-        <tr><td colspan="21" style="padding:18px; color:#6b7280;">Nenhum registro encontrado.</td></tr>
+        <tr>
+          <td colspan="21" style="padding:18px; color:#6b7280;">Nenhum registro encontrado.</td>
+        </tr>
         {% endif %}
       </tbody>
     </table>
@@ -718,7 +995,8 @@
             <option value="aereo">Aéreo</option>
             <option value="onibus">Ônibus</option>
           </select>
-          <div class="ac-first-tip" id="acTipoReuTip">Preencha este campo primeiro para liberar os cálculos automáticos.</div>
+          <div class="ac-first-tip" id="acTipoReuTip">Preencha este campo primeiro para liberar os cálculos automáticos.
+          </div>
         </div>
 
         <div class="ac-field col-8">
@@ -762,10 +1040,29 @@
           <input class="ac-input" id="acTipo" placeholder="Tipo">
         </div>
 
+        <div class="ac-field col-4">
+          <label>% Honorários</label>
+          <input class="ac-input" id="acPorcentagemHonorarios" placeholder="Ex: 30">
+        </div>
+
+        <div class="ac-field col-4">
+          <label>Depósito</label>
+          <input class="ac-input" id="acValorDeposito" placeholder="Ex: 2000,00">
+        </div>
+
+        <div class="ac-field col-4" id="acFieldCorrecao">
+          <label>
+            Correção
+            <span class="ac-info" title="Automático: Depósito - Valor Acordo - Sucumbência">i</span>
+            <span class="ac-auto-badge">AUTO</span>
+          </label>
+          <input class="ac-input" id="acCorrecao" placeholder="Ex: 100,00">
+        </div>
+
         <div class="ac-field col-4" id="acFieldHonorarios">
           <label>
             Honorários
-            <span class="ac-info" title="Automático: 30% (aéreo) ou 40% (ônibus) do Valor">i</span>
+            <span class="ac-info" title="Automático: Valor * (% Honorários / 100)">i</span>
             <span class="ac-auto-badge">AUTO</span>
           </label>
           <input class="ac-input" id="acHonorarios" placeholder="Ex: 500,00">
@@ -779,7 +1076,7 @@
         <div class="ac-field col-4" id="acFieldRepasse">
           <label>
             Repasse
-            <span class="ac-info" title="Automático: (Valor * 70%) (aéreo) ou (Valor * 60%) (ônibus)">i</span>
+            <span class="ac-info" title="Automático: Valor * ((100 - % Honorários) / 100) - Audiencista">i</span>
             <span class="ac-auto-badge">AUTO</span>
           </label>
           <input class="ac-input" id="acRepasse" placeholder="Ex: 250,00">
@@ -800,13 +1097,6 @@
           <textarea class="ac-textarea" id="acObservacoes" placeholder="Escreva aqui..."></textarea>
         </div>
 
-        {# NOTA:
-           (2) "Correção" e "Valor de Depósito": como você não colou esses campos aqui,
-           eu NÃO criei inputs novos (pra não quebrar seu layout/tabela).
-           O JS abaixo aplica a regra se IDs existirem no DOM:
-           - acValorDeposito (ou acValorDepositoInput)
-           - acCorrecao (ou acCorrecaoInput)
-           Se já existirem no seu HTML real, a premissa passa a valer automaticamente. #}
       </div>
     </div>
 
@@ -821,248 +1111,248 @@
 </div>
 
 <script>
-/* ===================== FORMATADORES pt-BR + PARSER ROBUSTO ===================== */
-const AC_BR_NUMBER = new Intl.NumberFormat('pt-BR', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2
-});
+  /* ===================== FORMATADORES pt-BR + PARSER ROBUSTO ===================== */
+  const AC_BR_NUMBER = new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
 
-function acParseAnyNumber(raw){
-  if(raw === null || raw === undefined) return null;
-  if(typeof raw === "number" && Number.isFinite(raw)) return raw;
+  function acParseAnyNumber(raw) {
+    if (raw === null || raw === undefined) return null;
+    if (typeof raw === "number" && Number.isFinite(raw)) return raw;
 
-  let s = String(raw).trim();
-  if(!s || s === '-') return null;
+    let s = String(raw).trim();
+    if (!s || s === '-') return null;
 
-  s = s.replace(/\s/g,'').replace(/^R\$/i,'').trim();
-  s = s.replace(/[^0-9.,-]/g,'');
-  if(!s || s === '-' || s === ',' || s === '.') return null;
+    s = s.replace(/\s/g, '').replace(/^R\$/i, '').trim();
+    s = s.replace(/[^0-9.,-]/g, '');
+    if (!s || s === '-' || s === ',' || s === '.') return null;
 
-  const hasComma = s.includes(',');
-  const hasDot = s.includes('.');
+    const hasComma = s.includes(',');
+    const hasDot = s.includes('.');
 
-  if(hasDot && !hasComma){
+    if (hasDot && !hasComma) {
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    if (hasComma) {
+      const n = Number(s.replace(/\./g, '').replace(',', '.'));
+      return Number.isFinite(n) ? n : null;
+    }
+
     const n = Number(s);
     return Number.isFinite(n) ? n : null;
   }
 
-  if(hasComma){
-    const n = Number(s.replace(/\./g,'').replace(',', '.'));
-    return Number.isFinite(n) ? n : null;
+  function acFormatBR(v) {
+    const n = acParseAnyNumber(v);
+    if (n === null) return (v === null || v === undefined || v === '' || v === '-') ? '-' : String(v);
+    return AC_BR_NUMBER.format(n);
   }
 
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
-
-function acFormatBR(v){
-  const n = acParseAnyNumber(v);
-  if(n === null) return (v === null || v === undefined || v === '' || v === '-') ? '-' : String(v);
-  return AC_BR_NUMBER.format(n);
-}
-
-function acMoneyBRL(n){
-  const v = Number.isFinite(n) ? n : 0;
-  return v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-}
-
-window.AC_BR_NUMBER = AC_BR_NUMBER;
-</script>
-
-<script>
-/* ===================== DELETE (FUNCIONA) ===================== */
-async function deleteAcordo(id){
-  if(!id) return;
-  if(!confirm("Tem certeza que deseja excluir este acordo?")) return;
-
-  try{
-    const resp = await fetch(`/acordos/${id}`, { method: "DELETE" });
-    if(!resp.ok){
-      const txt = await resp.text();
-      alert(txt || "Falha ao excluir.");
-      return;
-    }
-    window.location.reload();
-  }catch(e){
-    console.error(e);
-    alert("Falha de rede ao excluir.");
+  function acMoneyBRL(n) {
+    const v = Number.isFinite(n) ? n : 0;
+    return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
-}
+
+  window.AC_BR_NUMBER = AC_BR_NUMBER;
 </script>
 
 <script>
-/* ===================== FORMATA NÚMEROS DA TABELA (APENAS EXIBIÇÃO) ===================== */
-(function(){
-  const tbody = document.getElementById("acTbody");
-  if(!tbody) return;
+  /* ===================== DELETE (FUNCIONA) ===================== */
+  async function deleteAcordo(id) {
+    if (!id) return;
+    if (!confirm("Tem certeza que deseja excluir este acordo?")) return;
 
-  tbody.querySelectorAll(".ac-money").forEach(div=>{
-    div.textContent = acFormatBR(div.textContent.trim());
-  });
-})();
-</script>
-
-<script>
-/* ===================== (4) OCULTAR COLUNAS NO FRONT (sem quebrar índices/scripts) ===================== */
-(function(){
-  const table = document.getElementById("acTable");
-  const tbody = document.getElementById("acTbody");
-  const thead = table?.tHead?.rows?.[0];
-  if(!table || !thead || !tbody) return;
-
-  const HIDE = new Set(["MES PG", "MÊS PG", "FINALIZADO", "ID"]);
-
-  const ths = Array.from(thead.cells);
-  const hideIdx = [];
-
-  ths.forEach((th, idx)=>{
-    const t = (th.innerText || "").trim().toUpperCase();
-    if(HIDE.has(t)){
-      hideIdx.push(idx);
-      th.classList.add("ac-hide-col");
+    try {
+      const resp = await fetch(`/acordos/${id}`, { method: "DELETE" });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        alert(txt || "Falha ao excluir.");
+        return;
+      }
+      window.location.reload();
+    } catch (e) {
+      console.error(e);
+      alert("Falha de rede ao excluir.");
     }
-  });
+  }
+</script>
 
-  if(!hideIdx.length) return;
+<script>
+  /* ===================== FORMATA NÚMEROS DA TABELA (APENAS EXIBIÇÃO) ===================== */
+  (function () {
+    const tbody = document.getElementById("acTbody");
+    if (!tbody) return;
 
-  Array.from(tbody.rows).forEach(tr=>{
-    hideIdx.forEach(i=>{
-      if(tr.cells[i]) tr.cells[i].classList.add("ac-hide-col");
+    tbody.querySelectorAll(".ac-money").forEach(div => {
+      div.textContent = acFormatBR(div.textContent.trim());
     });
-  });
-})();
+  })();
 </script>
 
 <script>
-/* ===================== APLICA REGRAS DE COR (HIERARQUIA) ===================== */
-(function(){
-  const tbody = document.getElementById("acTbody");
-  const table = document.getElementById("acTable");
-  if(!tbody || !table) return;
+  /* ===================== (4) OCULTAR COLUNAS NO FRONT (sem quebrar índices/scripts) ===================== */
+  (function () {
+    const table = document.getElementById("acTable");
+    const tbody = document.getElementById("acTbody");
+    const thead = table?.tHead?.rows?.[0];
+    if (!table || !thead || !tbody) return;
 
-  function norm(s){
-    return String(s ?? "")
-      .trim()
-      .toUpperCase()
-      .replace(/\s+/g, " ");
-  }
+    const HIDE = new Set(["MES PG", "MÊS PG", "FINALIZADO", "ID"]);
 
-  function clearColorClasses(tr){
-    tr.classList.remove(
-      "ac-colored",
-      "ac-row-cnpj",
-      "ac-row-arepassar",
-      "ac-row-repassado",
-      "ac-row-iddeposito",
-      "ac-row-aguardando-pix",
-      "ac-row-aguardando-retorno"
-    );
-  }
+    const ths = Array.from(thead.cells);
+    const hideIdx = [];
 
-  function applyRule(tr){
-    clearColorClasses(tr);
+    ths.forEach((th, idx) => {
+      const t = (th.innerText || "").trim().toUpperCase();
+      if (HIDE.has(t)) {
+        hideIdx.push(idx);
+        th.classList.add("ac-hide-col");
+      }
+    });
 
-    let rowObj = {};
-    try{ rowObj = JSON.parse(tr.dataset.row || "{}"); }catch(_){ rowObj = {}; }
+    if (!hideIdx.length) return;
 
-    const tipo   = norm(rowObj.tipo   ?? tr.cells[13]?.innerText);
-    const status = norm(rowObj.status ?? tr.cells[8]?.innerText);
-    const local  = norm(rowObj.local  ?? tr.cells[12]?.innerText);
-
-    // (7) tipo = CNPJ
-    if (tipo === "CNPJ"){
-      tr.classList.add("ac-colored", "ac-row-cnpj");
-      return;
-    }
-    // (8) status = A REPASSAR
-    if (status === "A REPASSAR"){
-      tr.classList.add("ac-colored", "ac-row-arepassar");
-      return;
-    }
-    // (9) status = REPASSADO
-    if (status === "REPASSADO"){
-      tr.classList.add("ac-colored", "ac-row-repassado");
-      return;
-    }
-    // (10) local = ID DEPÓSITO
-    if (local === "ID DEPÓSITO" || local === "ID DEPOSITO"){
-      tr.classList.add("ac-colored", "ac-row-iddeposito");
-      return;
-    }
-    // (11) status = AGUARDANDO AUTORIZAÇÃO PIX (BRADESCO)
-    if (status === "AGUARDANDO AUTORIZAÇÃO PIX (BRADESCO)" || status === "AGUARDANDO AUTORIZACAO PIX (BRADESCO)"){
-      tr.classList.add("ac-colored", "ac-row-aguardando-pix");
-      return;
-    }
-    // (12) status = AGUARDANDO RETORNO DO CLIENTE
-    if (status === "AGUARDANDO RETORNO DO CLIENTE"){
-      tr.classList.add("ac-colored", "ac-row-aguardando-retorno");
-      return;
-    }
-  }
-
-  function applyAll(){
-    tbody.querySelectorAll("tr.ac-row").forEach(tr => applyRule(tr));
-  }
-
-  applyAll();
-  window.AC_COLORS = { refresh: applyAll };
-})();
+    Array.from(tbody.rows).forEach(tr => {
+      hideIdx.forEach(i => {
+        if (tr.cells[i]) tr.cells[i].classList.add("ac-hide-col");
+      });
+    });
+  })();
 </script>
 
 <script>
-/* ===================== TABELA + FILTROS + DATAS BR + TOTAIS (HON/AUD/SUC + TOTAL) ===================== */
-(function(){
-  const table = document.getElementById('acTable');
-  const thead = table?.tHead?.rows?.[0];
-  const tbody = document.getElementById('acTbody');
-  const badge = document.getElementById('acFilteredBadge');
-  const countEl = document.getElementById('acRowsCount');
+  /* ===================== APLICA REGRAS DE COR (HIERARQUIA) ===================== */
+  (function () {
+    const tbody = document.getElementById("acTbody");
+    const table = document.getElementById("acTable");
+    if (!tbody || !table) return;
 
-  const sumEls = {
-    honorarios: document.getElementById("acSumHonorarios"),
-    audiencista: document.getElementById("acSumAudiencista"),
-    sucumbencia: document.getElementById("acSumSucumbencia"),
-    total: document.getElementById("acSumTotalGeral"),
-  };
-
-  if (!thead || !tbody) return;
-
-  function toBRDateText(raw){
-    if(!raw) return '-';
-    raw = String(raw).trim();
-    if(raw === '-' || raw === '') return '-';
-    if(/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
-
-    const m1 = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if(m1){
-      const yyyy = m1[1], mm = m1[2], dd = m1[3];
-      return `${dd}/${mm}/${yyyy}`;
+    function norm(s) {
+      return String(s ?? "")
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, " ");
     }
-    return raw;
-  }
 
-  function toDayKey(raw){
-    const br = toBRDateText(raw);
-    return br === '-' ? '-' : br;
-  }
-  function toMonthKey(raw){
-    const br = toBRDateText(raw);
-    if(br === '-' || !/^\d{2}\/\d{2}\/\d{4}$/.test(br)) return br;
-    const [dd, mm, yyyy] = br.split('/');
-    return `${mm}/${yyyy}`;
-  }
+    function clearColorClasses(tr) {
+      tr.classList.remove(
+        "ac-colored",
+        "ac-row-cnpj",
+        "ac-row-arepassar",
+        "ac-row-repassado",
+        "ac-row-iddeposito",
+        "ac-row-aguardando-pix",
+        "ac-row-aguardando-retorno"
+      );
+    }
 
-  tbody.querySelectorAll('.ac-date').forEach(el=>{
-    el.textContent = toBRDateText(el.textContent);
-  });
+    function applyRule(tr) {
+      clearColorClasses(tr);
 
-  let panel = document.getElementById('acGlobalFilterPanel');
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'acGlobalFilterPanel';
-    panel.className = 'ac-panel';
-    panel.innerHTML = `
+      let rowObj = {};
+      try { rowObj = JSON.parse(tr.dataset.row || "{}"); } catch (_) { rowObj = {}; }
+
+      const tipo = norm(rowObj.tipo ?? tr.cells[13]?.innerText);
+      const status = norm(rowObj.status ?? tr.cells[8]?.innerText);
+      const local = norm(rowObj.local ?? tr.cells[12]?.innerText);
+
+      // (7) tipo = CNPJ
+      if (tipo === "CNPJ") {
+        tr.classList.add("ac-colored", "ac-row-cnpj");
+        return;
+      }
+      // (8) status = A REPASSAR
+      if (status === "A REPASSAR") {
+        tr.classList.add("ac-colored", "ac-row-arepassar");
+        return;
+      }
+      // (9) status = REPASSADO
+      if (status === "REPASSADO") {
+        tr.classList.add("ac-colored", "ac-row-repassado");
+        return;
+      }
+      // (10) local = ID DEPÓSITO
+      if (local === "ID DEPÓSITO" || local === "ID DEPOSITO") {
+        tr.classList.add("ac-colored", "ac-row-iddeposito");
+        return;
+      }
+      // (11) status = AGUARDANDO AUTORIZAÇÃO PIX (BRADESCO)
+      if (status === "AGUARDANDO AUTORIZAÇÃO PIX (BRADESCO)" || status === "AGUARDANDO AUTORIZACAO PIX (BRADESCO)") {
+        tr.classList.add("ac-colored", "ac-row-aguardando-pix");
+        return;
+      }
+      // (12) status = AGUARDANDO RETORNO DO CLIENTE
+      if (status === "AGUARDANDO RETORNO DO CLIENTE") {
+        tr.classList.add("ac-colored", "ac-row-aguardando-retorno");
+        return;
+      }
+    }
+
+    function applyAll() {
+      tbody.querySelectorAll("tr.ac-row").forEach(tr => applyRule(tr));
+    }
+
+    applyAll();
+    window.AC_COLORS = { refresh: applyAll };
+  })();
+</script>
+
+<script>
+  /* ===================== TABELA + FILTROS + DATAS BR + TOTAIS (HON/AUD/SUC + TOTAL) ===================== */
+  (function () {
+    const table = document.getElementById('acTable');
+    const thead = table?.tHead?.rows?.[0];
+    const tbody = document.getElementById('acTbody');
+    const badge = document.getElementById('acFilteredBadge');
+    const countEl = document.getElementById('acRowsCount');
+
+    const sumEls = {
+      honorarios: document.getElementById("acSumHonorarios"),
+      audiencista: document.getElementById("acSumAudiencista"),
+      sucumbencia: document.getElementById("acSumSucumbencia"),
+      total: document.getElementById("acSumTotalGeral"),
+    };
+
+    if (!thead || !tbody) return;
+
+    function toBRDateText(raw) {
+      if (!raw) return '-';
+      raw = String(raw).trim();
+      if (raw === '-' || raw === '') return '-';
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
+
+      const m1 = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m1) {
+        const yyyy = m1[1], mm = m1[2], dd = m1[3];
+        return `${dd}/${mm}/${yyyy}`;
+      }
+      return raw;
+    }
+
+    function toDayKey(raw) {
+      const br = toBRDateText(raw);
+      return br === '-' ? '-' : br;
+    }
+    function toMonthKey(raw) {
+      const br = toBRDateText(raw);
+      if (br === '-' || !/^\d{2}\/\d{2}\/\d{4}$/.test(br)) return br;
+      const [dd, mm, yyyy] = br.split('/');
+      return `${mm}/${yyyy}`;
+    }
+
+    tbody.querySelectorAll('.ac-date').forEach(el => {
+      el.textContent = toBRDateText(el.textContent);
+    });
+
+    let panel = document.getElementById('acGlobalFilterPanel');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'acGlobalFilterPanel';
+      panel.className = 'ac-panel';
+      panel.innerHTML = `
       <div class="ac-panel-top">
         <input type="search" placeholder="Pesquisar...">
         <div class="ac-mode" id="acDateMode" role="group" aria-label="Modo de data">
@@ -1078,272 +1368,275 @@ async function deleteAcordo(id){
         <button type="button" class="primary" data-act="ok" style="grid-column: span 2;">OK</button>
       </div>
     `;
-    document.body.appendChild(panel);
-  }
-
-  panel.addEventListener('wheel', (e)=> e.stopPropagation(), { passive:true });
-  panel.addEventListener('mousedown', (e)=> e.stopPropagation());
-  panel.addEventListener('touchstart', (e)=> e.stopPropagation(), { passive:true });
-
-  const allRows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector('.ac-edit-btn'));
-
-  const FILTERABLE_COLS = [];
-  Array.from(thead.cells).forEach((th, idx) => {
-    const title = (th.innerText || '').trim().toLowerCase();
-    if (title === 'ações' || th.classList.contains('no-filter')) return;
-    FILTERABLE_COLS.push(idx);
-  });
-
-  let filters = {};
-  let sort = null;
-  let openCol = null;
-
-  function textOfCell(row, col){
-    const cell = row.cells[col];
-    if (!cell) return '-';
-    const t = (cell.innerText || '').trim();
-    return t === '' ? '-' : t;
-  }
-
-  function isDateCol(col){
-    const headerText = (thead.cells[col]?.innerText || '').toLowerCase();
-    return headerText.includes('data') || headerText.includes('prazo real');
-  }
-
-  function cellValueForFilter(row, col, fObj){
-    const raw = textOfCell(row, col);
-    if (fObj?.type === 'date'){
-      return fObj.mode === 'month' ? toMonthKey(raw) : toDayKey(raw);
-    }
-    return raw;
-  }
-
-  function matchesFilters(row, f = filters){
-    for (const [colStr, fObj] of Object.entries(f)){
-      const col = Number(colStr);
-      const v = cellValueForFilter(row, col, fObj);
-      if (!fObj?.set || !fObj.set.has(v)) return false;
-    }
-    return true;
-  }
-
-  function getVisibleRows(){
-    return allRows.filter(r => matchesFilters(r));
-  }
-
-  function readRowObj(tr){
-    try{ return JSON.parse(tr.dataset.row || "{}"); }
-    catch(_){ return {}; }
-  }
-
-  function numFromAny(v){
-    const n = acParseAnyNumber(v);
-    return n === null ? 0 : n;
-  }
-
-  function computeTotalsFromVisibleRows(visibleRows){
-    let sHon = 0, sAud = 0, sSuc = 0;
-
-    for (const tr of visibleRows){
-      const obj = readRowObj(tr);
-
-      const vHon = (obj.honorarios ?? textOfCell(tr, 14));
-      const vAud = (obj.audiencista ?? textOfCell(tr, 15));
-      const vSuc = (obj.sucumbencia ?? textOfCell(tr, 18));
-
-      sHon += numFromAny(vHon);
-      sAud += numFromAny(vAud);
-      sSuc += numFromAny(vSuc);
+      document.body.appendChild(panel);
     }
 
-    const total = sHon + sAud + sSuc;
-    return { sHon, sAud, sSuc, total };
-  }
+    panel.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
+    panel.addEventListener('mousedown', (e) => e.stopPropagation());
+    panel.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
 
-  function renderTotals(){
-    const vis = getVisibleRows();
-    const t = computeTotalsFromVisibleRows(vis);
+    const allRows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector('.ac-edit-btn'));
 
-    if (sumEls.honorarios) sumEls.honorarios.textContent = acMoneyBRL(t.sHon);
-    if (sumEls.audiencista) sumEls.audiencista.textContent = acMoneyBRL(t.sAud);
-    if (sumEls.sucumbencia) sumEls.sucumbencia.textContent = acMoneyBRL(t.sSuc);
-    if (sumEls.total) sumEls.total.textContent = acMoneyBRL(t.total);
-  }
+    const FILTERABLE_COLS = [];
+    Array.from(thead.cells).forEach((th, idx) => {
+      const title = (th.innerText || '').trim().toLowerCase();
+      if (title === 'ações' || th.classList.contains('no-filter')) return;
+      FILTERABLE_COLS.push(idx);
+    });
 
-  function apply(){
-    allRows.forEach(r => r.style.display = matchesFilters(r) ? '' : 'none');
+    let filters = {};
+    let sort = null;
+    let openCol = null;
 
-    if (sort){
+    function textOfCell(row, col) {
+      const cell = row.cells[col];
+      if (!cell) return '-';
+      const t = (cell.innerText || '').trim();
+      return t === '' ? '-' : t;
+    }
+
+    function isDateCol(col) {
+      const headerText = (thead.cells[col]?.innerText || '').toLowerCase();
+      return headerText.includes('data') || headerText.includes('prazo real');
+    }
+
+    function cellValueForFilter(row, col, fObj) {
+      const raw = textOfCell(row, col);
+      if (fObj?.type === 'date') {
+        return fObj.mode === 'month' ? toMonthKey(raw) : toDayKey(raw);
+      }
+      return raw;
+    }
+
+    function matchesFilters(row, f = filters) {
+      for (const [colStr, fObj] of Object.entries(f)) {
+        const col = Number(colStr);
+        const v = cellValueForFilter(row, col, fObj);
+        if (!fObj?.set || !fObj.set.has(v)) return false;
+      }
+      return true;
+    }
+
+    function getVisibleRows() {
+      return allRows.filter(r => matchesFilters(r));
+    }
+
+    function readRowObj(tr) {
+      try { return JSON.parse(tr.dataset.row || "{}"); }
+      catch (_) { return {}; }
+    }
+
+    function numFromAny(v) {
+      const n = acParseAnyNumber(v);
+      return n === null ? 0 : n;
+    }
+
+    function computeTotalsFromVisibleRows(visibleRows) {
+      let sHon = 0, sAud = 0, sSuc = 0;
+
+      for (const tr of visibleRows) {
+        const obj = readRowObj(tr);
+
+        // Indices updated to match new column order
+        // Honorários = 17, Audiencista = 18, Sucumbência = 22
+        const vHon = (obj.honorarios ?? textOfCell(tr, 17));
+        const vAud = (obj.audiencista ?? textOfCell(tr, 18));
+        const vSuc = (obj.sucumbencia ?? textOfCell(tr, 22));
+
+        sHon += numFromAny(vHon);
+        sAud += numFromAny(vAud);
+        sSuc += numFromAny(vSuc);
+      }
+
+      const total = sHon + sAud + sSuc;
+      return { sHon, sAud, sSuc, total };
+    }
+
+    function renderTotals() {
       const vis = getVisibleRows();
-      const col = sort.col;
-      const dir = sort.dir;
+      const t = computeTotalsFromVisibleRows(vis);
 
-      vis.sort((a,b)=>{
-        const A = textOfCell(a,col);
-        const B = textOfCell(b,col);
+      if (sumEls.honorarios) sumEls.honorarios.textContent = acMoneyBRL(t.sHon);
+      if (sumEls.audiencista) sumEls.audiencista.textContent = acMoneyBRL(t.sAud);
+      if (sumEls.sucumbencia) sumEls.sucumbencia.textContent = acMoneyBRL(t.sSuc);
+      if (sumEls.total) sumEls.total.textContent = acMoneyBRL(t.total);
+    }
 
-        if (isDateCol(col)){
-          const aBr = toBRDateText(A);
-          const bBr = toBRDateText(B);
-          const aIso = (aBr === '-' ? '' : aBr.split('/').reverse().join('-'));
-          const bIso = (bBr === '-' ? '' : bBr.split('/').reverse().join('-'));
-          const cmp = aIso.localeCompare(bIso);
+    function apply() {
+      allRows.forEach(r => r.style.display = matchesFilters(r) ? '' : 'none');
+
+      if (sort) {
+        const vis = getVisibleRows();
+        const col = sort.col;
+        const dir = sort.dir;
+
+        vis.sort((a, b) => {
+          const A = textOfCell(a, col);
+          const B = textOfCell(b, col);
+
+          if (isDateCol(col)) {
+            const aBr = toBRDateText(A);
+            const bBr = toBRDateText(B);
+            const aIso = (aBr === '-' ? '' : aBr.split('/').reverse().join('-'));
+            const bIso = (bBr === '-' ? '' : bBr.split('/').reverse().join('-'));
+            const cmp = aIso.localeCompare(bIso);
+            return dir === 'asc' ? cmp : -cmp;
+          }
+
+          const aNum = acParseAnyNumber(A);
+          const bNum = acParseAnyNumber(B);
+          if (aNum !== null && bNum !== null) {
+            const cmp = aNum - bNum;
+            return dir === 'asc' ? cmp : -cmp;
+          }
+
+          const cmp = A.localeCompare(B, 'pt-BR');
           return dir === 'asc' ? cmp : -cmp;
-        }
+        });
 
-        const aNum = acParseAnyNumber(A);
-        const bNum = acParseAnyNumber(B);
-        if (aNum !== null && bNum !== null){
-          const cmp = aNum - bNum;
-          return dir === 'asc' ? cmp : -cmp;
-        }
+        vis.forEach(r => tbody.appendChild(r));
+      }
 
-        const cmp = A.localeCompare(B, 'pt-BR');
-        return dir === 'asc' ? cmp : -cmp;
+      const visCount = getVisibleRows().length;
+      if (countEl) countEl.textContent = visCount;
+
+      const hasFilters = Object.keys(filters).length > 0;
+      if (badge) badge.style.display = hasFilters ? 'inline-block' : 'none';
+
+      FILTERABLE_COLS.forEach(i => {
+        const th = thead.cells[i];
+        if (!th) return;
+        th.classList.toggle('ac-filtered', !!filters[i]);
       });
 
-      vis.forEach(r => tbody.appendChild(r));
+      window.AC_XSCROLL?.refresh?.();
+      window.AC_COLORS?.refresh?.();
+      window.AC_CONFERENCIA?.refresh?.();
+
+      renderTotals();
     }
 
-    const visCount = getVisibleRows().length;
-    if (countEl) countEl.textContent = visCount;
+    function valuesForColumn(col, forcedDateMode = null) {
+      const temp = { ...filters };
+      delete temp[col];
 
-    const hasFilters = Object.keys(filters).length > 0;
-    if (badge) badge.style.display = hasFilters ? 'inline-block' : 'none';
+      const candidates = allRows.filter(r => matchesFilters(r, temp));
+      const vals = new Set();
+      const existing = filters[col] || null;
 
-    FILTERABLE_COLS.forEach(i=>{
-      const th = thead.cells[i];
-      if (!th) return;
-      th.classList.toggle('ac-filtered', !!filters[i]);
-    });
+      if (isDateCol(col)) {
+        const mode = forcedDateMode || (existing?.type === 'date' ? existing.mode : 'day');
+        candidates.forEach(r => {
+          const raw = textOfCell(r, col);
+          vals.add(mode === 'month' ? toMonthKey(raw) : toDayKey(raw));
+        });
 
-    window.AC_XSCROLL?.refresh?.();
-    window.AC_COLORS?.refresh?.();
+        return Array.from(vals).sort((a, b) => {
+          if (mode === 'month') {
+            const [am, ay] = (a || '').split('/');
+            const [bm, by] = (b || '').split('/');
+            return `${ay || ''}-${am || ''}`.localeCompare(`${by || ''}-${bm || ''}`, 'pt-BR');
+          }
+          const aKey = a === '-' ? '' : a.split('/').reverse().join('-');
+          const bKey = b === '-' ? '' : b.split('/').reverse().join('-');
+          return aKey.localeCompare(bKey, 'pt-BR');
+        });
+      }
 
-    renderTotals();
-  }
+      candidates.forEach(r => vals.add(textOfCell(r, col)));
+      return Array.from(vals).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    }
 
-  function valuesForColumn(col, forcedDateMode = null){
-    const temp = {...filters};
-    delete temp[col];
+    function closePanel() {
+      panel.style.display = 'none';
+      openCol = null;
+    }
 
-    const candidates = allRows.filter(r => matchesFilters(r, temp));
-    const vals = new Set();
-    const existing = filters[col] || null;
+    function positionPanelNear(th) {
+      const rect = th.getBoundingClientRect();
+      const panelW = 380;
+      const margin = 8;
 
-    if (isDateCol(col)){
-      const mode = forcedDateMode || (existing?.type === 'date' ? existing.mode : 'day');
-      candidates.forEach(r=>{
-        const raw = textOfCell(r,col);
-        vals.add(mode === 'month' ? toMonthKey(raw) : toDayKey(raw));
+      let left = rect.right - panelW;
+      if (left < margin) left = margin;
+
+      let top = rect.bottom + 8;
+      const panelH = 680;
+      const maxTop = window.innerHeight - panelH - margin;
+      if (top > maxTop) top = Math.max(margin, maxTop);
+
+      panel.style.left = left + 'px';
+      panel.style.top = top + 'px';
+    }
+
+    function setDateModeUI(show, activeMode) {
+      const wrap = document.getElementById('acDateMode');
+      if (!wrap) return;
+      wrap.style.display = show ? 'inline-flex' : 'none';
+      wrap.querySelectorAll('button').forEach(b => {
+        b.classList.toggle('active', b.dataset.mode === activeMode);
       });
-
-      return Array.from(vals).sort((a,b)=>{
-        if(mode === 'month'){
-          const [am, ay] = (a||'').split('/');
-          const [bm, by] = (b||'').split('/');
-          return `${ay||''}-${am||''}`.localeCompare(`${by||''}-${bm||''}`,'pt-BR');
-        }
-        const aKey = a === '-' ? '' : a.split('/').reverse().join('-');
-        const bKey = b === '-' ? '' : b.split('/').reverse().join('-');
-        return aKey.localeCompare(bKey,'pt-BR');
-      });
     }
 
-    candidates.forEach(r => vals.add(textOfCell(r,col)));
-    return Array.from(vals).sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  }
+    function populatePanel(col, forcedDateMode = null) {
+      const list = panel.querySelector('.ac-panel-list');
+      list.innerHTML = '';
 
-  function closePanel(){
-    panel.style.display = 'none';
-    openCol = null;
-  }
+      const isDate = isDateCol(col);
+      let dateMode = 'day';
+      const existing = filters[col];
 
-  function positionPanelNear(th){
-    const rect = th.getBoundingClientRect();
-    const panelW = 380;
-    const margin = 8;
+      if (isDate) {
+        if (forcedDateMode) dateMode = forcedDateMode;
+        else if (existing?.type === 'date') dateMode = existing.mode;
+        setDateModeUI(true, dateMode);
+      } else {
+        setDateModeUI(false, 'day');
+      }
 
-    let left = rect.right - panelW;
-    if (left < margin) left = margin;
+      const vals = valuesForColumn(col, isDate ? dateMode : null);
 
-    let top = rect.bottom + 8;
-    const panelH = 680;
-    const maxTop = window.innerHeight - panelH - margin;
-    if (top > maxTop) top = Math.max(margin, maxTop);
+      let currentSet = null;
+      if (existing?.type === 'date' && isDate) currentSet = existing.set;
+      else if (existing?.type === 'set') currentSet = existing.set;
 
-    panel.style.left = left + 'px';
-    panel.style.top = top + 'px';
-  }
+      vals.forEach(v => {
+        const lab = document.createElement('label');
+        lab.className = 'ac-panel-item';
+        lab.dataset.val = v;
+        const checked = currentSet ? currentSet.has(v) : false;
 
-  function setDateModeUI(show, activeMode){
-    const wrap = document.getElementById('acDateMode');
-    if (!wrap) return;
-    wrap.style.display = show ? 'inline-flex' : 'none';
-    wrap.querySelectorAll('button').forEach(b=>{
-      b.classList.toggle('active', b.dataset.mode === activeMode);
-    });
-  }
-
-  function populatePanel(col, forcedDateMode = null){
-    const list = panel.querySelector('.ac-panel-list');
-    list.innerHTML = '';
-
-    const isDate = isDateCol(col);
-    let dateMode = 'day';
-    const existing = filters[col];
-
-    if (isDate){
-      if (forcedDateMode) dateMode = forcedDateMode;
-      else if (existing?.type === 'date') dateMode = existing.mode;
-      setDateModeUI(true, dateMode);
-    } else {
-      setDateModeUI(false, 'day');
-    }
-
-    const vals = valuesForColumn(col, isDate ? dateMode : null);
-
-    let currentSet = null;
-    if (existing?.type === 'date' && isDate) currentSet = existing.set;
-    else if (existing?.type === 'set') currentSet = existing.set;
-
-    vals.forEach(v=>{
-      const lab = document.createElement('label');
-      lab.className = 'ac-panel-item';
-      lab.dataset.val = v;
-      const checked = currentSet ? currentSet.has(v) : false;
-
-      lab.innerHTML = `
+        lab.innerHTML = `
         <input type="checkbox" ${checked ? 'checked' : ''}>
         <span>${v}</span>
       `;
-      list.appendChild(lab);
-    });
+        list.appendChild(lab);
+      });
 
-    const s = panel.querySelector('input[type="search"]');
-    if (s) s.value = '';
+      const s = panel.querySelector('input[type="search"]');
+      if (s) s.value = '';
 
-    panel.dataset.isDateCol = isDate ? '1' : '0';
-    panel.dataset.dateMode = isDate ? dateMode : '';
-  }
+      panel.dataset.isDateCol = isDate ? '1' : '0';
+      panel.dataset.dateMode = isDate ? dateMode : '';
+    }
 
-  function openPanelFor(col, th){
-    openCol = col;
-    populatePanel(col);
-    positionPanelNear(th);
-    panel.style.display = 'block';
-    panel.querySelector('input[type="search"]')?.focus();
-  }
+    function openPanelFor(col, th) {
+      openCol = col;
+      populatePanel(col);
+      positionPanelNear(th);
+      panel.style.display = 'block';
+      panel.querySelector('input[type="search"]')?.focus();
+    }
 
-  function buildHeaderUI(){
-    FILTERABLE_COLS.forEach((col)=>{
-      const th = thead.cells[col];
-      if (!th) return;
-      if (th.dataset.acInited === '1') return;
-      th.dataset.acInited = '1';
+    function buildHeaderUI() {
+      FILTERABLE_COLS.forEach((col) => {
+        const th = thead.cells[col];
+        if (!th) return;
+        if (th.dataset.acInited === '1') return;
+        th.dataset.acInited = '1';
 
-      const label = (th.innerText || '').trim();
-      th.innerHTML = `
+        const label = (th.innerText || '').trim();
+        th.innerHTML = `
         <span class="ac-th-inner">
           <span>${label}</span>
           <span class="ac-th-tools">
@@ -1353,910 +1646,1004 @@ async function deleteAcordo(id){
         </span>
       `;
 
-      th.querySelector('[data-act="open"]').addEventListener('click', (e)=>{
-        e.stopPropagation();
-        const isOpen = (panel.style.display === 'block' && openCol === col);
-        if (isOpen) { closePanel(); return; }
-        openPanelFor(col, th);
+        th.querySelector('[data-act="open"]').addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isOpen = (panel.style.display === 'block' && openCol === col);
+          if (isOpen) { closePanel(); return; }
+          openPanelFor(col, th);
+        });
+      });
+    }
+
+    panel.querySelector('input[type="search"]').addEventListener('input', (e) => {
+      const q = (e.target.value || '').trim().toLowerCase();
+      panel.querySelectorAll('.ac-panel-item').forEach(it => {
+        const v = (it.dataset.val || '').toLowerCase();
+        it.style.display = v.includes(q) ? '' : 'none';
       });
     });
-  }
 
-  panel.querySelector('input[type="search"]').addEventListener('input', (e)=>{
-    const q = (e.target.value || '').trim().toLowerCase();
-    panel.querySelectorAll('.ac-panel-item').forEach(it=>{
-      const v = (it.dataset.val || '').toLowerCase();
-      it.style.display = v.includes(q) ? '' : 'none';
-    });
-  });
+    const dateModeWrap = document.getElementById('acDateMode');
+    if (dateModeWrap) {
+      dateModeWrap.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (openCol === null) return;
+          if (panel.dataset.isDateCol !== '1') return;
+          const mode = btn.dataset.mode;
+          setDateModeUI(true, mode);
+          populatePanel(openCol, mode);
+        });
+      });
+    }
 
-  const dateModeWrap = document.getElementById('acDateMode');
-  if (dateModeWrap){
-    dateModeWrap.querySelectorAll('button').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
+    panel.querySelectorAll('[data-sort]').forEach(btn => {
+      btn.addEventListener('click', () => {
         if (openCol === null) return;
-        if (panel.dataset.isDateCol !== '1') return;
-        const mode = btn.dataset.mode;
-        setDateModeUI(true, mode);
-        populatePanel(openCol, mode);
+        sort = { col: openCol, dir: btn.dataset.sort };
+        closePanel();
+        apply();
       });
     });
-  }
 
-  panel.querySelectorAll('[data-sort]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
+    panel.querySelector('[data-act="clear"]').addEventListener('click', () => {
       if (openCol === null) return;
-      sort = { col: openCol, dir: btn.dataset.sort };
-      closePanel();
-      apply();
-    });
-  });
-
-  panel.querySelector('[data-act="clear"]').addEventListener('click', ()=>{
-    if (openCol === null) return;
-    delete filters[openCol];
-    closePanel();
-    apply();
-  });
-
-  panel.querySelector('[data-act="ok"]').addEventListener('click', ()=>{
-    if (openCol === null) return;
-
-    const set = new Set();
-    panel.querySelectorAll('.ac-panel-item').forEach(it=>{
-      const cb = it.querySelector('input[type="checkbox"]');
-      if (cb && cb.checked) set.add(it.dataset.val);
-    });
-
-    if (!set.size){
       delete filters[openCol];
       closePanel();
       apply();
-      return;
-    }
+    });
 
-    const isDate = panel.dataset.isDateCol === '1';
-    const dateMode = panel.dataset.dateMode || 'day';
+    panel.querySelector('[data-act="ok"]').addEventListener('click', () => {
+      if (openCol === null) return;
 
-    filters[openCol] = isDate
-      ? { type:'date', mode:dateMode, set }
-      : { type:'set', set };
+      const set = new Set();
+      panel.querySelectorAll('.ac-panel-item').forEach(it => {
+        const cb = it.querySelector('input[type="checkbox"]');
+        if (cb && cb.checked) set.add(it.dataset.val);
+      });
 
-    closePanel();
-    apply();
-  });
-
-  document.addEventListener('click', (e)=>{
-    if (panel.style.display !== 'block') return;
-    const inside = e.target.closest && e.target.closest('#acGlobalFilterPanel');
-    const onHeaderBtn = e.target.closest && e.target.closest('.ac-th-btn');
-    if (inside || onHeaderBtn) return;
-    closePanel();
-  });
-
-  document.addEventListener('keydown', (e)=>{
-    if (e.key === "Escape" && panel.style.display === "block") closePanel();
-  });
-
-  window.addEventListener('resize', ()=>{ if(openCol!==null){ closePanel(); } });
-
-  window.AC = window.AC || {};
-  window.AC.clearAll = function(){
-    filters = {};
-    sort = null;
-    closePanel();
-    apply();
-  };
-  window.AC.deleteFromBtn = function(ev, id){
-    ev.preventDefault();
-    ev.stopPropagation();
-    deleteAcordo(id);
-  };
-
-  const KEY = "acordos.filters.v1";
-  function saveState(){
-    const safeFilters = {};
-    for (const [k,v] of Object.entries(filters)){
-      safeFilters[k] = { ...v, set: Array.from(v.set || []) };
-    }
-    try{
-      localStorage.setItem(KEY, JSON.stringify({ filters: safeFilters, sort }));
-    }catch(_){}
-  }
-  function loadState(){
-    try{
-      const raw = localStorage.getItem(KEY);
-      if(!raw) return;
-      const st = JSON.parse(raw);
-      if(st?.filters){
-        const rebuilt = {};
-        for(const [k,v] of Object.entries(st.filters)){
-          rebuilt[k] = { ...v, set: new Set(v.set || []) };
-        }
-        filters = rebuilt;
-      }
-      if(st?.sort) sort = st.sort;
-    }catch(_){}
-  }
-
-  const _applyOrig = apply;
-  function applyWithPersist(){
-    saveState();
-    _applyOrig();
-  }
-  apply = applyWithPersist;
-
-  buildHeaderUI();
-  loadState();
-  apply();
-})();
-</script>
-
-<script>
-/* ===================== SCROLLBAR HORIZONTAL FIXA NO RODAPÉ ===================== */
-(function(){
-  const wrap  = document.querySelector(".ac-table-wrap");
-  const fixed = document.getElementById("acXScrollFixed");
-  const inner = document.getElementById("acXScrollInner");
-  const table = document.getElementById("acTable");
-
-  if(!wrap || !fixed || !inner || !table) return;
-
-  let syncing = false;
-
-  function getMaxScroll(el){
-    return Math.max(0, el.scrollWidth - el.clientWidth);
-  }
-
-  function positionFixedOverWrap(){
-    const r = wrap.getBoundingClientRect();
-    fixed.style.left = Math.max(0, r.left) + "px";
-    fixed.style.width = Math.max(0, r.width) + "px";
-  }
-
-  function updateInnerWidth(){
-    const w = Math.max(table.scrollWidth, wrap.scrollWidth);
-    inner.style.width = w + "px";
-  }
-
-  function toggleIfOverflow(){
-    const hasOverflow = table.scrollWidth > wrap.clientWidth + 2;
-    fixed.style.display = hasOverflow ? "block" : "none";
-  }
-
-  function syncFixedToWrap(){
-    const maxW = getMaxScroll(wrap);
-    const maxF = getMaxScroll(fixed);
-    if (maxW <= 0 || maxF <= 0) return;
-    fixed.scrollLeft = (wrap.scrollLeft / maxW) * maxF;
-  }
-
-  function syncWrapToFixed(){
-    const maxW = getMaxScroll(wrap);
-    const maxF = getMaxScroll(fixed);
-    if (maxW <= 0 || maxF <= 0) return;
-    wrap.scrollLeft = (fixed.scrollLeft / maxF) * maxW;
-  }
-
-  function refresh(){
-    positionFixedOverWrap();
-    updateInnerWidth();
-    toggleIfOverflow();
-    syncFixedToWrap();
-  }
-
-  fixed.addEventListener("scroll", ()=>{
-    if(syncing) return;
-    syncing = true;
-    syncWrapToFixed();
-    syncing = false;
-  }, { passive:true });
-
-  wrap.addEventListener("scroll", ()=>{
-    if(syncing) return;
-    syncing = true;
-    syncFixedToWrap();
-    syncing = false;
-  }, { passive:true });
-
-  const ro = new ResizeObserver(()=> refresh());
-  ro.observe(wrap);
-  ro.observe(table);
-
-  window.addEventListener("resize", ()=> refresh());
-  window.addEventListener("scroll", ()=> positionFixedOverWrap(), { passive:true });
-
-  window.AC_XSCROLL = { refresh };
-
-  refresh();
-})();
-</script>
-
-<script>
-/* ===================== AUTO-CÁLCULO HONORÁRIOS/REPASSE (TIPO RÉU) + INDICATIVO VISUAL ===================== */
-/* ✅ MELHORIA: se usuário apagar tudo, só recalcula no BLUR (clicar fora), não enquanto estiver com foco */
-(function(){
-  const elValor = document.getElementById("acValorAcordo");
-  const elTipoReu = document.getElementById("acTipoReu");
-  const elHon = document.getElementById("acHonorarios");
-  const elRep = document.getElementById("acRepasse");
-
-  const fieldHon = document.getElementById("acFieldHonorarios");
-  const fieldRep = document.getElementById("acFieldRepasse");
-
-  const tipoField = document.getElementById("acTipoReuField");
-
-  if(!elValor || !elTipoReu || !elHon || !elRep){
-    console.warn("Auto-cálculo: inputs não encontrados (acValorAcordo/acTipoReu/acHonorarios/acRepasse).");
-    return;
-  }
-
-  let honorariosManual = false;
-  let repasseManual = false;
-
-  // ✅ NOVO: quando o usuário zera o campo, aguarda BLUR para recalcular
-  let pendingAutoHon = false;
-  let pendingAutoRep = false;
-
-  function parseForCalc(raw){
-    const n = acParseAnyNumber(raw);
-    return (n === null) ? null : n;
-  }
-
-  function fmtBR(n){
-    const v = Number.isFinite(n) ? n : 0;
-    return AC_BR_NUMBER.format(v);
-  }
-
-  function getPercents(){
-    const tipo = String(elTipoReu.value || "").toLowerCase().trim();
-    const isOnibus = (tipo === "onibus" || tipo === "ônibus");
-    return {
-      hon: isOnibus ? 0.40 : 0.30,
-      rep: isOnibus ? 0.60 : 0.70
-    };
-  }
-
-  function setAutoVisual(fieldEl, isAuto){
-    if(!fieldEl) return;
-    fieldEl.classList.toggle("is-auto", !!isAuto);
-  }
-
-  /* ✅ sinaliza que tipo_reu deve ser preenchido primeiro */
-  function updateTipoReuSignal(){
-    const hasTipo = !!String(elTipoReu.value || "").trim();
-    if(!tipoField) return;
-
-    tipoField.classList.toggle("first-required", !hasTipo);
-    tipoField.classList.toggle("first-ok", hasTipo);
-
-    if(!hasTipo){
-      setAutoVisual(fieldHon, false);
-      setAutoVisual(fieldRep, false);
-    }
-  }
-
-  function isEditing(inputEl){
-    return document.activeElement === inputEl;
-  }
-
-  function applySuggestion(){
-    updateTipoReuSignal();
-
-    const hasTipo = !!String(elTipoReu.value || "").trim();
-    if(!hasTipo){
-      return;
-    }
-
-    const base = parseForCalc(elValor.value);
-    if(base === null){
-      // não briga com usuário se ele estiver editando
-      if(!honorariosManual && !isEditing(elHon)){ elHon.value = ""; setAutoVisual(fieldHon, false); }
-      if(!repasseManual && !isEditing(elRep)){ elRep.value = ""; setAutoVisual(fieldRep, false); }
-      return;
-    }
-
-    const p = getPercents();
-    const h = base * p.hon;
-    const r = base * p.rep;
-
-    // ✅ REGRA: se estiver com foco OU estiver "pendente", não recalcula
-    if(!honorariosManual && !isEditing(elHon) && !pendingAutoHon){
-      elHon.value = fmtBR(h);
-      setAutoVisual(fieldHon, true);
-    }
-    if(!repasseManual && !isEditing(elRep) && !pendingAutoRep){
-      elRep.value = fmtBR(r);
-      setAutoVisual(fieldRep, true);
-    }
-  }
-
-  function bindManualBehavior(inputEl, which){
-    // enquanto digita, não recalcula quando apagar: espera blur
-    inputEl.addEventListener("input", ()=>{
-      const v = (inputEl.value || "").trim();
-
-      // usuário apagou tudo: marca pendência, mas não recalcula agora
-      if(v === ""){
-        if(which === "hon"){
-          honorariosManual = false;
-          pendingAutoHon = true;
-          setAutoVisual(fieldHon, false);
-        } else {
-          repasseManual = false;
-          pendingAutoRep = true;
-          setAutoVisual(fieldRep, false);
-        }
+      if (!set.size) {
+        delete filters[openCol];
+        closePanel();
+        apply();
         return;
       }
 
-      // usuário digitou algo: vira manual e cancela pendência
-      if(which === "hon"){
-        honorariosManual = true;
-        pendingAutoHon = false;
+      const isDate = panel.dataset.isDateCol === '1';
+      const dateMode = panel.dataset.dateMode || 'day';
+
+      filters[openCol] = isDate
+        ? { type: 'date', mode: dateMode, set }
+        : { type: 'set', set };
+
+      closePanel();
+      apply();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (panel.style.display !== 'block') return;
+      const inside = e.target.closest && e.target.closest('#acGlobalFilterPanel');
+      const onHeaderBtn = e.target.closest && e.target.closest('.ac-th-btn');
+      if (inside || onHeaderBtn) return;
+      closePanel();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === "Escape" && panel.style.display === "block") closePanel();
+    });
+
+    window.addEventListener('resize', () => { if (openCol !== null) { closePanel(); } });
+
+    window.AC = window.AC || {};
+    window.AC.clearAll = function () {
+      filters = {};
+      sort = null;
+      closePanel();
+      apply();
+    };
+    window.AC.deleteFromBtn = function (ev, id) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      deleteAcordo(id);
+    };
+
+    const KEY = "acordos.filters.v1";
+    function saveState() {
+      const safeFilters = {};
+      for (const [k, v] of Object.entries(filters)) {
+        safeFilters[k] = { ...v, set: Array.from(v.set || []) };
+      }
+      try {
+        localStorage.setItem(KEY, JSON.stringify({ filters: safeFilters, sort }));
+      } catch (_) { }
+    }
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(KEY);
+        if (!raw) return;
+        const st = JSON.parse(raw);
+        if (st?.filters) {
+          const rebuilt = {};
+          for (const [k, v] of Object.entries(st.filters)) {
+            rebuilt[k] = { ...v, set: new Set(v.set || []) };
+          }
+          filters = rebuilt;
+        }
+        if (st?.sort) sort = st.sort;
+      } catch (_) { }
+    }
+
+    const _applyOrig = apply;
+    function applyWithPersist() {
+      saveState();
+      _applyOrig();
+    }
+    apply = applyWithPersist;
+
+    buildHeaderUI();
+    loadState();
+    apply();
+  })();
+</script>
+
+<script>
+  /* ===================== SCROLLBAR HORIZONTAL FIXA NO RODAPÉ ===================== */
+  (function () {
+    const wrap = document.querySelector(".ac-table-wrap");
+    const fixed = document.getElementById("acXScrollFixed");
+    const inner = document.getElementById("acXScrollInner");
+    const table = document.getElementById("acTable");
+
+    if (!wrap || !fixed || !inner || !table) return;
+
+    let syncing = false;
+
+    function getMaxScroll(el) {
+      return Math.max(0, el.scrollWidth - el.clientWidth);
+    }
+
+    function positionFixedOverWrap() {
+      const r = wrap.getBoundingClientRect();
+      fixed.style.left = Math.max(0, r.left) + "px";
+      fixed.style.width = Math.max(0, r.width) + "px";
+    }
+
+    function updateInnerWidth() {
+      const w = Math.max(table.scrollWidth, wrap.scrollWidth);
+      inner.style.width = w + "px";
+    }
+
+    function toggleIfOverflow() {
+      const hasOverflow = table.scrollWidth > wrap.clientWidth + 2;
+      fixed.style.display = hasOverflow ? "block" : "none";
+    }
+
+    function syncFixedToWrap() {
+      const maxW = getMaxScroll(wrap);
+      const maxF = getMaxScroll(fixed);
+      if (maxW <= 0 || maxF <= 0) return;
+      fixed.scrollLeft = (wrap.scrollLeft / maxW) * maxF;
+    }
+
+    function syncWrapToFixed() {
+      const maxW = getMaxScroll(wrap);
+      const maxF = getMaxScroll(fixed);
+      if (maxW <= 0 || maxF <= 0) return;
+      wrap.scrollLeft = (fixed.scrollLeft / maxF) * maxW;
+    }
+
+    function refresh() {
+      positionFixedOverWrap();
+      updateInnerWidth();
+      toggleIfOverflow();
+      syncFixedToWrap();
+    }
+
+    fixed.addEventListener("scroll", () => {
+      if (syncing) return;
+      syncing = true;
+      syncWrapToFixed();
+      syncing = false;
+    }, { passive: true });
+
+    wrap.addEventListener("scroll", () => {
+      if (syncing) return;
+      syncing = true;
+      syncFixedToWrap();
+      syncing = false;
+    }, { passive: true });
+
+    const ro = new ResizeObserver(() => refresh());
+    ro.observe(wrap);
+    ro.observe(table);
+
+    window.addEventListener("resize", () => refresh());
+    window.addEventListener("scroll", () => positionFixedOverWrap(), { passive: true });
+
+    window.AC_XSCROLL = { refresh };
+
+    refresh();
+  })();
+</script>
+
+<script>
+  /* ===================== AUTO-CÁLCULO HONORÁRIOS/REPASSE (TIPO RÉU) + INDICATIVO VISUAL ===================== */
+  /* ✅ MELHORIA: se usuário apagar tudo, só recalcula no BLUR (clicar fora), não enquanto estiver com foco */
+  (function () {
+    const elValor = document.getElementById("acValorAcordo");
+    const elTipoReu = document.getElementById("acTipoReu");
+    const elPorcHon = document.getElementById("acPorcentagemHonorarios");
+    const elHon = document.getElementById("acHonorarios");
+    const elRep = document.getElementById("acRepasse");
+    const elAud = document.getElementById("acAudiencista");
+
+    const fieldHon = document.getElementById("acFieldHonorarios");
+    const fieldRep = document.getElementById("acFieldRepasse");
+
+    const tipoField = document.getElementById("acTipoReuField");
+
+    if (!elValor || !elTipoReu || !elHon || !elRep || !elPorcHon) {
+      console.warn("Auto-cálculo: inputs não encontrados.");
+      return;
+    }
+
+    let favorManual = false;
+    let honorariosManual = false;
+    let repasseManual = false;
+
+    // ✅ NOVO: quando o usuário zera o campo, aguarda BLUR para recalcular
+    let pendingAutoHon = false;
+    let pendingAutoRep = false;
+
+    function parseForCalc(raw) {
+      const n = acParseAnyNumber(raw);
+      return (n === null) ? null : n;
+    }
+
+    function fmtBR(n) {
+      const v = Number.isFinite(n) ? n : 0;
+      return AC_BR_NUMBER.format(v);
+    }
+
+    function getPercents() {
+      const rawPorc = elPorcHon ? (elPorcHon.value || "").trim() : "";
+      let valPorc = rawPorc ? parseForCalc(rawPorc) : null;
+
+      // Fallback if empty based on tipo_reu, to keep UX
+      if (valPorc === null) {
+        const tipo = String(elTipoReu.value || "").toLowerCase().trim();
+        const isOnibus = (tipo === "onibus" || tipo === "ônibus");
+        const isAereo = (tipo === "aereo" || tipo === "aéreo");
+        if (isOnibus) valPorc = 40;
+        else if (isAereo) valPorc = 30;
+        else valPorc = 0;
+      }
+
+      return {
+        hon: valPorc / 100.0,
+        rep: (100.0 - valPorc) / 100.0
+      };
+    }
+
+    function setAutoVisual(fieldEl, isAuto) {
+      if (!fieldEl) return;
+      fieldEl.classList.toggle("is-auto", !!isAuto);
+    }
+
+    /* ✅ sinaliza que tipo_reu deve ser preenchido primeiro */
+    function updateTipoReuSignal() {
+      const hasTipo = !!String(elTipoReu.value || "").trim();
+      if (!tipoField) return;
+
+      tipoField.classList.toggle("first-required", !hasTipo);
+      tipoField.classList.toggle("first-ok", hasTipo);
+
+      if (!hasTipo) {
         setAutoVisual(fieldHon, false);
-      } else {
-        repasseManual = true;
-        pendingAutoRep = false;
         setAutoVisual(fieldRep, false);
       }
-    });
+    }
 
-    // ✅ só aqui (clicar fora) é que pode recalcular se ainda estiver vazio
-    inputEl.addEventListener("blur", ()=>{
-      const v = (inputEl.value || "").trim();
+    function isEditing(inputEl) {
+      return document.activeElement === inputEl;
+    }
 
-      if(which === "hon"){
-        if(pendingAutoHon && v === ""){
+    function applySuggestion() {
+      updateTipoReuSignal();
+
+      // se o campo % Honorários estiver vazio, vamos tentar setar padrão de acordo c/ tipo_reu
+      if (elPorcHon && !isEditing(elPorcHon) && !(elPorcHon.value || "").trim()) {
+        const tipo = String(elTipoReu.value || "").toLowerCase().trim();
+        const isOnibus = (tipo === "onibus" || tipo === "ônibus");
+        const isAereo = (tipo === "aereo" || tipo === "aéreo");
+        if (isOnibus) elPorcHon.value = "40";
+        else if (isAereo) elPorcHon.value = "30";
+      }
+
+      const base = parseForCalc(elValor.value);
+      if (base === null) {
+        if (!honorariosManual && !isEditing(elHon)) { elHon.value = ""; setAutoVisual(fieldHon, false); }
+        if (!repasseManual && !isEditing(elRep)) { elRep.value = ""; setAutoVisual(fieldRep, false); }
+        return;
+      }
+
+      const p = getPercents();
+      const vAud = elAud ? (parseForCalc(elAud.value) || 0) : 0;
+
+      const h = base * p.hon;
+      const r = (base * p.rep) - vAud;
+
+      // Make % Honorarios override the 'manual' flag
+      if (isEditing(elPorcHon)) {
+        honorariosManual = false;
+        repasseManual = false;
+      }
+
+      if (!honorariosManual && !isEditing(elHon) && !pendingAutoHon) {
+        elHon.value = fmtBR(h);
+        setAutoVisual(fieldHon, true);
+      }
+      if (!repasseManual && !isEditing(elRep) && !pendingAutoRep) {
+        elRep.value = fmtBR(r);
+        setAutoVisual(fieldRep, true);
+      }
+    }
+
+    function bindManualBehavior(inputEl, which) {
+      // enquanto digita, não recalcula quando apagar: espera blur
+      inputEl.addEventListener("input", () => {
+        const v = (inputEl.value || "").trim();
+
+        // usuário apagou tudo: marca pendência, mas não recalcula agora
+        if (v === "") {
+          if (which === "hon") {
+            honorariosManual = false;
+            pendingAutoHon = true;
+            setAutoVisual(fieldHon, false);
+          } else {
+            repasseManual = false;
+            pendingAutoRep = true;
+            setAutoVisual(fieldRep, false);
+          }
+          return;
+        }
+
+        // usuário digitou algo: vira manual e cancela pendência
+        if (which === "hon") {
+          honorariosManual = true;
           pendingAutoHon = false;
-          applySuggestion();
-        }
-      } else {
-        if(pendingAutoRep && v === ""){
+          setAutoVisual(fieldHon, false);
+        } else {
+          repasseManual = true;
           pendingAutoRep = false;
-          applySuggestion();
+          setAutoVisual(fieldRep, false);
         }
-      }
-    });
-  }
+      });
 
-  elValor.addEventListener("input", ()=> applySuggestion());
-  elTipoReu.addEventListener("change", ()=> applySuggestion());
+      // ✅ só aqui (clicar fora) é que pode recalcular se ainda estiver vazio
+      inputEl.addEventListener("blur", () => {
+        const v = (inputEl.value || "").trim();
 
-  bindManualBehavior(elHon, "hon");
-  bindManualBehavior(elRep, "rep");
+        if (which === "hon") {
+          if (pendingAutoHon && v === "") {
+            pendingAutoHon = false;
+            applySuggestion();
+          }
+        } else {
+          if (pendingAutoRep && v === "") {
+            pendingAutoRep = false;
+            applySuggestion();
+          }
+        }
+      });
+    }
 
-  window.AC_AUTOCALC = {
-    resetForCreate(){
-      honorariosManual = false;
-      repasseManual = false;
-      pendingAutoHon = false;
-      pendingAutoRep = false;
-      updateTipoReuSignal();
-      setAutoVisual(fieldHon, false);
-      setAutoVisual(fieldRep, false);
-      applySuggestion();
-    },
-    initForEdit(existingHonorarios, existingRepasse){
-      honorariosManual = !!(String(existingHonorarios ?? "").trim());
-      repasseManual = !!(String(existingRepasse ?? "").trim());
-      pendingAutoHon = false;
-      pendingAutoRep = false;
-      updateTipoReuSignal();
-      setAutoVisual(fieldHon, !honorariosManual);
-      setAutoVisual(fieldRep, !repasseManual);
-      applySuggestion();
-    },
-    refreshTipoReuSignal: updateTipoReuSignal
-  };
+    elValor.addEventListener("input", () => applySuggestion());
+    elTipoReu.addEventListener("change", () => applySuggestion());
+    elPorcHon.addEventListener("input", () => applySuggestion());
+    if (elAud) elAud.addEventListener("input", () => applySuggestion());
 
-  updateTipoReuSignal();
-})();
+    bindManualBehavior(elHon, "hon");
+    bindManualBehavior(elRep, "rep");
+
+    window.AC_AUTOCALC = {
+      resetForCreate() {
+        honorariosManual = false;
+        repasseManual = false;
+        pendingAutoHon = false;
+        pendingAutoRep = false;
+        updateTipoReuSignal();
+        setAutoVisual(fieldHon, false);
+        setAutoVisual(fieldRep, false);
+        applySuggestion();
+      },
+      initForEdit(existingHonorarios, existingRepasse) {
+        honorariosManual = !!(String(existingHonorarios ?? "").trim());
+        repasseManual = !!(String(existingRepasse ?? "").trim());
+        pendingAutoHon = false;
+        pendingAutoRep = false;
+        updateTipoReuSignal();
+        setAutoVisual(fieldHon, !honorariosManual);
+        setAutoVisual(fieldRep, !repasseManual);
+        applySuggestion();
+      },
+      refreshTipoReuSignal: updateTipoReuSignal
+    };
+
+    updateTipoReuSignal();
+  })();
 </script>
 
 <script>
-/* ===================== (2) REGRA "CORREÇÃO" DEPENDE DE "VALOR DE DEPÓSITO" (somente se existir no DOM) ===================== */
-(function(){
-  const getEl = (...ids) => {
-    for(const id of ids){
-      const el = document.getElementById(id);
-      if(el) return el;
-    }
-    return null;
-  };
-
-  const depositEl = getEl("acValorDeposito", "acValorDepositoInput");
-  const corrEl = getEl("acCorrecao", "acCorrecaoInput");
-
-  if(!depositEl || !corrEl) return;
-
-  let lockedNoAuto = false;
-
-  function depNumber(){
-    const n = acParseAnyNumber(depositEl.value);
-    if(n === null) return null;
-    return n;
-  }
-
-  function setCorrEnabled(enabled){
-    corrEl.disabled = !enabled;
-    corrEl.style.opacity = enabled ? "" : "0.65";
-    corrEl.style.cursor = enabled ? "" : "not-allowed";
-  }
-
-  function clearCorr(){
-    corrEl.value = "";
-    corrEl.dispatchEvent(new Event("input", { bubbles:true }));
-  }
-
-  function refresh(){
-    const dep = depNumber();
-    const ok = (dep !== null && dep > 0);
-
-    if(!ok){
-      lockedNoAuto = true;
-      setCorrEnabled(false);
-      clearCorr();
-      return;
-    }
-
-    setCorrEnabled(true);
-    if(lockedNoAuto){
-      return;
-    }
-  }
-
-  corrEl.addEventListener("input", ()=>{
-    const v = (corrEl.value || "").trim();
-    if(v !== "") lockedNoAuto = true;
-  });
-
-  depositEl.addEventListener("input", refresh);
-  depositEl.addEventListener("change", refresh);
-
-  const _openCreate = window.openCreateModal;
-  const _openEdit = window.openEditModalFromRow;
-
-  if(typeof _openCreate === "function"){
-    window.openCreateModal = async function(...args){
-      const r = await _openCreate.apply(this, args);
-      lockedNoAuto = false;
-      refresh();
-      return r;
+  /* ===================== (2) REGRA "CORREÇÃO" DEPENDE DE "VALOR DE DEPÓSITO" (somente se existir no DOM) ===================== */
+  (function () {
+    const getEl = (...ids) => {
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (el) return el;
+      }
+      return null;
     };
-  }
 
-  if(typeof _openEdit === "function"){
-    window.openEditModalFromRow = async function(...args){
-      const r = await _openEdit.apply(this, args);
-      lockedNoAuto = false;
-      refresh();
-      return r;
-    };
-  }
+    const depositEl = getEl("acValorDeposito", "acValorDepositoInput");
+    const corrEl = getEl("acCorrecao", "acCorrecaoInput");
 
-  refresh();
-})();
+    if (!depositEl || !corrEl) return;
+
+    let lockedNoAuto = false;
+
+    function depNumber() {
+      const n = acParseAnyNumber(depositEl.value);
+      if (n === null) return null;
+      return n;
+    }
+
+    function setCorrEnabled(enabled) {
+      corrEl.disabled = !enabled;
+      corrEl.style.opacity = enabled ? "" : "0.65";
+      corrEl.style.cursor = enabled ? "" : "not-allowed";
+    }
+
+    function clearCorr() {
+      corrEl.value = "";
+      corrEl.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+
+    function refresh() {
+      const dep = depNumber();
+      const ok = (dep !== null && dep > 0);
+
+      if (!ok) {
+        lockedNoAuto = true;
+        setCorrEnabled(false);
+        clearCorr();
+        return;
+      }
+
+      setCorrEnabled(true);
+      if (lockedNoAuto) {
+        return;
+      }
+
+      if (!lockedNoAuto) {
+        const fieldCorrecao = document.getElementById("acFieldCorrecao");
+        const vAcordo = acParseAnyNumber(document.getElementById("acValorAcordo")?.value) || 0;
+        const vSucumb = acParseAnyNumber(document.getElementById("acSucumbencia")?.value) || 0;
+
+        const autoCorr = dep - vAcordo - vSucumb;
+        corrEl.value = acFormatBR(autoCorr);
+        if (fieldCorrecao) fieldCorrecao.classList.add("is-auto");
+      }
+    }
+
+    corrEl.addEventListener("input", () => {
+      const v = (corrEl.value || "").trim();
+      const fieldCorrecao = document.getElementById("acFieldCorrecao");
+      if (fieldCorrecao && v !== "") fieldCorrecao.classList.remove("is-auto");
+      if (v !== "") lockedNoAuto = true;
+    });
+
+    depositEl.addEventListener("input", refresh);
+    depositEl.addEventListener("change", refresh);
+    const elSucumbCorrecao = document.getElementById("acSucumbencia");
+    if (elSucumbCorrecao) elSucumbCorrecao.addEventListener("input", refresh);
+    const elAcordoCorrecao = document.getElementById("acValorAcordo");
+    if (elAcordoCorrecao) elAcordoCorrecao.addEventListener("input", refresh);
+
+    const _openCreate = window.openCreateModal;
+    const _openEdit = window.openEditModalFromRow;
+
+    if (typeof _openCreate === "function") {
+      window.openCreateModal = async function (...args) {
+        const r = await _openCreate.apply(this, args);
+        lockedNoAuto = false;
+        refresh();
+        return r;
+      };
+    }
+
+    if (typeof _openEdit === "function") {
+      window.openEditModalFromRow = async function (...args) {
+        const r = await _openEdit.apply(this, args);
+        lockedNoAuto = false;
+        refresh();
+        return r;
+      };
+    }
+
+    refresh();
+  })();
 </script>
 
 <script>
-/* ===================== MODAL + DROPDOWNS + CRUD ===================== */
-(function(){
-  function _showError(msg){
-    const el = document.getElementById("acError");
-    if(!el) return;
-    if(!msg){
-      el.style.display = "none";
-      el.textContent = "";
-      return;
-    }
-    el.style.display = "block";
-    el.textContent = msg;
-  }
-
-  function toBRDateText(raw){
-    if(!raw) return '';
-    raw = String(raw).trim();
-    if(raw === '-' || raw === '') return '';
-    if(/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
-
-    const m1 = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if(m1){
-      const yyyy = m1[1], mm = m1[2], dd = m1[3];
-      return `${dd}/${mm}/${yyyy}`;
-    }
-    return raw;
-  }
-
-  function toDotDecimal(s){
-    if(s === null || s === undefined) return "";
-    let v = String(s).trim();
-    if(!v) return "";
-    v = v.replace(/\s/g,'');
-    v = v.replace(/\./g,'');
-    v = v.replace(',', '.');
-    return v;
-  }
-
-  const sel = {
-    uf: document.getElementById("acUfSelect"),
-    status: document.getElementById("acStatusSelect"),
-    reu: document.getElementById("acReuSelect"),
-    local: document.getElementById("acLocalSelect"),
-    prazo_estimado: document.getElementById("acPrazoEstimadoSelect"),
-    escritorio_reu: document.getElementById("acEscritorioReuSelect"),
-  };
-
-  let _optionsLoaded = false;
-  let _options = null;
-
-  async function loadOptionsOnce(){
-    if (_optionsLoaded) return _options;
-    _optionsLoaded = true;
-
-    try{
-      const resp = await fetch("/api/cadastro-options", { headers: { "Accept": "application/json" }});
-      if(!resp.ok) throw new Error("Falha ao carregar opções");
-      _options = await resp.json();
-    }catch(e){
-      console.error(e);
-      _options = {};
+  /* ===================== MODAL + DROPDOWNS + CRUD ===================== */
+  (function () {
+    function _showError(msg) {
+      const el = document.getElementById("acError");
+      if (!el) return;
+      if (!msg) {
+        el.style.display = "none";
+        el.textContent = "";
+        return;
+      }
+      el.style.display = "block";
+      el.textContent = msg;
     }
 
-    fillSelect(sel.uf, (_options["fin_uf"] || []));
-    fillSelect(sel.status, (_options["fin_status"] || []));
-    fillSelect(sel.reu, (_options["fin_reu"] || []));
-    fillSelect(sel.local, (_options["fin_local"] || []));
-    fillSelect(sel.prazo_estimado, (_options["fin_prazo_estimado"] || []));
-    fillSelect(sel.escritorio_reu, (_options["fin_patrono_reu"] || []));
+    function toBRDateText(raw) {
+      if (!raw) return '';
+      raw = String(raw).trim();
+      if (raw === '-' || raw === '') return '';
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
 
-    return _options;
-  }
-
-  function fillSelect(selectEl, items){
-    if(!selectEl) return;
-    const first = selectEl.querySelector('option[value=""]')
-      ? selectEl.querySelector('option[value=""]').outerHTML
-      : '<option value="">Selecione...</option>';
-    selectEl.innerHTML = first;
-
-    (items || []).forEach(v=>{
-      const op = document.createElement("option");
-      op.value = String(v);
-      op.textContent = String(v);
-      selectEl.appendChild(op);
-    });
-  }
-
-  function openModal(mode){
-    const overlay = document.getElementById("acModalOverlay");
-    const badge = document.getElementById("acModalBadge");
-    const title = document.getElementById("acModalTitle");
-    const sub = document.getElementById("acModalSub");
-    const formMode = document.getElementById("acFormMode");
-    const saveBtn = document.getElementById("acSaveBtn");
-
-    _showError("");
-
-    if(mode === "create"){
-      badge.textContent = "Novo";
-      title.textContent = "Criar acordo";
-      sub.textContent = "Preencha os campos e clique em criar.";
-      formMode.value = "create";
-      document.getElementById("acId").value = "";
-      saveBtn.textContent = "Criar";
-      _fillForm({});
-      window.AC_AUTOCALC?.resetForCreate?.();
-
-      document.getElementById("acTipoReu")?.focus();
-      window.AC_AUTOCALC?.refreshTipoReuSignal?.();
-    } else {
-      badge.textContent = "Editar";
-      title.textContent = "Editar acordo";
-      sub.textContent = "Ajuste os campos e clique em salvar.";
-      formMode.value = "edit";
-      saveBtn.textContent = "Salvar";
-      window.AC_AUTOCALC?.refreshTipoReuSignal?.();
+      const m1 = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m1) {
+        const yyyy = m1[1], mm = m1[2], dd = m1[3];
+        return `${dd}/${mm}/${yyyy}`;
+      }
+      return raw;
     }
 
-    overlay.style.display = "flex";
-    overlay.setAttribute("aria-hidden", "false");
-    document.body.classList.add("ac-modal-open");
-  }
-
-  function closeModal(){
-    const overlay = document.getElementById("acModalOverlay");
-    overlay.style.display = "none";
-    overlay.setAttribute("aria-hidden", "true");
-    document.body.classList.remove("ac-modal-open");
-    _showError("");
-  }
-
-  function setSelectValue(selectEl, value){
-    if(!selectEl) return;
-    const v = (value ?? "").toString().trim();
-    selectEl.value = v;
-    if (v && selectEl.value !== v) selectEl.value = "";
-  }
-
-  function _fillForm(row){
-    document.getElementById("acId").value = row?.id ?? "";
-
-    document.getElementById("acDataAcordo").value = toBRDateText(row?.data_acordo ?? "");
-    document.getElementById("acNumeroProcesso").value = row?.numero_processo ?? "";
-
-    setSelectValue(sel.uf, row?.uf ?? "");
-    setSelectValue(sel.reu, row?.reu ?? "");
-    setSelectValue(sel.escritorio_reu, row?.escritorio_reu ?? "");
-    setSelectValue(sel.status, row?.status ?? "");
-
-    document.getElementById("acAutor").value = row?.autor ?? "";
-    document.getElementById("acTel").value = row?.tel ?? "";
-
-    document.getElementById("acValorAcordo").value = (row?.valor_acordo ?? "") !== "" ? acFormatBR(row?.valor_acordo) : "";
-
-    setSelectValue(sel.prazo_estimado, row?.prazo_estimado ?? "");
-    document.getElementById("acPrazoReal").value = toBRDateText(row?.prazo_real ?? "");
-    document.getElementById("acDataPagamento").value = toBRDateText(row?.data_pagamento ?? "");
-
-    setSelectValue(sel.local, row?.local ?? "");
-
-    const tipoVal = (row?.tipo === null || row?.tipo === undefined) ? "" : String(row?.tipo);
-    document.getElementById("acTipo").value = tipoVal;
-
-    document.getElementById("acHonorarios").value = (row?.honorarios ?? "") !== "" ? acFormatBR(row?.honorarios) : "";
-    document.getElementById("acAudiencista").value = (row?.audiencista ?? "") !== "" ? acFormatBR(row?.audiencista) : "";
-    document.getElementById("acRepasse").value = (row?.repasse ?? "") !== "" ? acFormatBR(row?.repasse) : "";
-    document.getElementById("acChavePix").value = row?.chave_pix ?? "";
-    document.getElementById("acSucumbencia").value = (row?.sucumbencia ?? "") !== "" ? acFormatBR(row?.sucumbencia) : "";
-    document.getElementById("acObservacoes").value = row?.observacoes ?? "";
-
-    const tr = document.getElementById("acTipoReu");
-    if(tr){
-      const rawTipo = (row?.tipo_reu ?? row?.tipoReu ?? "").toString().trim().toLowerCase();
-      if(rawTipo === "aereo" || rawTipo === "aéreo") tr.value = "aereo";
-      else if(rawTipo === "onibus" || rawTipo === "ônibus") tr.value = "onibus";
-      else tr.value = "";
+    function toDotDecimal(s) {
+      if (s === null || s === undefined) return "";
+      let v = String(s).trim();
+      if (!v) return "";
+      v = v.replace(/\s/g, '');
+      v = v.replace(/\./g, '');
+      v = v.replace(',', '.');
+      return v;
     }
-  }
 
-  function _collectForm(){
-    return {
-      id: document.getElementById("acId").value || null,
-
-      data_acordo: document.getElementById("acDataAcordo").value.trim(),
-      numero_processo: document.getElementById("acNumeroProcesso").value.trim(),
-
-      uf_id: (sel.uf?.value || "").trim(),
-      reu: (sel.reu?.value || "").trim(),
-      autor: document.getElementById("acAutor").value.trim(),
-      tel: document.getElementById("acTel").value.trim(),
-      escritorio_reu: (sel.escritorio_reu?.value || "").trim(),
-
-      tipo_reu: (document.getElementById("acTipoReu")?.value || "").trim(),
-
-      valor_acordo: toDotDecimal(document.getElementById("acValorAcordo").value),
-
-      status_id: (sel.status?.value || "").trim(),
-
-      prazo_estimado: (sel.prazo_estimado?.value || "").trim(),
-      prazo_real: document.getElementById("acPrazoReal").value.trim(),
-      data_pagamento: document.getElementById("acDataPagamento").value.trim(),
-
-      local: (sel.local?.value || "").trim(),
-
-      tipo: document.getElementById("acTipo").value.trim(),
-
-      honorarios: toDotDecimal(document.getElementById("acHonorarios").value),
-      audiencista: toDotDecimal(document.getElementById("acAudiencista").value),
-      repasse: toDotDecimal(document.getElementById("acRepasse").value),
-      chave_pix: document.getElementById("acChavePix").value.trim(),
-      sucumbencia: toDotDecimal(document.getElementById("acSucumbencia").value),
-      observacoes: document.getElementById("acObservacoes").value.trim(),
+    const sel = {
+      uf: document.getElementById("acUfSelect"),
+      status: document.getElementById("acStatusSelect"),
+      reu: document.getElementById("acReuSelect"),
+      local: document.getElementById("acLocalSelect"),
+      prazo_estimado: document.getElementById("acPrazoEstimadoSelect"),
+      escritorio_reu: document.getElementById("acEscritorioReuSelect"),
     };
-  }
 
-  document.addEventListener("keydown", (e)=>{
-    if(e.key !== "Escape") return;
-    // NÃO fecha propositalmente
-  });
+    let _optionsLoaded = false;
+    let _options = null;
 
-  window.closeModal = closeModal;
+    async function loadOptionsOnce() {
+      if (_optionsLoaded) return _options;
+      _optionsLoaded = true;
 
-  window.openCreateModal = async function(){
-    await loadOptionsOnce();
-    openModal("create");
-  };
+      try {
+        const resp = await fetch("/api/cadastro-options", { headers: { "Accept": "application/json" } });
+        if (!resp.ok) throw new Error("Falha ao carregar opções");
+        _options = await resp.json();
+      } catch (e) {
+        console.error(e);
+        _options = {};
+      }
 
-  window.openEditModalFromRow = async function(tr){
-    await loadOptionsOnce();
-    try{
-      const raw = tr?.dataset?.row || "{}";
-      const row = JSON.parse(raw);
-      openModal("edit");
-      _fillForm(row);
-      window.AC_AUTOCALC?.initForEdit?.(row?.honorarios, row?.repasse);
-    }catch(err){
-      console.error("Erro openEditModalFromRow:", err);
-      _showError("Não foi possível abrir edição (dados inválidos).");
-    }
-  };
+      fillSelect(sel.uf, (_options["fin_uf"] || []));
+      fillSelect(sel.status, (_options["fin_status"] || []));
+      fillSelect(sel.reu, (_options["fin_reu"] || []));
+      fillSelect(sel.local, (_options["fin_local"] || []));
+      fillSelect(sel.prazo_estimado, (_options["fin_prazo_estimado"] || []));
+      fillSelect(sel.escritorio_reu, (_options["fin_patrono_reu"] || []));
 
-  window.submitModal = async function(){
-    const mode = document.getElementById("acFormMode").value;
-    if(mode === "create") return saveCreate();
-    return saveEdit();
-  };
-
-  async function saveEdit(){
-    const payload = _collectForm();
-    if(!payload.id){
-      _showError("ID do acordo não encontrado.");
-      return;
+      return _options;
     }
 
-    if(!payload.tipo_reu){
-      _showError("Preencha primeiro o Tipo Réu (Aéreo/Ônibus).");
-      document.getElementById("acTipoReu")?.focus();
-      window.AC_AUTOCALC?.refreshTipoReuSignal?.();
-      return;
-    }
+    function fillSelect(selectEl, items) {
+      if (!selectEl) return;
+      const first = selectEl.querySelector('option[value=""]')
+        ? selectEl.querySelector('option[value=""]').outerHTML
+        : '<option value="">Selecione...</option>';
+      selectEl.innerHTML = first;
 
-    try{
-      const resp = await fetch(`/acordos/${payload.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      (items || []).forEach(v => {
+        const op = document.createElement("option");
+        op.value = String(v);
+        op.textContent = String(v);
+        selectEl.appendChild(op);
       });
+    }
 
-      if(!resp.ok){
-        const txt = await resp.text();
-        _showError(txt || "Erro ao salvar edição.");
+    function openModal(mode) {
+      const overlay = document.getElementById("acModalOverlay");
+      const badge = document.getElementById("acModalBadge");
+      const title = document.getElementById("acModalTitle");
+      const sub = document.getElementById("acModalSub");
+      const formMode = document.getElementById("acFormMode");
+      const saveBtn = document.getElementById("acSaveBtn");
+
+      _showError("");
+
+      if (mode === "create") {
+        badge.textContent = "Novo";
+        title.textContent = "Criar acordo";
+        sub.textContent = "Preencha os campos e clique em criar.";
+        formMode.value = "create";
+        document.getElementById("acId").value = "";
+        saveBtn.textContent = "Criar";
+        _fillForm({});
+        window.AC_AUTOCALC?.resetForCreate?.();
+
+        document.getElementById("acTipoReu")?.focus();
+        window.AC_AUTOCALC?.refreshTipoReuSignal?.();
+      } else {
+        badge.textContent = "Editar";
+        title.textContent = "Editar acordo";
+        sub.textContent = "Ajuste os campos e clique em salvar.";
+        formMode.value = "edit";
+        saveBtn.textContent = "Salvar";
+        window.AC_AUTOCALC?.refreshTipoReuSignal?.();
+      }
+
+      overlay.style.display = "flex";
+      overlay.setAttribute("aria-hidden", "false");
+      document.body.classList.add("ac-modal-open");
+    }
+
+    function closeModal() {
+      const overlay = document.getElementById("acModalOverlay");
+      overlay.style.display = "none";
+      overlay.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("ac-modal-open");
+      _showError("");
+    }
+
+    function setSelectValue(selectEl, value) {
+      if (!selectEl) return;
+      const v = (value ?? "").toString().trim();
+      selectEl.value = v;
+      if (v && selectEl.value !== v) selectEl.value = "";
+    }
+
+    function _fillForm(row) {
+      document.getElementById("acId").value = row?.id ?? "";
+
+      document.getElementById("acDataAcordo").value = toBRDateText(row?.data_acordo ?? "");
+      document.getElementById("acNumeroProcesso").value = row?.numero_processo ?? "";
+
+      setSelectValue(sel.uf, row?.uf ?? "");
+      setSelectValue(sel.reu, row?.reu ?? "");
+      setSelectValue(sel.escritorio_reu, row?.escritorio_reu ?? "");
+      setSelectValue(sel.status, row?.status ?? "");
+
+      document.getElementById("acAutor").value = row?.autor ?? "";
+      document.getElementById("acTel").value = row?.tel ?? "";
+
+      document.getElementById("acValorAcordo").value = (row?.valor_acordo ?? "") !== "" ? acFormatBR(row?.valor_acordo) : "";
+
+      setSelectValue(sel.prazo_estimado, row?.prazo_estimado ?? "");
+      document.getElementById("acPrazoReal").value = toBRDateText(row?.prazo_real ?? "");
+      document.getElementById("acDataPagamento").value = toBRDateText(row?.data_pagamento ?? "");
+
+      setSelectValue(sel.local, row?.local ?? "");
+
+      const tipoVal = (row?.tipo === null || row?.tipo === undefined) ? "" : String(row?.tipo);
+      document.getElementById("acTipo").value = tipoVal;
+
+      document.getElementById("acPorcentagemHonorarios").value = (row?.porcentagem_honorarios ?? "") !== "" ? acFormatBR(row?.porcentagem_honorarios) : "";
+      document.getElementById("acValorDeposito").value = (row?.deposito ?? "") !== "" ? acFormatBR(row?.deposito) : "";
+      document.getElementById("acCorrecao").value = (row?.correcao ?? "") !== "" ? acFormatBR(row?.correcao) : "";
+      document.getElementById("acHonorarios").value = (row?.honorarios ?? "") !== "" ? acFormatBR(row?.honorarios) : "";
+      document.getElementById("acAudiencista").value = (row?.audiencista ?? "") !== "" ? acFormatBR(row?.audiencista) : "";
+      document.getElementById("acRepasse").value = (row?.repasse ?? "") !== "" ? acFormatBR(row?.repasse) : "";
+      document.getElementById("acChavePix").value = row?.chave_pix ?? "";
+      document.getElementById("acSucumbencia").value = (row?.sucumbencia ?? "") !== "" ? acFormatBR(row?.sucumbencia) : "";
+      document.getElementById("acObservacoes").value = row?.observacoes ?? "";
+
+      const tr = document.getElementById("acTipoReu");
+      if (tr) {
+        const rawTipo = (row?.tipo_reu ?? row?.tipoReu ?? "").toString().trim().toLowerCase();
+        if (rawTipo === "aereo" || rawTipo === "aéreo") tr.value = "aereo";
+        else if (rawTipo === "onibus" || rawTipo === "ônibus") tr.value = "onibus";
+        else tr.value = "";
+      }
+    }
+
+    function _collectForm() {
+      return {
+        id: document.getElementById("acId").value || null,
+
+        data_acordo: document.getElementById("acDataAcordo").value.trim(),
+        numero_processo: document.getElementById("acNumeroProcesso").value.trim(),
+
+        uf_id: (sel.uf?.value || "").trim(),
+        reu: (sel.reu?.value || "").trim(),
+        autor: document.getElementById("acAutor").value.trim(),
+        tel: document.getElementById("acTel").value.trim(),
+        escritorio_reu: (sel.escritorio_reu?.value || "").trim(),
+
+        tipo_reu: (document.getElementById("acTipoReu")?.value || "").trim(),
+
+        valor_acordo: toDotDecimal(document.getElementById("acValorAcordo").value),
+
+        status_id: (sel.status?.value || "").trim(),
+
+        prazo_estimado: (sel.prazo_estimado?.value || "").trim(),
+        prazo_real: document.getElementById("acPrazoReal").value.trim(),
+        data_pagamento: document.getElementById("acDataPagamento").value.trim(),
+
+        local: (sel.local?.value || "").trim(),
+
+        tipo: document.getElementById("acTipo").value.trim(),
+
+        porcentagem_honorarios: toDotDecimal(document.getElementById("acPorcentagemHonorarios").value),
+        deposito: toDotDecimal(document.getElementById("acValorDeposito").value),
+        correcao: toDotDecimal(document.getElementById("acCorrecao").value),
+        honorarios: toDotDecimal(document.getElementById("acHonorarios").value),
+        audiencista: toDotDecimal(document.getElementById("acAudiencista").value),
+        repasse: toDotDecimal(document.getElementById("acRepasse").value),
+        chave_pix: document.getElementById("acChavePix").value.trim(),
+        sucumbencia: toDotDecimal(document.getElementById("acSucumbencia").value),
+        observacoes: document.getElementById("acObservacoes").value.trim(),
+      };
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      // NÃO fecha propositalmente
+    });
+
+    window.closeModal = closeModal;
+
+    window.openCreateModal = async function () {
+      await loadOptionsOnce();
+      openModal("create");
+    };
+
+    window.openEditModalFromRow = async function (tr) {
+      await loadOptionsOnce();
+      try {
+        const raw = tr?.dataset?.row || "{}";
+        const row = JSON.parse(raw);
+        openModal("edit");
+        _fillForm(row);
+        window.AC_AUTOCALC?.initForEdit?.(row?.honorarios, row?.repasse);
+      } catch (err) {
+        console.error("Erro openEditModalFromRow:", err);
+        _showError("Não foi possível abrir edição (dados inválidos).");
+      }
+    };
+
+    window.submitModal = async function () {
+      const mode = document.getElementById("acFormMode").value;
+      if (mode === "create") return saveCreate();
+      return saveEdit();
+    };
+
+    async function saveEdit() {
+      const payload = _collectForm();
+      if (!payload.id) {
+        _showError("ID do acordo não encontrado.");
         return;
       }
 
-      window.location.reload();
-    }catch(err){
-      console.error(err);
-      _showError("Falha de rede ao salvar.");
-    }
-  }
-
-  async function saveCreate(){
-    const payload = _collectForm();
-    payload.id = null;
-
-    if(!payload.tipo_reu){
-      _showError("Preencha primeiro o Tipo Réu (Aéreo/Ônibus).");
-      document.getElementById("acTipoReu")?.focus();
-      window.AC_AUTOCALC?.refreshTipoReuSignal?.();
-      return;
-    }
-
-    try{
-      const resp = await fetch(`/acordos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if(!resp.ok){
-        const txt = await resp.text();
-        _showError(txt || "Erro ao criar acordo.");
+      if (!payload.tipo_reu) {
+        _showError("Preencha primeiro o Tipo Réu (Aéreo/Ônibus).");
+        document.getElementById("acTipoReu")?.focus();
+        window.AC_AUTOCALC?.refreshTipoReuSignal?.();
         return;
       }
 
-      window.location.reload();
-    }catch(err){
-      console.error(err);
-      _showError("Falha de rede ao criar.");
+      try {
+        const resp = await fetch(`/acordos/${payload.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text();
+          _showError(txt || "Erro ao salvar edição.");
+          return;
+        }
+
+        window.location.reload();
+      } catch (err) {
+        console.error(err);
+        _showError("Falha de rede ao salvar.");
+      }
     }
-  }
-})();
 
-/* ===================== DOUBLE CLICK NA LINHA PARA EDITAR ===================== */
-(function(){
-  const tbody = document.getElementById("acTbody");
-  if(!tbody) return;
+    async function saveCreate() {
+      const payload = _collectForm();
+      payload.id = null;
 
-  if (tbody.dataset.dblClickBound === "1") return;
-  tbody.dataset.dblClickBound = "1";
+      if (!payload.tipo_reu) {
+        _showError("Preencha primeiro o Tipo Réu (Aéreo/Ônibus).");
+        document.getElementById("acTipoReu")?.focus();
+        window.AC_AUTOCALC?.refreshTipoReuSignal?.();
+        return;
+      }
 
-  tbody.addEventListener("dblclick", (e)=>{
-    const tr = e.target.closest && e.target.closest("tr.ac-row");
-    if(!tr) return;
+      try {
+        const resp = await fetch(`/acordos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
 
-    const interactive = e.target.closest('button, a, input, select, textarea, label, .ac-th-btn, #acGlobalFilterPanel');
-    if(interactive) return;
+        if (!resp.ok) {
+          const txt = await resp.text();
+          _showError(txt || "Erro ao criar acordo.");
+          return;
+        }
 
-    if(!tr.dataset.row) return;
-
-    if(typeof window.openEditModalFromRow === "function"){
-      window.openEditModalFromRow(tr);
+        window.location.reload();
+      } catch (err) {
+        console.error(err);
+        _showError("Falha de rede ao criar.");
+      }
     }
-  });
-})();
+  })();
 
-/* ===================== HINT EXTRA TIPO RÉU (MANTIDO) ===================== */
-(function(){
-  const tipoEl =
-    document.getElementById("acTipoReu") ||
-    document.getElementById("acTipoReuSelect") ||
-    document.querySelector('[data-field="tipo_reu"]');
+  /* ===================== DOUBLE CLICK NA LINHA PARA EDITAR ===================== */
+  (function () {
+    const tbody = document.getElementById("acTbody");
+    if (!tbody) return;
 
-  if(!tipoEl) return;
+    if (tbody.dataset.dblClickBound === "1") return;
+    tbody.dataset.dblClickBound = "1";
 
-  const wrap =
-    document.getElementById("acTipoReuWrap") ||
-    tipoEl.closest(".ac-field") ||
-    tipoEl.parentElement;
+    tbody.addEventListener("dblclick", (e) => {
+      const tr = e.target.closest && e.target.closest("tr.ac-row");
+      if (!tr) return;
 
-  function getHint(){
-    return document.getElementById("acTipoReuHint") || wrap?.querySelector(".ac-first-hint");
-  }
+      const interactive = e.target.closest('button, a, input, select, textarea, label, .ac-th-btn, #acGlobalFilterPanel');
+      if (interactive) return;
 
-  function hasValue(){
-    const v = (tipoEl.value ?? "").toString().trim();
-    return v !== "";
-  }
+      if (!tr.dataset.row) return;
 
-  function ensureHint(){
-    if(!wrap) return;
-    let hint = getHint();
-    if(!hint){
-      hint = document.createElement("div");
-      hint.id = "acTipoReuHint";
-      hint.className = "ac-first-hint";
-      hint.style.marginTop = "6px";
-      hint.style.fontSize = "12px";
-      hint.style.fontWeight = "900";
-      hint.style.color = "#b45309";
-      hint.style.display = "flex";
-      hint.style.alignItems = "center";
-      hint.style.gap = "8px";
-      hint.innerHTML = `<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:999px;background:#fff7ed;border:1px solid #fed7aa;">!</span>
+      if (typeof window.openEditModalFromRow === "function") {
+        window.openEditModalFromRow(tr);
+      }
+    });
+  })();
+
+  /* ===================== HINT EXTRA TIPO RÉU (MANTIDO) ===================== */
+  (function () {
+    const tipoEl =
+      document.getElementById("acTipoReu") ||
+      document.getElementById("acTipoReuSelect") ||
+      document.querySelector('[data-field="tipo_reu"]');
+
+    if (!tipoEl) return;
+
+    const wrap =
+      document.getElementById("acTipoReuWrap") ||
+      tipoEl.closest(".ac-field") ||
+      tipoEl.parentElement;
+
+    function getHint() {
+      return document.getElementById("acTipoReuHint") || wrap?.querySelector(".ac-first-hint");
+    }
+
+    function hasValue() {
+      const v = (tipoEl.value ?? "").toString().trim();
+      return v !== "";
+    }
+
+    function ensureHint() {
+      if (!wrap) return;
+      let hint = getHint();
+      if (!hint) {
+        hint = document.createElement("div");
+        hint.id = "acTipoReuHint";
+        hint.className = "ac-first-hint";
+        hint.style.marginTop = "6px";
+        hint.style.fontSize = "12px";
+        hint.style.fontWeight = "900";
+        hint.style.color = "#b45309";
+        hint.style.display = "flex";
+        hint.style.alignItems = "center";
+        hint.style.gap = "8px";
+        hint.innerHTML = `<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:999px;background:#fff7ed;border:1px solid #fed7aa;">!</span>
                         <span>Preencha este campo primeiro.</span>`;
-      wrap.appendChild(hint);
+        wrap.appendChild(hint);
+      }
+      return hint;
     }
-    return hint;
-  }
 
-  function refresh(){
-    const hint = ensureHint();
-    if(!hint) return;
-    hint.style.display = hasValue() ? "none" : "flex";
+    function refresh() {
+      const hint = ensureHint();
+      if (!hint) return;
+      hint.style.display = hasValue() ? "none" : "flex";
 
-    if(!hasValue()){
-      tipoEl.style.borderColor = "#f59e0b";
-      tipoEl.style.boxShadow = "0 0 0 4px rgba(245,158,11,.15)";
-    } else {
-      tipoEl.style.borderColor = "";
-      tipoEl.style.boxShadow = "";
+      if (!hasValue()) {
+        tipoEl.style.borderColor = "#f59e0b";
+        tipoEl.style.boxShadow = "0 0 0 4px rgba(245,158,11,.15)";
+      } else {
+        tipoEl.style.borderColor = "";
+        tipoEl.style.boxShadow = "";
+      }
     }
-  }
 
-  tipoEl.addEventListener("input", refresh);
-  tipoEl.addEventListener("change", refresh);
+    tipoEl.addEventListener("input", refresh);
+    tipoEl.addEventListener("change", refresh);
 
-  const _openCreate = window.openCreateModal;
-  const _openEdit = window.openEditModalFromRow;
+    const _openCreate = window.openCreateModal;
+    const _openEdit = window.openEditModalFromRow;
 
-  if(typeof _openCreate === "function"){
-    window.openCreateModal = async function(...args){
-      const r = await _openCreate.apply(this, args);
-      refresh();
-      return r;
-    };
-  }
+    if (typeof _openCreate === "function") {
+      window.openCreateModal = async function (...args) {
+        const r = await _openCreate.apply(this, args);
+        refresh();
+        return r;
+      };
+    }
 
-  if(typeof _openEdit === "function"){
-    window.openEditModalFromRow = async function(...args){
-      const r = await _openEdit.apply(this, args);
-      refresh();
-      return r;
-    };
-  }
+    if (typeof _openEdit === "function") {
+      window.openEditModalFromRow = async function (...args) {
+        const r = await _openEdit.apply(this, args);
+        refresh();
+        return r;
+      };
+    }
 
-  refresh();
-})();
+    refresh();
+  })();
+</script>
+
+<script>
+  /* ===================== CONFERÊNCIA CALCULADA EM ACORDOS ===================== */
+  (function () {
+    const tbody = document.getElementById("acTbody");
+    if (!tbody) return;
+
+    function setCellText(tr, idx, text) {
+      const td = tr.cells[idx];
+      if (!td) return;
+      const div = td.querySelector("div");
+      if (div) div.textContent = text;
+    }
+    function getCellText(tr, idx) {
+      const td = tr.cells[idx];
+      if (!td) return '-';
+      const div = td.querySelector("div");
+      const raw = (div ? div.textContent : td.textContent || '').trim();
+      return raw === '' ? '-' : raw;
+    }
+
+    function calcConferencia() {
+      // indices: Honorarios(15), Audiencista(16), Conferencia(17), Repasse(18), Sucumbencia(20)
+      tbody.querySelectorAll("tr").forEach(tr => {
+        if (!tr.classList.contains("ac-row")) return;
+
+        const hon = acParseAnyNumber(getCellText(tr, 15));
+        const aud = acParseAnyNumber(getCellText(tr, 16));
+        const rep = acParseAnyNumber(getCellText(tr, 18));
+        const suc = acParseAnyNumber(getCellText(tr, 20));
+
+        const hasAny = Number.isFinite(hon) || Number.isFinite(aud) || Number.isFinite(rep) || Number.isFinite(suc);
+
+        if (!hasAny) {
+          setCellText(tr, 17, "-");
+        } else {
+          const sum = (Number.isFinite(hon) ? hon : 0) + (Number.isFinite(aud) ? aud : 0) + (Number.isFinite(rep) ? rep : 0) + (Number.isFinite(suc) ? suc : 0);
+          setCellText(tr, 17, (typeof acFormatBR === 'function' ? acFormatBR(sum) : sum.toFixed(2).replace('.', ',')));
+        }
+      });
+    }
+
+    calcConferencia();
+    window.AC_CONFERENCIA = { refresh: calcConferencia };
+  })();
 </script>

@@ -1,517 +1,765 @@
 {# templates/partials/_mandados_table.html #}
 
 <style>
-  .md-card{
-    background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius:14px;
-    overflow:hidden;
+  .md-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
   }
-  .md-card-h{
-    padding:14px 16px;
-    border-bottom:1px solid #e5e7eb;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-    flex-wrap:wrap;
+
+  .md-card-h {
+    padding: 14px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
   }
-  .md-card-title{
-    font-weight:800;
-    color:#111827;
-    display:flex;
-    align-items:center;
-    gap:10px;
+
+  .md-card-title {
+    font-weight: 800;
+    color: #111827;
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
-  .md-pill{
-    display:none;
-    font-size:12px;
-    padding:2px 10px;
-    border-radius:999px;
-    background:#111827;
-    color:#fff;
-    font-weight:700;
+
+  .md-pill {
+    display: none;
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: #111827;
+    color: #fff;
+    font-weight: 700;
   }
-  .md-actions{ display:flex; align-items:center; gap:10px; }
-  .md-btn{
-    padding:8px 12px;
-    border-radius:10px;
-    border:1px solid #e5e7eb;
-    background:#fff;
-    font-weight:700;
-    font-size:13px;
-    cursor:pointer;
-    white-space:nowrap;
+
+  .md-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
-  .md-btn:hover{ background:#f9fafb; }
-  .md-btn-primary{
-    background:#4f46e5;
-    border-color:#4f46e5;
-    color:#fff;
+
+  .md-btn {
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
   }
-  .md-btn-primary:hover{ background:#4338ca; }
+
+  .md-btn:hover {
+    background: #f9fafb;
+  }
+
+  .md-btn-primary {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    color: #fff;
+  }
+
+  .md-btn-primary:hover {
+    background: #4338ca;
+  }
 
   /* ======= CARDS DE SOMATÓRIO ======= */
-  .md-sums{ padding: 14px 16px 0 16px; }
-  .md-sums-grid{
-    display:grid;
-    grid-template-columns: repeat(7, minmax(180px, 1fr)); /* (2) força 1 linha */
-    gap:12px;
-    align-items:stretch;
-    overflow-x:auto;                 /* (2) mantém em 1 linha com scroll se precisar */
-    padding-bottom:10px;
+  .md-sums {
+    padding: 14px 16px 0 16px;
+  }
+
+  .md-sums-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(180px, 1fr));
+    /* (2) força 1 linha */
+    gap: 12px;
+    align-items: stretch;
+    overflow-x: auto;
+    /* (2) mantém em 1 linha com scroll se precisar */
+    padding-bottom: 10px;
     -webkit-overflow-scrolling: touch;
   }
-  .md-sum-card{
-    border:1px solid #e5e7eb;
-    border-radius:14px;
-    background:#fff;
-    padding:14px 14px;
+
+  .md-sum-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #fff;
+    padding: 14px 14px;
     min-height: 86px;
-    display:flex;
-    flex-direction:column;
-    justify-content:space-between;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
   }
-  .md-sum-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
-  .md-sum-label{
-    font-size:11px;
-    font-weight:950;
-    color:#6b7280;
-    letter-spacing:.08em;
-    text-transform:uppercase;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
+
+  .md-sum-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
   }
-  .md-sum-value{
-    font-size:16px;
-    font-weight:950;
-    color:#111827;
-    margin-top:6px;
-    white-space:nowrap;
+
+  .md-sum-label {
+    font-size: 11px;
+    font-weight: 950;
+    color: #6b7280;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .md-sum-sub{
-    margin-top:6px;
-    font-size:12px;
-    color:#6b7280;
+
+  .md-sum-value {
+    font-size: 16px;
+    font-weight: 950;
+    color: #111827;
+    margin-top: 6px;
+    white-space: nowrap;
   }
-  .md-sum-card.total{
-    border-color:#c7d2fe;
+
+  .md-sum-sub {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .md-sum-card.total {
+    border-color: #c7d2fe;
     background: #eef2ff;
   }
-  .md-sum-card.total .md-sum-label{ color:#4338ca; }
-  .md-sum-card.total .md-sum-value{ color:#111827; }
+
+  .md-sum-card.total .md-sum-label {
+    color: #4338ca;
+  }
+
+  .md-sum-card.total .md-sum-value {
+    color: #111827;
+  }
 
   /* info tooltip */
-  .md-info{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    width:18px;height:18px;
-    border-radius:999px;
-    border:1px solid #c7d2fe;
-    background:#eef2ff;
-    color:#4338ca;
-    font-weight:950;
-    font-size:12px;
-    margin-left:6px;
-    cursor:help;
-    user-select:none;
+  .md-info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    border: 1px solid #c7d2fe;
+    background: #eef2ff;
+    color: #4338ca;
+    font-weight: 950;
+    font-size: 12px;
+    margin-left: 6px;
+    cursor: help;
+    user-select: none;
   }
 
   /* ======= AVISO / OBRIGATÓRIO (TIPO RÉU) ======= */
-  .md-warn{
-    border-color:#fecaca;
-    background:#fff1f2;
-    color:#be123c;
+  .md-warn {
+    border-color: #fecaca;
+    background: #fff1f2;
+    color: #be123c;
   }
-  .md-required-badge{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    font-size:10px;
-    font-weight:950;
-    padding:2px 8px;
-    border-radius:999px;
-    border:1px solid #fecaca;
-    background:#fff1f2;
-    color:#be123c;
-    letter-spacing:.06em;
-    white-space:nowrap;
-    margin-left:6px;
+
+  .md-required-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 950;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid #fecaca;
+    background: #fff1f2;
+    color: #be123c;
+    letter-spacing: .06em;
+    white-space: nowrap;
+    margin-left: 6px;
   }
-  .md-hint{
-    margin-top:8px;
-    font-size:12px;
-    color:#6b7280;
+
+  .md-hint {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #6b7280;
   }
-  .md-hint.warn{
-    color:#be123c;
-    font-weight:800;
+
+  .md-hint.warn {
+    color: #be123c;
+    font-weight: 800;
   }
-  .md-invalid{
-    border-color:#fecaca !important;
-    box-shadow:0 0 0 4px rgba(244,63,94,.10) !important;
-    background:#fff1f2 !important;
+
+  .md-invalid {
+    border-color: #fecaca !important;
+    box-shadow: 0 0 0 4px rgba(244, 63, 94, .10) !important;
+    background: #fff1f2 !important;
   }
 
   /* (2) não quebrar em 2 linhas em telas menores: mantém 1 linha com scroll */
-  @media (max-width: 1400px){
-    .md-sums-grid{ grid-template-columns: repeat(7, minmax(160px, 1fr)); }
+  @media (max-width: 1400px) {
+    .md-sums-grid {
+      grid-template-columns: repeat(7, minmax(160px, 1fr));
+    }
   }
-  @media (max-width: 900px){
-    .md-sums-grid{ grid-template-columns: repeat(7, minmax(160px, 1fr)); }
+
+  @media (max-width: 900px) {
+    .md-sums-grid {
+      grid-template-columns: repeat(7, minmax(160px, 1fr));
+    }
   }
-  @media (max-width: 520px){
-    .md-sums-grid{ grid-template-columns: repeat(7, minmax(150px, 1fr)); }
+
+  @media (max-width: 520px) {
+    .md-sums-grid {
+      grid-template-columns: repeat(7, minmax(150px, 1fr));
+    }
   }
 
   /* WRAP com altura fixa (~50 linhas) */
-  .md-table-wrap{
-    overflow:auto;
+  .md-table-wrap {
+    overflow: auto;
     min-height: 1100px;
     max-height: 1100px;
-    position:relative;
+    position: relative;
     margin-top: 12px;
   }
 
-  table.md-table{ width:100%; border-collapse:separate; border-spacing:0; }
-  table.md-table thead th{
-    position:sticky;
-    top:0;
-    z-index:3;
-    background:#f9fafb;
-    border-bottom:1px solid #e5e7eb;
-    font-size:12px;
-    font-weight:800;
-    text-transform:uppercase;
-    color:#374151;
-    padding:10px 14px;
-    white-space:nowrap;
-    text-align:center; /* (5) todos cabeçalhos centralizados */
+  table.md-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
   }
-  table.md-table tbody td{
-    padding:10px 14px;
-    border-bottom:1px solid #f1f5f9;
-    font-size:13px;
-    vertical-align:top;
-    color:#111827;
-    text-align:center; /* (6) garante centralização geral */
+
+  table.md-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #374151;
+    padding: 10px 14px;
+    white-space: nowrap;
+    text-align: center;
+    /* (5) todos cabeçalhos centralizados */
   }
-  table.md-table tbody tr:not(.md-colored):hover{ background:#fafafa; cursor:default; }
-  table.md-table tbody tr.md-colored:hover{ filter: brightness(0.98); }
+
+  table.md-table tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 13px;
+    vertical-align: top;
+    color: #111827;
+    text-align: center;
+    /* (6) garante centralização geral */
+  }
+
+  table.md-table tbody tr:not(.md-colored):hover {
+    background: #fafafa;
+    cursor: default;
+  }
+
+  table.md-table tbody tr.md-colored:hover {
+    filter: brightness(0.98);
+  }
 
   /* (6) números centralizados */
-  .md-number{ text-align:center; }
+  .md-number {
+    text-align: center;
+  }
 
-  .md-th-inner{ display:inline-flex; align-items:center; gap:8px; white-space:nowrap; }
-  .md-th-tools{ display:inline-flex; align-items:center; gap:6px; flex:0 0 auto; }
-  .md-dot{
-    width:8px; height:8px;
-    border-radius:999px;
-    background:#111827;
-    display:none;
-    flex:0 0 auto;
+  .md-th-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
   }
-  th.md-filtered .md-dot{ display:inline-block; }
-  .md-th-btn{
-    font-size:12px;
-    line-height:1;
-    padding:2px 6px;
-    border-radius:8px;
-    cursor:pointer;
-    user-select:none;
+
+  .md-th-tools {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
   }
-  .md-th-btn:hover{ background:#e5e7eb; }
+
+  .md-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #111827;
+    display: none;
+    flex: 0 0 auto;
+  }
+
+  th.md-filtered .md-dot {
+    display: inline-block;
+  }
+
+  .md-th-btn {
+    font-size: 12px;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .md-th-btn:hover {
+    background: #e5e7eb;
+  }
 
   /* ===== Filter panel ===== */
-  .md-panel{
-    position:fixed;
-    background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius:12px;
-    width:380px;
-    box-shadow:0 18px 60px rgba(0,0,0,.18);
-    z-index:2147483647;
-    display:none;
-    padding:10px;
+  .md-panel {
+    position: fixed;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    width: 380px;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, .18);
+    z-index: 2147483647;
+    display: none;
+    padding: 10px;
   }
-  .md-panel *{ box-sizing:border-box; }
-  .md-panel-top{ display:flex; gap:10px; align-items:center; }
-  .md-panel input[type="search"]{
-    width:100%;
-    padding:8px 10px;
-    border:1px solid #e5e7eb;
-    border-radius:10px;
-    outline:none;
-    font-size:13px;
-  }
-  .md-mode{
-    display:none;
-    padding:4px;
-    border:1px solid #e5e7eb;
-    border-radius:999px;
-    background:#fff;
-    flex:0 0 auto;
-  }
-  .md-mode button{
-    padding:7px 12px;
-    border-radius:999px;
-    border:1px solid transparent;
-    font-weight:900;
-    font-size:12px;
-    color:#6b7280;
-    background:transparent;
-    cursor:pointer;
-    white-space:nowrap;
-    line-height:1;
-  }
-  .md-mode button.active{ background:#111827; color:#fff; }
-  .md-panel-list{
-    margin-top:10px;
-    border:1px solid #e5e7eb;
-    border-radius:10px;
-    padding:8px;
-    overflow:auto;
-    min-height:520px;
-    max-height:520px;
-  }
-  .md-panel-item{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    padding:6px 6px;
-    border-radius:8px;
-    font-size:13px;
-    cursor:pointer;
-    user-select:none;
-  }
-  .md-panel-item:hover{ background:#f9fafb; }
-  .md-panel-item input{ cursor:pointer; }
-  .md-panel-actions{
-    margin-top:10px;
-    display:grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap:8px;
-  }
-  .md-panel-actions button{
-    padding:7px 8px;
-    border-radius:10px;
-    border:1px solid #e5e7eb;
-    background:#fff;
-    font-weight:900;
-    font-size:12px;
-    cursor:pointer;
-  }
-  .md-panel-actions button:hover{ background:#f9fafb; }
-  .md-panel-actions .primary{
-    background:#4f46e5;
-    border-color:#4f46e5;
-    color:#fff;
-  }
-  .md-panel-actions .primary:hover{ background:#4338ca; }
-  .md-panel-actions .sort{
-    border-color:#c7d2fe;
-    color:#4338ca;
-  }
-  .md-panel-actions .sort:hover{ background:#eef2ff; }
 
-  .clamp-2{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .md-panel * {
+    box-sizing: border-box;
+  }
+
+  .md-panel-top {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .md-panel input[type="search"] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    outline: none;
+    font-size: 13px;
+  }
+
+  .md-mode {
+    display: none;
+    padding: 4px;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    background: #fff;
+    flex: 0 0 auto;
+  }
+
+  .md-mode button {
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-weight: 900;
+    font-size: 12px;
+    color: #6b7280;
+    background: transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    line-height: 1;
+  }
+
+  .md-mode button.active {
+    background: #111827;
+    color: #fff;
+  }
+
+  .md-panel-list {
+    margin-top: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 8px;
+    overflow: auto;
+    min-height: 520px;
+    max-height: 520px;
+  }
+
+  .md-panel-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 6px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .md-panel-item:hover {
+    background: #f9fafb;
+  }
+
+  .md-panel-item input {
+    cursor: pointer;
+  }
+
+  .md-panel-actions {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+
+  .md-panel-actions button {
+    padding: 7px 8px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    font-weight: 900;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .md-panel-actions button:hover {
+    background: #f9fafb;
+  }
+
+  .md-panel-actions .primary {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    color: #fff;
+  }
+
+  .md-panel-actions .primary:hover {
+    background: #4338ca;
+  }
+
+  .md-panel-actions .sort {
+    border-color: #c7d2fe;
+    color: #4338ca;
+  }
+
+  .md-panel-actions .sort:hover {
+    background: #eef2ff;
+  }
+
+  .clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
 
   /* ===================== MODAL ===================== */
-  .md-modal-overlay{
-    position:fixed; inset:0;
-    background: rgba(17,24,39,.55);
-    display:none;
-    align-items:center;
-    justify-content:center;
+  .md-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, .55);
+    display: none;
+    align-items: center;
+    justify-content: center;
     z-index: 2147483646;
     padding: 16px;
   }
-  .md-modal{
-    width:min(1100px, 100%);
+
+  .md-modal {
+    width: min(1100px, 100%);
     max-height: calc(100vh - 32px);
-    background:#fff;
-    border-radius:18px;
-    border:1px solid #e5e7eb;
-    box-shadow:0 30px 90px rgba(0,0,0,.35);
-    overflow:hidden;
-    display:flex;
-    flex-direction:column;
+    background: #fff;
+    border-radius: 18px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, .35);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
-  .md-modal-h{
+
+  .md-modal-h {
     flex: 0 0 auto;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-    padding:14px 16px;
-    border-bottom:1px solid #e5e7eb;
-    background:#f9fafb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
   }
-  .md-modal-h .left{ display:flex; align-items:center; gap:12px; min-width:0; }
-  .md-modal-badge{
-    font-size:12px;
-    font-weight:900;
-    color:#4338ca;
-    background:#eef2ff;
-    border:1px solid #c7d2fe;
-    padding:4px 10px;
-    border-radius:999px;
-    white-space:nowrap;
+
+  .md-modal-h .left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
   }
-  .md-modal-title{
-    font-weight:950;
-    color:#111827;
-    font-size:15px;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
+
+  .md-modal-badge {
+    font-size: 12px;
+    font-weight: 900;
+    color: #4338ca;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    padding: 4px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
   }
-  .md-modal-sub{ font-size:12px; color:#6b7280; margin-top:2px; }
-  .md-modal-close{
-    width:40px;height:40px;
-    border-radius:12px;
-    border:1px solid #e5e7eb;
-    background:#fff;
-    cursor:pointer;
-    font-weight:900;
+
+  .md-modal-title {
+    font-weight: 950;
+    color: #111827;
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .md-modal-close:hover{ background:#f3f4f6; }
-  .md-modal-b{
+
+  .md-modal-sub {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+
+  .md-modal-close {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    cursor: pointer;
+    font-weight: 900;
+  }
+
+  .md-modal-close:hover {
+    background: #f3f4f6;
+  }
+
+  .md-modal-b {
     flex: 1 1 auto;
-    overflow:auto;
+    overflow: auto;
     -webkit-overflow-scrolling: touch;
-    padding:16px;
-    background:#fff;
-  }
-  .md-grid{ display:grid; grid-template-columns: repeat(12, 1fr); gap:12px; }
-
-  .md-field{ grid-column: span 6; }
-  .md-field.col-12{ grid-column: span 12; }
-  .md-field.col-4{ grid-column: span 4; }
-  .md-field.col-3{ grid-column: span 3; }
-  .md-field.col-8{ grid-column: span 8; }
-  .md-field.col-9{ grid-column: span 9; }
-
-  .md-field label{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    font-size:11px;
-    font-weight:950;
-    color:#374151;
-    margin-bottom:6px;
-    text-transform:uppercase;
-    letter-spacing:.08em;
-    flex-wrap:wrap;
+    padding: 16px;
+    background: #fff;
   }
 
-  .md-input, .md-select, .md-textarea{
-    width:100%;
-    padding:10px 12px;
-    border-radius:12px;
-    border:1px solid #e5e7eb;
-    outline:none;
-    font-size:14px;
-    background:#fff;
+  .md-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 12px;
   }
-  .md-input:focus, .md-select:focus, .md-textarea:focus{
-    border-color:#c7d2fe;
-    box-shadow:0 0 0 4px rgba(79,70,229,.12);
-  }
-  .md-textarea{ min-height: 110px; resize: vertical; }
 
-  .md-modal-f{
+  .md-field {
+    grid-column: span 6;
+  }
+
+  .md-field.col-12 {
+    grid-column: span 12;
+  }
+
+  .md-field.col-4 {
+    grid-column: span 4;
+  }
+
+  .md-field.col-3 {
+    grid-column: span 3;
+  }
+
+  .md-field.col-8 {
+    grid-column: span 8;
+  }
+
+  .md-field.col-9 {
+    grid-column: span 9;
+  }
+
+  .md-field label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 950;
+    color: #374151;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    flex-wrap: wrap;
+  }
+
+  .md-input,
+  .md-select,
+  .md-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    outline: none;
+    font-size: 14px;
+    background: #fff;
+  }
+
+  .md-input:focus,
+  .md-select:focus,
+  .md-textarea:focus {
+    border-color: #c7d2fe;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, .12);
+  }
+
+  .md-textarea {
+    min-height: 110px;
+    resize: vertical;
+  }
+
+  .md-modal-f {
     flex: 0 0 auto;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:10px;
-    padding:14px 16px;
-    border-top:1px solid #e5e7eb;
-    background:#fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-top: 1px solid #e5e7eb;
+    background: #fff;
   }
-  .md-error{
-    display:none;
-    color:#b91c1c;
-    font-weight:800;
-    font-size:13px;
-  }
-  .md-f-actions{ display:flex; gap:10px; align-items:center; }
-  .md-mbtn{
-    padding:10px 14px;
-    border-radius:12px;
-    border:1px solid #e5e7eb;
-    background:#fff;
-    font-weight:900;
-    cursor:pointer;
-  }
-  .md-mbtn:hover{ background:#f9fafb; }
-  .md-mbtn.primary{
-    background:#4f46e5;
-    border-color:#4f46e5;
-    color:#fff;
-  }
-  .md-mbtn.primary:hover{ background:#4338ca; }
-  body.md-modal-open{ overflow:hidden; }
 
-  @media (max-width: 900px){
-    .md-field, .md-field.col-4, .md-field.col-3, .md-field.col-8, .md-field.col-9{ grid-column: span 12; }
+  .md-error {
+    display: none;
+    color: #b91c1c;
+    font-weight: 800;
+    font-size: 13px;
+  }
+
+  .md-f-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .md-mbtn {
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .md-mbtn:hover {
+    background: #f9fafb;
+  }
+
+  .md-mbtn.primary {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    color: #fff;
+  }
+
+  .md-mbtn.primary:hover {
+    background: #4338ca;
+  }
+
+  body.md-modal-open {
+    overflow: hidden;
+  }
+
+  @media (max-width: 900px) {
+
+    .md-field,
+    .md-field.col-4,
+    .md-field.col-3,
+    .md-field.col-8,
+    .md-field.col-9 {
+      grid-column: span 12;
+    }
   }
 
   /* ===================== SCROLLBAR HORIZONTAL FIXA NO RODAPÉ ===================== */
-  .md-xscroll-fixed{
-    position:fixed;
-    bottom:0;
-    height:14px;
-    overflow-x:auto;
-    overflow-y:hidden;
-    z-index:2147483645;
-    background: rgba(255,255,255,0.85);
-    border-top:1px solid #e5e7eb;
+  .md-xscroll-fixed {
+    position: fixed;
+    bottom: 0;
+    height: 14px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    z-index: 2147483645;
+    background: rgba(255, 255, 255, 0.85);
+    border-top: 1px solid #e5e7eb;
     backdrop-filter: blur(6px);
-    display:none;
+    display: none;
   }
-  .md-xscroll-fixed .md-xscroll-inner{ height:1px; }
-  body{ padding-bottom: 18px; }
+
+  .md-xscroll-fixed .md-xscroll-inner {
+    height: 1px;
+  }
+
+  body {
+    padding-bottom: 18px;
+  }
 
   /* ===================== AUTO LAYOUT (IGUAL ACORDOS) ===================== */
-  .md-auto-badge{
-    display:none;
-    margin-left:2px;
-    font-size:10px;
-    font-weight:950;
-    padding:2px 8px;
-    border-radius:999px;
-    border:1px solid #c7d2fe;
-    background:#eef2ff;
-    color:#4338ca;
-    letter-spacing:.05em;
-    white-space:nowrap;
+  .md-auto-badge {
+    display: none;
+    margin-left: 2px;
+    font-size: 10px;
+    font-weight: 950;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid #c7d2fe;
+    background: #eef2ff;
+    color: #4338ca;
+    letter-spacing: .05em;
+    white-space: nowrap;
   }
-  .md-field.is-auto .md-auto-badge{ display:inline-flex; }
-  .md-field.is-auto .md-input{
-    border-color:#c7d2fe;
-    background:#f8fafc;
+
+  .md-field.is-auto .md-auto-badge {
+    display: inline-flex;
+  }
+
+  .md-field.is-auto .md-input {
+    border-color: #c7d2fe;
+    background: #f8fafc;
   }
 
   /* ===================== REGRAS DE COR (CLASSES) ===================== */
-  .ac-row-cnpj{ background:#ff00ff !important; } /* (7) */
-  .ac-row-arepassar{ background:#ffff00 !important; } /* (8) */
-  .ac-row-repassado{ background:#c27ba0 !important; } /* (9) */
-  .ac-row-iddeposito{ background:#00b050 !important; } /* (10) */
-  .ac-row-aguardando-pix{ background:#0070c0 !important; } /* (11) */
-  .ac-row-aguardando-retorno{ background:#a2c4c9 !important; } /* (12) */
-  .ac-row-aguardando-pix td{ color:#ffffff !important; }
-  .md-colored .md-btn{
-    background: rgba(255,255,255,0.88);
-    border-color: rgba(17,24,39,0.15);
+  .ac-row-cnpj {
+    background: #ff00ff !important;
   }
-  .md-colored .md-btn:hover{ background: rgba(255,255,255,0.96); }
+
+  /* (7) */
+  .ac-row-arepassar {
+    background: #ffff00 !important;
+  }
+
+  /* (8) */
+  .ac-row-repassado {
+    background: #c27ba0 !important;
+  }
+
+  /* (9) */
+  .ac-row-iddeposito {
+    background: #00b050 !important;
+  }
+
+  /* (10) */
+  .ac-row-aguardando-pix {
+    background: #0070c0 !important;
+  }
+
+  /* (11) */
+  .ac-row-aguardando-retorno {
+    background: #a2c4c9 !important;
+  }
+
+  /* (12) */
+  .ac-row-aguardando-pix td {
+    color: #ffffff !important;
+  }
+
+  .md-colored .md-btn {
+    background: rgba(255, 255, 255, 0.88);
+    border-color: rgba(17, 24, 39, 0.15);
+  }
+
+  .md-colored .md-btn:hover {
+    background: rgba(255, 255, 255, 0.96);
+  }
 
   /* ===================== (4) OCULTAR CAMPOS/“COLUNAS” DO FRONT ===================== */
-  .md-hidden{ display:none !important; }
+  .md-hidden {
+    display: none !important;
+  }
 </style>
 
 <div class="md-card">
@@ -527,50 +775,65 @@
     </div>
   </div>
 
-  {% set _role = (current_user.role if (current_user is defined and current_user.is_authenticated and current_user.role is defined) else '') %}
+  {% set _role = (current_user.role if (current_user is defined and current_user.is_authenticated and current_user.role
+  is defined) else '') %}
   {% if _role|string|lower == 'admin' %}
   <div class="md-sums">
     <div class="md-sums-grid">
       <div class="md-sum-card">
-        <div class="md-sum-top"><div class="md-sum-label">Correção</div></div>
+        <div class="md-sum-top">
+          <div class="md-sum-label">Correção</div>
+        </div>
         <div class="md-sum-value" id="mdSumCorrecao">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
       <div class="md-sum-card">
-        <div class="md-sum-top"><div class="md-sum-label">Honorários</div></div>
+        <div class="md-sum-top">
+          <div class="md-sum-label">Honorários</div>
+        </div>
         <div class="md-sum-value" id="mdSumHonorarios">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
       <div class="md-sum-card">
-        <div class="md-sum-top"><div class="md-sum-label">Audiencista</div></div>
+        <div class="md-sum-top">
+          <div class="md-sum-label">Audiencista</div>
+        </div>
         <div class="md-sum-value" id="mdSumAudiencista">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
       <div class="md-sum-card">
-        <div class="md-sum-top"><div class="md-sum-label">Sucumbência</div></div>
+        <div class="md-sum-top">
+          <div class="md-sum-label">Sucumbência</div>
+        </div>
         <div class="md-sum-value" id="mdSumSucumbencia">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
       <!-- (1) TOTAL FINAL agora NÃO soma repasse -->
       <div class="md-sum-card total">
-        <div class="md-sum-top"><div class="md-sum-label">Total final</div></div>
+        <div class="md-sum-top">
+          <div class="md-sum-label">Total final</div>
+        </div>
         <div class="md-sum-value" id="mdSumTotalFinal">R$ 0,00</div>
         <div class="md-sum-sub">Soma dos 4 campos</div>
       </div>
 
       <!-- (1) DEPÓSITO e REPASSE lado a lado -->
       <div class="md-sum-card">
-        <div class="md-sum-top"><div class="md-sum-label">Depósito</div></div>
+        <div class="md-sum-top">
+          <div class="md-sum-label">Depósito</div>
+        </div>
         <div class="md-sum-value" id="mdSumDeposito">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
 
       <div class="md-sum-card">
-        <div class="md-sum-top"><div class="md-sum-label">Repasse</div></div>
+        <div class="md-sum-top">
+          <div class="md-sum-label">Repasse</div>
+        </div>
         <div class="md-sum-value" id="mdSumRepasse">R$ 0,00</div>
         <div class="md-sum-sub">Somatório dos visíveis</div>
       </div>
@@ -599,13 +862,17 @@
 
           <th>TIPO RÉU</th>
 
+          <th>% HONORÁRIOS</th>
           <th>DEPÓSITO</th>
           <th>CORREÇÃO</th>
           <th>HONORÁRIOS</th>
           <th>AUDIENCISTA</th>
 
-          <!-- (3) CONFERÊNCIA calculada no front: Correção + Honorários + Audiencista + Sucumbência -->
-          <th>CONFERÊNCIA</th>
+          <!-- (3) CONFERÊNCIA calculada no front: Correção + Honorários + Audiencista + Sucumbência + Repasse -->
+          <th>
+            CONFERÊNCIA
+            <span class="md-info" title="Soma: Correção + Honorários + Audiencista + Sucumbência + Repasse">i</span>
+          </th>
 
           <th>REPASSE</th>
 
@@ -623,49 +890,106 @@
       <tbody id="mdTbody">
         {% for r in rows %}
         <tr data-row='{{ r|tojson|safe }}' data-id="{{ r.id }}" class="md-row">
-          <td class="whitespace-nowrap"><div class="clamp-2 md-date">{{ r.data_quitacao or "-" }}</div></td>
-          <td class="font-medium whitespace-nowrap"><div class="clamp-2">{{ r.numero_processo or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.uf or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.reu or "-" }}</div></td>
-          <td style="min-width:220px; max-width:340px;"><div class="clamp-2">{{ r.autor or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.tel or "-" }}</div></td>
+          <td class="whitespace-nowrap">
+            <div class="clamp-2 md-date">{{ r.data_quitacao or "-" }}</div>
+          </td>
+          <td class="font-medium whitespace-nowrap">
+            <div class="clamp-2">{{ r.numero_processo or "-" }}</div>
+          </td>
+          <td>
+            <div class="clamp-2">{{ r.uf or "-" }}</div>
+          </td>
+          <td>
+            <div class="clamp-2">{{ r.reu or "-" }}</div>
+          </td>
+          <td style="min-width:220px; max-width:340px;">
+            <div class="clamp-2">{{ r.autor or "-" }}</div>
+          </td>
+          <td>
+            <div class="clamp-2">{{ r.tel or "-" }}</div>
+          </td>
 
-          <td class="md-number" style="min-width:260px; max-width:360px;"><div class="clamp-2 md-money">{{ r.sentenca or "-" }}</div></td>
-          <td class="md-number"><div class="clamp-2 md-money">{{ r.quitacao or "-" }}</div></td>
-          <td style="min-width:260px; max-width:360px;"><div class="clamp-2">{{ r.status or "-" }}</div></td>
-          <td><div class="clamp-2 md-date">{{ r.previsao or "-" }}</div></td>
-          <td class="whitespace-nowrap"><div class="clamp-2 md-date">{{ r.data_pagamento or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.local or "-" }}</div></td>
-          <td><div class="clamp-2">{{ r.tipo or "-" }}</div></td>
+          <td class="md-number" style="min-width:260px; max-width:360px;">
+            <div class="clamp-2 md-money">{{ r.sentenca or "-" }}</div>
+          </td>
+          <td class="md-number">
+            <div class="clamp-2 md-money">{{ r.quitacao or "-" }}</div>
+          </td>
+          <td style="min-width:260px; max-width:360px;">
+            <div class="clamp-2">{{ r.status or "-" }}</div>
+          </td>
+          <td>
+            <div class="clamp-2 md-date">{{ r.previsao or "-" }}</div>
+          </td>
+          <td class="whitespace-nowrap">
+            <div class="clamp-2 md-date">{{ r.data_pagamento or "-" }}</div>
+          </td>
+          <td>
+            <div class="clamp-2">{{ r.local or "-" }}</div>
+          </td>
+          <td>
+            <div class="clamp-2">{{ r.tipo or "-" }}</div>
+          </td>
 
-          <td><div class="clamp-2">{{ r.tipo_reu or "-" }}</div></td>
+          <td>
+            <div class="clamp-2">{{ r.tipo_reu or "-" }}</div>
+          </td>
 
-          <td class="md-number"><div class="clamp-2 md-money">{{ r.deposito or "-" }}</div></td>
-          <td class="md-number"><div class="clamp-2 md-money">{{ r.correcao or "-" }}</div></td>
-          <td class="md-number"><div class="clamp-2 md-money">{{ r.honorarios or "-" }}</div></td>
-          <td class="md-number"><div class="clamp-2 md-money">{{ r.audiencista or "-" }}</div></td>
+          <td class="md-number">
+            <div class="clamp-2 md-money">{{ r.porcentagem_honorarios or "-" }}</div>
+          </td>
+          <td class="md-number">
+            <div class="clamp-2 md-money">{{ r.deposito or "-" }}</div>
+          </td>
+          <td class="md-number">
+            <div class="clamp-2 md-money">{{ r.correcao or "-" }}</div>
+          </td>
+          <td class="md-number">
+            <div class="clamp-2 md-money">{{ r.honorarios or "-" }}</div>
+          </td>
+          <td class="md-number">
+            <div class="clamp-2 md-money">{{ r.audiencista or "-" }}</div>
+          </td>
 
           <!-- (3) conferência calculada via JS -->
-          <td class="md-number"><div class="clamp-2 md-money">-</div></td>
+          <td class="md-number">
+            <div class="clamp-2 md-money">-</div>
+          </td>
 
-          <td class="md-number"><div class="clamp-2 md-money">{{ r.repasse or "-" }}</div></td>
+          <td class="md-number">
+            <div class="clamp-2 md-money">{{ r.repasse or "-" }}</div>
+          </td>
 
-          <td><div class="clamp-2">{{ r.chave_pix or "-" }}</div></td>
-          <td class="md-number"><div class="clamp-2 md-money">{{ r.sucumbencia or "-" }}</div></td>
-          <td style="min-width:320px; max-width:520px;"><div class="clamp-2">{{ r.observacoes or "-" }}</div></td>
+          <td>
+            <div class="clamp-2">{{ r.chave_pix or "-" }}</div>
+          </td>
+          <td class="md-number">
+            <div class="clamp-2 md-money">{{ r.sucumbencia or "-" }}</div>
+          </td>
+          <td style="min-width:320px; max-width:520px;">
+            <div class="clamp-2">{{ r.observacoes or "-" }}</div>
+          </td>
 
-          <td class="whitespace-nowrap"><div class="clamp-2 md-date">{{ r.created_at or "-" }}</div></td>
-          <td class="whitespace-nowrap"><div class="clamp-2 md-date">{{ r.updated_at or "-" }}</div></td>
+          <td class="whitespace-nowrap">
+            <div class="clamp-2 md-date">{{ r.created_at or "-" }}</div>
+          </td>
+          <td class="whitespace-nowrap">
+            <div class="clamp-2 md-date">{{ r.updated_at or "-" }}</div>
+          </td>
 
           <td style="text-align:right; white-space:nowrap;">
-            <button class="md-btn md-edit-btn" type="button" onclick="openEditModalFromRowMD(this.closest('tr'))">Editar</button>
-            <button class="md-btn" type="button" style="margin-left:8px;border-color:#fecaca;color:#dc2626;" onclick="MD.deleteFromBtn(event, {{ r.id }})">Excluir</button>
+            <button class="md-btn md-edit-btn" type="button"
+              onclick="openEditModalFromRowMD(this.closest('tr'))">Editar</button>
+            <button class="md-btn" type="button" style="margin-left:8px;border-color:#fecaca;color:#dc2626;"
+              onclick="MD.deleteFromBtn(event, {{ r.id }})">Excluir</button>
           </td>
         </tr>
         {% endfor %}
 
         {% if rows|length == 0 %}
-        <tr><td colspan="26" style="padding:18px; color:#6b7280;">Nenhum registro encontrado.</td></tr>
+        <tr>
+          <td colspan="26" style="padding:18px; color:#6b7280;">Nenhum registro encontrado.</td>
+        </tr>
         {% endif %}
       </tbody>
     </table>
@@ -701,7 +1025,8 @@
         <div class="md-field col-6" id="mdFieldTipoReu">
           <label>
             Tipo réu
-            <span class="md-info md-warn" title="Obrigatório para o cálculo automático de Honorários e Repasse.">!</span>
+            <span class="md-info md-warn"
+              title="Obrigatório para o cálculo automático de Honorários e Repasse.">!</span>
           </label>
           <select class="md-select" id="mdTipoReu">
             <option value="">Selecione...</option>
@@ -806,11 +1131,16 @@
           <input class="md-input" id="mdCorrecao" placeholder="Ex: 120,00">
         </div>
 
+        <div class="md-field col-3">
+          <label>% Honorários</label>
+          <input class="md-input" id="mdPorcentagemHonorarios" placeholder="Ex: 30">
+        </div>
+
         <!-- ✅ HONORÁRIOS (AUTO) -->
         <div class="md-field col-3" id="mdFieldHonorarios">
           <label>
             Honorários
-            <span class="md-info" title="Automático: Sentença × 30% (aéreo) ou × 40% (ônibus)">i</span>
+            <span class="md-info" title="Automático: Sentença × (% Honorários / 100)">i</span>
             <span class="md-auto-badge">AUTO</span>
           </label>
           <input class="md-input" id="mdHonorarios" placeholder="Ex: 500,00">
@@ -825,7 +1155,7 @@
         <div class="md-field col-3" id="mdFieldRepasse">
           <label>
             Repasse
-            <span class="md-info" title="Automático: (Sentença × 70% − Audiencista) (aéreo) ou (Sentença × 60% − Audiencista) (ônibus)">i</span>
+            <span class="md-info" title="Automático: Sentença × ((100 - % Honorários) / 100) − Audiencista">i</span>
             <span class="md-auto-badge">AUTO</span>
           </label>
           <input class="md-input" id="mdRepasse" placeholder="Ex: 250,00">
@@ -865,290 +1195,290 @@
 </div>
 
 <script>
-/* ===================== FORMATADORES / PARSER ROBUSTO ===================== */
-window.MD = window.MD || {};
-MD.NUMBER = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  /* ===================== FORMATADORES / PARSER ROBUSTO ===================== */
+  window.MD = window.MD || {};
+  MD.NUMBER = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-MD.parseSmartNumber = function(input){
-  if(input === null || input === undefined) return NaN;
-  if(typeof input === 'number') return Number.isFinite(input) ? input : NaN;
+  MD.parseSmartNumber = function (input) {
+    if (input === null || input === undefined) return NaN;
+    if (typeof input === 'number') return Number.isFinite(input) ? input : NaN;
 
-  let s = String(input).trim();
-  if(!s || s === '-') return NaN;
+    let s = String(input).trim();
+    if (!s || s === '-') return NaN;
 
-  s = s.replace(/\s/g,'').replace(/^R\$/i,'').trim();
-  s = s.replace(/[^0-9.,-]/g,'');
+    s = s.replace(/\s/g, '').replace(/^R\$/i, '').trim();
+    s = s.replace(/[^0-9.,-]/g, '');
 
-  if(!s || s === '-' || s === '.' || s === ',') return NaN;
+    if (!s || s === '-' || s === '.' || s === ',') return NaN;
 
-  const hasDot = s.includes('.');
-  const hasComma = s.includes(',');
+    const hasDot = s.includes('.');
+    const hasComma = s.includes(',');
 
-  if(hasDot && hasComma){
-    const lastDot = s.lastIndexOf('.');
-    const lastComma = s.lastIndexOf(',');
-    if(lastDot > lastComma){
-      s = s.replace(/,/g,'');
-    }else{
-      s = s.replace(/\./g,'').replace(',', '.');
-    }
-    const n = Number(s);
-    return Number.isFinite(n) ? n : NaN;
-  }
-
-  if(hasComma && !hasDot){
-    s = s.replace(',', '.');
-    const n = Number(s);
-    return Number.isFinite(n) ? n : NaN;
-  }
-
-  if(hasDot && !hasComma){
-    const parts = s.split('.');
-    if(parts.length === 2){
-      const frac = parts[1];
-      if(/^\d+$/.test(parts[0].replace('-','')) && /^\d{3}$/.test(frac)){
-        const n = Number(parts[0] + frac);
-        return Number.isFinite(n) ? n : NaN;
+    if (hasDot && hasComma) {
+      const lastDot = s.lastIndexOf('.');
+      const lastComma = s.lastIndexOf(',');
+      if (lastDot > lastComma) {
+        s = s.replace(/,/g, '');
+      } else {
+        s = s.replace(/\./g, '').replace(',', '.');
       }
+      const n = Number(s);
+      return Number.isFinite(n) ? n : NaN;
     }
+
+    if (hasComma && !hasDot) {
+      s = s.replace(',', '.');
+      const n = Number(s);
+      return Number.isFinite(n) ? n : NaN;
+    }
+
+    if (hasDot && !hasComma) {
+      const parts = s.split('.');
+      if (parts.length === 2) {
+        const frac = parts[1];
+        if (/^\d+$/.test(parts[0].replace('-', '')) && /^\d{3}$/.test(frac)) {
+          const n = Number(parts[0] + frac);
+          return Number.isFinite(n) ? n : NaN;
+        }
+      }
+      const n = Number(s);
+      return Number.isFinite(n) ? n : NaN;
+    }
+
     const n = Number(s);
     return Number.isFinite(n) ? n : NaN;
-  }
-
-  const n = Number(s);
-  return Number.isFinite(n) ? n : NaN;
-};
-
-function formatBR_MD(v){
-  if(v === null || v === undefined || v === '' || v === '-') return '';
-  const n = MD.parseSmartNumber(v);
-  return Number.isFinite(n) ? MD.NUMBER.format(n) : String(v);
-}
-
-function formatBRL_MD(n){
-  const v = Number.isFinite(n) ? n : 0;
-  return v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-}
-</script>
-
-<script>
-/* ===================== DELETE (MANDADOS) ===================== */
-async function deleteMandado(id){
-  if(!id) return;
-  if(!confirm("Tem certeza que deseja excluir este mandado?")) return;
-
-  try{
-    const resp = await fetch(`/mandados/${id}`, { method: "DELETE" });
-    if(!resp.ok){
-      const txt = await resp.text();
-      alert(txt || "Falha ao excluir.");
-      return;
-    }
-    window.location.reload();
-  }catch(e){
-    console.error(e);
-    alert("Falha de rede ao excluir.");
-  }
-}
-</script>
-
-<script>
-/* ===================== FORMATA NÚMEROS DA TABELA (APENAS EXIBIÇÃO) + (3) CONFERÊNCIA CALCULADA ===================== */
-(function(){
-  /* colunas numéricas (índices) */
-  const numericCols = [6,7,14,15,16,17,18,19,21];
-
-  const COL_CORRECAO     = 15;
-  const COL_HONORARIOS   = 16;
-  const COL_AUDIENCISTA  = 17;
-  const COL_CONFERENCIA  = 18; /* (3) calculada */
-  const COL_REPASSE      = 19;
-  const COL_SUCUMBENCIA  = 21;
-
-  const tbody = document.getElementById("mdTbody");
-  if(!tbody) return;
-
-  function setCellText(tr, idx, text){
-    const td = tr.cells[idx];
-    if(!td) return;
-    const div = td.querySelector("div");
-    if(!div) return;
-    div.textContent = text;
-  }
-  function getCellText(tr, idx){
-    const td = tr.cells[idx];
-    if(!td) return '-';
-    const div = td.querySelector("div");
-    const raw = (div ? div.textContent : td.textContent || '').trim();
-    return raw === '' ? '-' : raw;
-  }
-
-  tbody.querySelectorAll("tr").forEach(tr=>{
-    /* formata as colunas numéricas existentes (inclui repasse) */
-    numericCols.forEach(idx=>{
-      const td = tr.cells[idx];
-      if(!td) return;
-      const div = td.querySelector("div");
-      if(!div) return;
-      const raw = div.textContent.trim();
-      div.textContent = raw === '-' ? '-' : (formatBR_MD(raw) || raw);
-    });
-
-    /* Conferência = Correção + Honorários + Audiencista + Sucumbência + Repasse */
-    const cor = MD.parseSmartNumber(getCellText(tr, COL_CORRECAO));
-    const hon = MD.parseSmartNumber(getCellText(tr, COL_HONORARIOS));
-    const aud = MD.parseSmartNumber(getCellText(tr, COL_AUDIENCISTA));
-    const suc = MD.parseSmartNumber(getCellText(tr, COL_SUCUMBENCIA));
-    const rep = MD.parseSmartNumber(getCellText(tr, COL_REPASSE));
-
-    const hasAny =
-      Number.isFinite(cor) ||
-      Number.isFinite(hon) ||
-      Number.isFinite(aud) ||
-      Number.isFinite(suc) ||
-      Number.isFinite(rep);
-
-    if(!hasAny){
-      setCellText(tr, COL_CONFERENCIA, "-");
-    }else{
-      const sum =
-        (Number.isFinite(cor) ? cor : 0) +
-        (Number.isFinite(hon) ? hon : 0) +
-        (Number.isFinite(aud) ? aud : 0) +
-        (Number.isFinite(suc) ? suc : 0) +
-        (Number.isFinite(rep) ? rep : 0);
-
-      setCellText(tr, COL_CONFERENCIA, formatBR_MD(sum) || "-");
-    }
-
-  });
-})();
-</script>
-
-<script>
-/* ===================== APLICA REGRAS DE COR (HIERARQUIA) ===================== */
-(function(){
-  const tbody = document.getElementById("mdTbody");
-  if(!tbody) return;
-
-  function norm(s){
-    return String(s ?? "")
-      .trim()
-      .toUpperCase()
-      .replace(/\s+/g, " ");
-  }
-
-  function clearColorClasses(tr){
-    tr.classList.remove(
-      "md-colored",
-      "ac-row-cnpj",
-      "ac-row-arepassar",
-      "ac-row-repassado",
-      "ac-row-iddeposito",
-      "ac-row-aguardando-pix",
-      "ac-row-aguardando-retorno"
-    );
-  }
-
-  function applyRule(tr){
-    clearColorClasses(tr);
-
-    let rowObj = {};
-    try{ rowObj = JSON.parse(tr.dataset.row || "{}"); }catch(_){ rowObj = {}; }
-
-    const tipo   = norm(rowObj.tipo   ?? tr.cells[12]?.innerText);
-    const status = norm(rowObj.status ?? tr.cells[8]?.innerText);
-    const local  = norm(rowObj.local  ?? tr.cells[11]?.innerText);
-
-    if (tipo === "CNPJ"){
-      tr.classList.add("md-colored", "ac-row-cnpj");
-      return;
-    }
-    if (status === "A REPASSAR"){
-      tr.classList.add("md-colored", "ac-row-arepassar");
-      return;
-    }
-    if (status === "REPASSADO"){
-      tr.classList.add("md-colored", "ac-row-repassado");
-      return;
-    }
-    if (local === "ID DEPÓSITO" || local === "ID DEPOSITO"){
-      tr.classList.add("md-colored", "ac-row-iddeposito");
-      return;
-    }
-    if (status === "AGUARDANDO AUTORIZAÇÃO PIX (BRADESCO)" || status === "AGUARDANDO AUTORIZACAO PIX (BRADESCO)"){
-      tr.classList.add("md-colored", "ac-row-aguardando-pix");
-      return;
-    }
-    if (status === "AGUARDANDO RETORNO DO CLIENTE"){
-      tr.classList.add("md-colored", "ac-row-aguardando-retorno");
-      return;
-    }
-  }
-
-  function applyAll(){
-    tbody.querySelectorAll("tr.md-row").forEach(tr => applyRule(tr));
-  }
-
-  applyAll();
-  window.MD_COLORS = { refresh: applyAll };
-})();
-</script>
-
-<script>
-/* ===================== TABELA + FILTROS + SOMATÓRIOS + PERSISTÊNCIA ===================== */
-(function(){
-  const table = document.getElementById('mdTable');
-  const thead = table?.tHead?.rows?.[0];
-  const tbody = document.getElementById('mdTbody');
-  const badge = document.getElementById('mdFilteredBadge');
-  const countEl = document.getElementById('mdRowsCount');
-
-  if (!thead || !tbody) return;
-
-  const sumEls = {
-    correcao: document.getElementById("mdSumCorrecao"),
-    honorarios: document.getElementById("mdSumHonorarios"),
-    audiencista: document.getElementById("mdSumAudiencista"),
-    repasse: document.getElementById("mdSumRepasse"),
-    sucumbencia: document.getElementById("mdSumSucumbencia"),
-    total: document.getElementById("mdSumTotalFinal"),
-    deposito: document.getElementById("mdSumDeposito"),
   };
 
-  function toBRDateText(raw){
-    if(!raw) return '-';
-    raw = String(raw).trim();
-    if(raw === '-' || raw === '') return '-';
-    if(/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
-    const m1 = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if(m1){
-      const yyyy = m1[1], mm = m1[2], dd = m1[3];
-      return `${dd}/${mm}/${yyyy}`;
+  function formatBR_MD(v) {
+    if (v === null || v === undefined || v === '' || v === '-') return '';
+    const n = MD.parseSmartNumber(v);
+    return Number.isFinite(n) ? MD.NUMBER.format(n) : String(v);
+  }
+
+  function formatBRL_MD(n) {
+    const v = Number.isFinite(n) ? n : 0;
+    return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+</script>
+
+<script>
+  /* ===================== DELETE (MANDADOS) ===================== */
+  async function deleteMandado(id) {
+    if (!id) return;
+    if (!confirm("Tem certeza que deseja excluir este mandado?")) return;
+
+    try {
+      const resp = await fetch(`/mandados/${id}`, { method: "DELETE" });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        alert(txt || "Falha ao excluir.");
+        return;
+      }
+      window.location.reload();
+    } catch (e) {
+      console.error(e);
+      alert("Falha de rede ao excluir.");
     }
-    return raw;
   }
-  function toDayKey(raw){
-    const br = toBRDateText(raw);
-    return br === '-' ? '-' : br;
-  }
-  function toMonthKey(raw){
-    const br = toBRDateText(raw);
-    if(br === '-' || !/^\d{2}\/\d{2}\/\d{4}$/.test(br)) return br;
-    const [dd, mm, yyyy] = br.split('/');
-    return `${mm}/${yyyy}`;
-  }
+</script>
 
-  tbody.querySelectorAll('.md-date').forEach(el=>{
-    el.textContent = toBRDateText(el.textContent);
-  });
+<script>
+  /* ===================== FORMATA NÚMEROS DA TABELA (APENAS EXIBIÇÃO) + (3) CONFERÊNCIA CALCULADA ===================== */
+  (function () {
+    /* colunas numéricas (índices) */
+    const numericCols = [6, 7, 14, 15, 16, 17, 18, 19, 20, 22];
 
-  let panel = document.getElementById('mdGlobalFilterPanel');
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'mdGlobalFilterPanel';
-    panel.className = 'md-panel';
-    panel.innerHTML = `
+    const COL_CORRECAO = 16;
+    const COL_HONORARIOS = 17;
+    const COL_AUDIENCISTA = 18;
+    const COL_CONFERENCIA = 19; /* (3) calculada */
+    const COL_REPASSE = 20;
+    const COL_SUCUMBENCIA = 22;
+
+    const tbody = document.getElementById("mdTbody");
+    if (!tbody) return;
+
+    function setCellText(tr, idx, text) {
+      const td = tr.cells[idx];
+      if (!td) return;
+      const div = td.querySelector("div");
+      if (!div) return;
+      div.textContent = text;
+    }
+    function getCellText(tr, idx) {
+      const td = tr.cells[idx];
+      if (!td) return '-';
+      const div = td.querySelector("div");
+      const raw = (div ? div.textContent : td.textContent || '').trim();
+      return raw === '' ? '-' : raw;
+    }
+
+    tbody.querySelectorAll("tr").forEach(tr => {
+      /* formata as colunas numéricas existentes (inclui repasse) */
+      numericCols.forEach(idx => {
+        const td = tr.cells[idx];
+        if (!td) return;
+        const div = td.querySelector("div");
+        if (!div) return;
+        const raw = div.textContent.trim();
+        div.textContent = raw === '-' ? '-' : (formatBR_MD(raw) || raw);
+      });
+
+      /* Conferência = Correção + Honorários + Audiencista + Sucumbência + Repasse */
+      const cor = MD.parseSmartNumber(getCellText(tr, COL_CORRECAO));
+      const hon = MD.parseSmartNumber(getCellText(tr, COL_HONORARIOS));
+      const aud = MD.parseSmartNumber(getCellText(tr, COL_AUDIENCISTA));
+      const suc = MD.parseSmartNumber(getCellText(tr, COL_SUCUMBENCIA));
+      const rep = MD.parseSmartNumber(getCellText(tr, COL_REPASSE));
+
+      const hasAny =
+        Number.isFinite(cor) ||
+        Number.isFinite(hon) ||
+        Number.isFinite(aud) ||
+        Number.isFinite(suc) ||
+        Number.isFinite(rep);
+
+      if (!hasAny) {
+        setCellText(tr, COL_CONFERENCIA, "-");
+      } else {
+        const sum =
+          (Number.isFinite(cor) ? cor : 0) +
+          (Number.isFinite(hon) ? hon : 0) +
+          (Number.isFinite(aud) ? aud : 0) +
+          (Number.isFinite(suc) ? suc : 0) +
+          (Number.isFinite(rep) ? rep : 0);
+
+        setCellText(tr, COL_CONFERENCIA, formatBR_MD(sum) || "-");
+      }
+
+    });
+  })();
+</script>
+
+<script>
+  /* ===================== APLICA REGRAS DE COR (HIERARQUIA) ===================== */
+  (function () {
+    const tbody = document.getElementById("mdTbody");
+    if (!tbody) return;
+
+    function norm(s) {
+      return String(s ?? "")
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, " ");
+    }
+
+    function clearColorClasses(tr) {
+      tr.classList.remove(
+        "md-colored",
+        "ac-row-cnpj",
+        "ac-row-arepassar",
+        "ac-row-repassado",
+        "ac-row-iddeposito",
+        "ac-row-aguardando-pix",
+        "ac-row-aguardando-retorno"
+      );
+    }
+
+    function applyRule(tr) {
+      clearColorClasses(tr);
+
+      let rowObj = {};
+      try { rowObj = JSON.parse(tr.dataset.row || "{}"); } catch (_) { rowObj = {}; }
+
+      const tipo = norm(rowObj.tipo ?? tr.cells[12]?.innerText);
+      const status = norm(rowObj.status ?? tr.cells[8]?.innerText);
+      const local = norm(rowObj.local ?? tr.cells[11]?.innerText);
+
+      if (tipo === "CNPJ") {
+        tr.classList.add("md-colored", "ac-row-cnpj");
+        return;
+      }
+      if (status === "A REPASSAR") {
+        tr.classList.add("md-colored", "ac-row-arepassar");
+        return;
+      }
+      if (status === "REPASSADO") {
+        tr.classList.add("md-colored", "ac-row-repassado");
+        return;
+      }
+      if (local === "ID DEPÓSITO" || local === "ID DEPOSITO") {
+        tr.classList.add("md-colored", "ac-row-iddeposito");
+        return;
+      }
+      if (status === "AGUARDANDO AUTORIZAÇÃO PIX (BRADESCO)" || status === "AGUARDANDO AUTORIZACAO PIX (BRADESCO)") {
+        tr.classList.add("md-colored", "ac-row-aguardando-pix");
+        return;
+      }
+      if (status === "AGUARDANDO RETORNO DO CLIENTE") {
+        tr.classList.add("md-colored", "ac-row-aguardando-retorno");
+        return;
+      }
+    }
+
+    function applyAll() {
+      tbody.querySelectorAll("tr.md-row").forEach(tr => applyRule(tr));
+    }
+
+    applyAll();
+    window.MD_COLORS = { refresh: applyAll };
+  })();
+</script>
+
+<script>
+  /* ===================== TABELA + FILTROS + SOMATÓRIOS + PERSISTÊNCIA ===================== */
+  (function () {
+    const table = document.getElementById('mdTable');
+    const thead = table?.tHead?.rows?.[0];
+    const tbody = document.getElementById('mdTbody');
+    const badge = document.getElementById('mdFilteredBadge');
+    const countEl = document.getElementById('mdRowsCount');
+
+    if (!thead || !tbody) return;
+
+    const sumEls = {
+      correcao: document.getElementById("mdSumCorrecao"),
+      honorarios: document.getElementById("mdSumHonorarios"),
+      audiencista: document.getElementById("mdSumAudiencista"),
+      repasse: document.getElementById("mdSumRepasse"),
+      sucumbencia: document.getElementById("mdSumSucumbencia"),
+      total: document.getElementById("mdSumTotalFinal"),
+      deposito: document.getElementById("mdSumDeposito"),
+    };
+
+    function toBRDateText(raw) {
+      if (!raw) return '-';
+      raw = String(raw).trim();
+      if (raw === '-' || raw === '') return '-';
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
+      const m1 = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m1) {
+        const yyyy = m1[1], mm = m1[2], dd = m1[3];
+        return `${dd}/${mm}/${yyyy}`;
+      }
+      return raw;
+    }
+    function toDayKey(raw) {
+      const br = toBRDateText(raw);
+      return br === '-' ? '-' : br;
+    }
+    function toMonthKey(raw) {
+      const br = toBRDateText(raw);
+      if (br === '-' || !/^\d{2}\/\d{2}\/\d{4}$/.test(br)) return br;
+      const [dd, mm, yyyy] = br.split('/');
+      return `${mm}/${yyyy}`;
+    }
+
+    tbody.querySelectorAll('.md-date').forEach(el => {
+      el.textContent = toBRDateText(el.textContent);
+    });
+
+    let panel = document.getElementById('mdGlobalFilterPanel');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'mdGlobalFilterPanel';
+      panel.className = 'md-panel';
+      panel.innerHTML = `
       <div class="md-panel-top">
         <input type="search" placeholder="Pesquisar...">
         <div class="md-mode" id="mdDateMode" role="group" aria-label="Modo de data">
@@ -1164,298 +1494,11 @@ async function deleteMandado(id){
         <button type="button" class="primary" data-act="ok" style="grid-column: span 2;">OK</button>
       </div>
     `;
-    document.body.appendChild(panel);
-  }
-
-  const allRows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector('.md-edit-btn'));
-
-  const FILTERABLE_COLS = [];
-  Array.from(thead.cells).forEach((th, idx) => {
-    const title = (th.innerText || '').trim().toLowerCase();
-    if (title === 'ações' || th.classList.contains('no-filter')) return;
-    FILTERABLE_COLS.push(idx);
-  });
-
-  let filters = {};
-  let sort = null;
-  let openCol = null;
-
-  const MD_STATE_KEY = "MD_FILTER_STATE_v3_auto_layout_like_acordos";
-
-  function serializeState(){
-    const f = {};
-    for(const [k, obj] of Object.entries(filters)){
-      if(!obj?.set) continue;
-      f[k] = { type: obj.type, mode: obj.mode || null, set: Array.from(obj.set) };
-    }
-    return { filters: f, sort };
-  }
-  function loadState(){
-    try{
-      const raw = localStorage.getItem(MD_STATE_KEY);
-      if(!raw) return;
-      const st = JSON.parse(raw);
-
-      if(st?.filters){
-        const f2 = {};
-        for(const [k, obj] of Object.entries(st.filters)){
-          if(!obj?.set) continue;
-          f2[k] = {
-            type: obj.type || "set",
-            mode: obj.mode || (obj.type === "date" ? "day" : null),
-            set: new Set(obj.set || []),
-          };
-        }
-        filters = f2;
-      }
-      if(st?.sort) sort = st.sort;
-    }catch(e){}
-  }
-  function saveState(){
-    try{ localStorage.setItem(MD_STATE_KEY, JSON.stringify(serializeState())); }catch(e){}
-  }
-
-  window.MD = window.MD || {};
-  window.MD.persistStateNow = saveState;
-
-  function textOfCell(row, col){
-    const cell = row.cells[col];
-    if (!cell) return '-';
-    const t = (cell.innerText || '').trim();
-    return t === '' ? '-' : t;
-  }
-
-  function isDateCol(col){
-    const headerText = (thead.cells[col]?.innerText || '').toLowerCase();
-    if (headerText.includes('data')) return true;
-    if (headerText.includes('criado')) return true;
-    if (headerText.includes('atualizado')) return true;
-    if (headerText.includes('previsão') || headerText.includes('previsao')) return true;
-    return false;
-  }
-
-  function cellValueForFilter(row, col, fObj){
-    const raw = textOfCell(row, col);
-    if (fObj?.type === 'date'){
-      return fObj.mode === 'month' ? toMonthKey(raw) : toDayKey(raw);
-    }
-    return raw;
-  }
-
-  function matchesFilters(row, f = filters){
-    for (const [colStr, fObj] of Object.entries(f)){
-      const col = Number(colStr);
-      const v = cellValueForFilter(row, col, fObj);
-      if (!fObj?.set || !fObj.set.has(v)) return false;
-    }
-    return true;
-  }
-
-  function getVisibleRows(){
-    return allRows.filter(r => matchesFilters(r));
-  }
-
-  const COL_DEPOSITO    = 14;
-  const COL_CORRECAO    = 15;
-  const COL_HONORARIOS  = 16;
-  const COL_AUDIENCISTA = 17;
-  const COL_REPASSE     = 19; /* repasse real */
-  const COL_SUCUMBENCIA = 21;
-
-  function updateSums(){
-    const vis = getVisibleRows();
-
-    let sDep = 0, sCor = 0, sHon = 0, sAud = 0, sRep = 0, sSuc = 0;
-
-    vis.forEach(r=>{
-      sDep += (MD.parseSmartNumber(textOfCell(r, COL_DEPOSITO))    || 0);
-      sCor += (MD.parseSmartNumber(textOfCell(r, COL_CORRECAO))    || 0);
-      sHon += (MD.parseSmartNumber(textOfCell(r, COL_HONORARIOS))  || 0);
-      sAud += (MD.parseSmartNumber(textOfCell(r, COL_AUDIENCISTA)) || 0);
-      sRep += (MD.parseSmartNumber(textOfCell(r, COL_REPASSE))     || 0);
-      sSuc += (MD.parseSmartNumber(textOfCell(r, COL_SUCUMBENCIA)) || 0);
-    });
-
-    /* (1) total final NÃO inclui repasse */
-    const total = sCor + sHon + sAud + sSuc;
-
-    if(sumEls.correcao)    sumEls.correcao.textContent    = formatBRL_MD(sCor);
-    if(sumEls.honorarios)  sumEls.honorarios.textContent  = formatBRL_MD(sHon);
-    if(sumEls.audiencista) sumEls.audiencista.textContent = formatBRL_MD(sAud);
-    if(sumEls.repasse)     sumEls.repasse.textContent     = formatBRL_MD(sRep);
-    if(sumEls.sucumbencia) sumEls.sucumbencia.textContent = formatBRL_MD(sSuc);
-    if(sumEls.total)       sumEls.total.textContent       = formatBRL_MD(total);
-    if(sumEls.deposito)    sumEls.deposito.textContent    = formatBRL_MD(sDep);
-  }
-
-  function apply(){
-    allRows.forEach(r => r.style.display = matchesFilters(r) ? '' : 'none');
-
-    if (sort){
-      const vis = getVisibleRows();
-      const col = sort.col;
-      const dir = sort.dir;
-
-      vis.sort((a,b)=>{
-        const A = textOfCell(a,col);
-        const B = textOfCell(b,col);
-
-        if (isDateCol(col)){
-          const aBr = toBRDateText(A);
-          const bBr = toBRDateText(B);
-          const aIso = (aBr === '-' ? '' : aBr.split('/').reverse().join('-'));
-          const bIso = (bBr === '-' ? '' : bBr.split('/').reverse().join('-'));
-          const cmp = aIso.localeCompare(bIso);
-          return dir === 'asc' ? cmp : -cmp;
-        }
-
-        if (/\d/.test(A) && /\d/.test(B)){
-          const aNum = MD.parseSmartNumber(A);
-          const bNum = MD.parseSmartNumber(B);
-          if(Number.isFinite(aNum) && Number.isFinite(bNum)){
-            const cmp = aNum - bNum;
-            return dir === 'asc' ? cmp : -cmp;
-          }
-        }
-
-        const cmp = A.localeCompare(B, 'pt-BR');
-        return dir === 'asc' ? cmp : -cmp;
-      });
-
-      vis.forEach(r => tbody.appendChild(r));
+      document.body.appendChild(panel);
     }
 
-    const visCount = getVisibleRows().length;
-    if (countEl) countEl.textContent = visCount;
+    const allRows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector('.md-edit-btn'));
 
-    const hasFilters = Object.keys(filters).length > 0;
-    if (badge) badge.style.display = hasFilters ? 'inline-flex' : 'none';
-
-    FILTERABLE_COLS.forEach(i=>{
-      const th = thead.cells[i];
-      if (!th) return;
-      th.classList.toggle('md-filtered', !!filters[i]);
-    });
-
-    window.MD_XSCROLL?.refresh?.();
-    updateSums();
-    saveState();
-  }
-
-  function valuesForColumn(col, forcedDateMode = null){
-    const temp = {...filters};
-    delete temp[col];
-
-    const candidates = allRows.filter(r => matchesFilters(r, temp));
-    const vals = new Set();
-    const existing = filters[col] || null;
-
-    if (isDateCol(col)){
-      const mode = forcedDateMode || (existing?.type === 'date' ? existing.mode : 'day');
-      candidates.forEach(r=>{
-        const raw = textOfCell(r,col);
-        vals.add(mode === 'month' ? toMonthKey(raw) : toDayKey(raw));
-      });
-
-      return Array.from(vals).sort((a,b)=>{
-        if(mode === 'month'){
-          const [am, ay] = (a||'').split('/');
-          const [bm, by] = (b||'').split('/');
-          return `${ay||''}-${am||''}`.localeCompare(`${by||''}-${bm||''}`,'pt-BR');
-        }
-        const aKey = a === '-' ? '' : a.split('/').reverse().join('-');
-        const bKey = b === '-' ? '' : b.split('/').reverse().join('-');
-        return aKey.localeCompare(bKey,'pt-BR');
-      });
-    }
-
-    candidates.forEach(r => vals.add(textOfCell(r,col)));
-    return Array.from(vals).sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  }
-
-  function closePanel(){
-    panel.style.display = 'none';
-    openCol = null;
-  }
-
-  function positionPanelNear(th){
-    const rect = th.getBoundingClientRect();
-    const panelW = 380;
-    const margin = 8;
-
-    let left = rect.right - panelW;
-    if (left < margin) left = margin;
-
-    let top = rect.bottom + 8;
-    const panelH = 680;
-    const maxTop = window.innerHeight - panelH - margin;
-    if (top > maxTop) top = Math.max(margin, maxTop);
-
-    panel.style.left = left + 'px';
-    panel.style.top = top + 'px';
-  }
-
-  function setDateModeUI(show, activeMode){
-    const wrap = document.getElementById('mdDateMode');
-    if (!wrap) return;
-    wrap.style.display = show ? 'inline-flex' : 'none';
-    wrap.querySelectorAll('button').forEach(b=>{
-      b.classList.toggle('active', b.dataset.mode === activeMode);
-    });
-    panel.dataset.dateMode = show ? activeMode : "";
-  }
-
-  function populatePanel(col, forcedDateMode = null){
-    const list = panel.querySelector('.md-panel-list');
-    list.innerHTML = '';
-
-    const isDate = isDateCol(col);
-    let dateMode = 'day';
-    const existing = filters[col];
-
-    if (isDate){
-      if (forcedDateMode) dateMode = forcedDateMode;
-      else if (existing?.type === 'date') dateMode = existing.mode;
-      setDateModeUI(true, dateMode);
-    } else {
-      setDateModeUI(false, 'day');
-    }
-
-    const vals = valuesForColumn(col, isDate ? dateMode : null);
-
-    let currentSet = null;
-    if (existing?.type === 'date' && isDate) currentSet = existing.set;
-    else if (existing?.type === 'set') currentSet = existing.set;
-
-    vals.forEach(v=>{
-      const lab = document.createElement('label');
-      lab.className = 'md-panel-item';
-      lab.dataset.val = v;
-      const checked = currentSet ? currentSet.has(v) : false;
-
-      lab.innerHTML = `
-        <input type="checkbox" ${checked ? 'checked' : ''}>
-        <span>${v}</span>
-      `;
-      list.appendChild(lab);
-    });
-
-    const s = panel.querySelector('input[type="search"]');
-    if (s) s.value = '';
-
-    panel.dataset.isDateCol = isDate ? '1' : '0';
-    panel.dataset.dateMode = isDate ? dateMode : '';
-  }
-
-  function openPanelFor(col, th){
-    openCol = col;
-    populatePanel(col);
-    positionPanelNear(th);
-    panel.style.display = 'block';
-    panel.querySelector('input[type="search"]')?.focus();
-  }
-
-  function buildHeaderUI(){
     const FILTERABLE_COLS = [];
     Array.from(thead.cells).forEach((th, idx) => {
       const title = (th.innerText || '').trim().toLowerCase();
@@ -1463,14 +1506,301 @@ async function deleteMandado(id){
       FILTERABLE_COLS.push(idx);
     });
 
-    FILTERABLE_COLS.forEach((col)=>{
-      const th = thead.cells[col];
-      if (!th) return;
-      if (th.dataset.mdInited === '1') return;
-      th.dataset.mdInited = '1';
+    let filters = {};
+    let sort = null;
+    let openCol = null;
 
-      const label = (th.innerText || '').trim();
-      th.innerHTML = `
+    const MD_STATE_KEY = "MD_FILTER_STATE_v3_auto_layout_like_acordos";
+
+    function serializeState() {
+      const f = {};
+      for (const [k, obj] of Object.entries(filters)) {
+        if (!obj?.set) continue;
+        f[k] = { type: obj.type, mode: obj.mode || null, set: Array.from(obj.set) };
+      }
+      return { filters: f, sort };
+    }
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(MD_STATE_KEY);
+        if (!raw) return;
+        const st = JSON.parse(raw);
+
+        if (st?.filters) {
+          const f2 = {};
+          for (const [k, obj] of Object.entries(st.filters)) {
+            if (!obj?.set) continue;
+            f2[k] = {
+              type: obj.type || "set",
+              mode: obj.mode || (obj.type === "date" ? "day" : null),
+              set: new Set(obj.set || []),
+            };
+          }
+          filters = f2;
+        }
+        if (st?.sort) sort = st.sort;
+      } catch (e) { }
+    }
+    function saveState() {
+      try { localStorage.setItem(MD_STATE_KEY, JSON.stringify(serializeState())); } catch (e) { }
+    }
+
+    window.MD = window.MD || {};
+    window.MD.persistStateNow = saveState;
+
+    function textOfCell(row, col) {
+      const cell = row.cells[col];
+      if (!cell) return '-';
+      const t = (cell.innerText || '').trim();
+      return t === '' ? '-' : t;
+    }
+
+    function isDateCol(col) {
+      const headerText = (thead.cells[col]?.innerText || '').toLowerCase();
+      if (headerText.includes('data')) return true;
+      if (headerText.includes('criado')) return true;
+      if (headerText.includes('atualizado')) return true;
+      if (headerText.includes('previsão') || headerText.includes('previsao')) return true;
+      return false;
+    }
+
+    function cellValueForFilter(row, col, fObj) {
+      const raw = textOfCell(row, col);
+      if (fObj?.type === 'date') {
+        return fObj.mode === 'month' ? toMonthKey(raw) : toDayKey(raw);
+      }
+      return raw;
+    }
+
+    function matchesFilters(row, f = filters) {
+      for (const [colStr, fObj] of Object.entries(f)) {
+        const col = Number(colStr);
+        const v = cellValueForFilter(row, col, fObj);
+        if (!fObj?.set || !fObj.set.has(v)) return false;
+      }
+      return true;
+    }
+
+    function getVisibleRows() {
+      return allRows.filter(r => matchesFilters(r));
+    }
+
+    const COL_DEPOSITO = 15;
+    const COL_CORRECAO = 16;
+    const COL_HONORARIOS = 17;
+    const COL_AUDIENCISTA = 18;
+    const COL_REPASSE = 20; /* repasse real */
+    const COL_SUCUMBENCIA = 22;
+
+    function updateSums() {
+      const vis = getVisibleRows();
+
+      let sDep = 0, sCor = 0, sHon = 0, sAud = 0, sRep = 0, sSuc = 0;
+
+      vis.forEach(r => {
+        sDep += (MD.parseSmartNumber(textOfCell(r, COL_DEPOSITO)) || 0);
+        sCor += (MD.parseSmartNumber(textOfCell(r, COL_CORRECAO)) || 0);
+        sHon += (MD.parseSmartNumber(textOfCell(r, COL_HONORARIOS)) || 0);
+        sAud += (MD.parseSmartNumber(textOfCell(r, COL_AUDIENCISTA)) || 0);
+        sRep += (MD.parseSmartNumber(textOfCell(r, COL_REPASSE)) || 0);
+        sSuc += (MD.parseSmartNumber(textOfCell(r, COL_SUCUMBENCIA)) || 0);
+      });
+
+      /* (1) total final NÃO inclui repasse */
+      const total = sCor + sHon + sAud + sSuc;
+
+      if (sumEls.correcao) sumEls.correcao.textContent = formatBRL_MD(sCor);
+      if (sumEls.honorarios) sumEls.honorarios.textContent = formatBRL_MD(sHon);
+      if (sumEls.audiencista) sumEls.audiencista.textContent = formatBRL_MD(sAud);
+      if (sumEls.repasse) sumEls.repasse.textContent = formatBRL_MD(sRep);
+      if (sumEls.sucumbencia) sumEls.sucumbencia.textContent = formatBRL_MD(sSuc);
+      if (sumEls.total) sumEls.total.textContent = formatBRL_MD(total);
+      if (sumEls.deposito) sumEls.deposito.textContent = formatBRL_MD(sDep);
+    }
+
+    function apply() {
+      allRows.forEach(r => r.style.display = matchesFilters(r) ? '' : 'none');
+
+      if (sort) {
+        const vis = getVisibleRows();
+        const col = sort.col;
+        const dir = sort.dir;
+
+        vis.sort((a, b) => {
+          const A = textOfCell(a, col);
+          const B = textOfCell(b, col);
+
+          if (isDateCol(col)) {
+            const aBr = toBRDateText(A);
+            const bBr = toBRDateText(B);
+            const aIso = (aBr === '-' ? '' : aBr.split('/').reverse().join('-'));
+            const bIso = (bBr === '-' ? '' : bBr.split('/').reverse().join('-'));
+            const cmp = aIso.localeCompare(bIso);
+            return dir === 'asc' ? cmp : -cmp;
+          }
+
+          if (/\d/.test(A) && /\d/.test(B)) {
+            const aNum = MD.parseSmartNumber(A);
+            const bNum = MD.parseSmartNumber(B);
+            if (Number.isFinite(aNum) && Number.isFinite(bNum)) {
+              const cmp = aNum - bNum;
+              return dir === 'asc' ? cmp : -cmp;
+            }
+          }
+
+          const cmp = A.localeCompare(B, 'pt-BR');
+          return dir === 'asc' ? cmp : -cmp;
+        });
+
+        vis.forEach(r => tbody.appendChild(r));
+      }
+
+      const visCount = getVisibleRows().length;
+      if (countEl) countEl.textContent = visCount;
+
+      const hasFilters = Object.keys(filters).length > 0;
+      if (badge) badge.style.display = hasFilters ? 'inline-flex' : 'none';
+
+      FILTERABLE_COLS.forEach(i => {
+        const th = thead.cells[i];
+        if (!th) return;
+        th.classList.toggle('md-filtered', !!filters[i]);
+      });
+
+      window.MD_XSCROLL?.refresh?.();
+      updateSums();
+      saveState();
+    }
+
+    function valuesForColumn(col, forcedDateMode = null) {
+      const temp = { ...filters };
+      delete temp[col];
+
+      const candidates = allRows.filter(r => matchesFilters(r, temp));
+      const vals = new Set();
+      const existing = filters[col] || null;
+
+      if (isDateCol(col)) {
+        const mode = forcedDateMode || (existing?.type === 'date' ? existing.mode : 'day');
+        candidates.forEach(r => {
+          const raw = textOfCell(r, col);
+          vals.add(mode === 'month' ? toMonthKey(raw) : toDayKey(raw));
+        });
+
+        return Array.from(vals).sort((a, b) => {
+          if (mode === 'month') {
+            const [am, ay] = (a || '').split('/');
+            const [bm, by] = (b || '').split('/');
+            return `${ay || ''}-${am || ''}`.localeCompare(`${by || ''}-${bm || ''}`, 'pt-BR');
+          }
+          const aKey = a === '-' ? '' : a.split('/').reverse().join('-');
+          const bKey = b === '-' ? '' : b.split('/').reverse().join('-');
+          return aKey.localeCompare(bKey, 'pt-BR');
+        });
+      }
+
+      candidates.forEach(r => vals.add(textOfCell(r, col)));
+      return Array.from(vals).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    }
+
+    function closePanel() {
+      panel.style.display = 'none';
+      openCol = null;
+    }
+
+    function positionPanelNear(th) {
+      const rect = th.getBoundingClientRect();
+      const panelW = 380;
+      const margin = 8;
+
+      let left = rect.right - panelW;
+      if (left < margin) left = margin;
+
+      let top = rect.bottom + 8;
+      const panelH = 680;
+      const maxTop = window.innerHeight - panelH - margin;
+      if (top > maxTop) top = Math.max(margin, maxTop);
+
+      panel.style.left = left + 'px';
+      panel.style.top = top + 'px';
+    }
+
+    function setDateModeUI(show, activeMode) {
+      const wrap = document.getElementById('mdDateMode');
+      if (!wrap) return;
+      wrap.style.display = show ? 'inline-flex' : 'none';
+      wrap.querySelectorAll('button').forEach(b => {
+        b.classList.toggle('active', b.dataset.mode === activeMode);
+      });
+      panel.dataset.dateMode = show ? activeMode : "";
+    }
+
+    function populatePanel(col, forcedDateMode = null) {
+      const list = panel.querySelector('.md-panel-list');
+      list.innerHTML = '';
+
+      const isDate = isDateCol(col);
+      let dateMode = 'day';
+      const existing = filters[col];
+
+      if (isDate) {
+        if (forcedDateMode) dateMode = forcedDateMode;
+        else if (existing?.type === 'date') dateMode = existing.mode;
+        setDateModeUI(true, dateMode);
+      } else {
+        setDateModeUI(false, 'day');
+      }
+
+      const vals = valuesForColumn(col, isDate ? dateMode : null);
+
+      let currentSet = null;
+      if (existing?.type === 'date' && isDate) currentSet = existing.set;
+      else if (existing?.type === 'set') currentSet = existing.set;
+
+      vals.forEach(v => {
+        const lab = document.createElement('label');
+        lab.className = 'md-panel-item';
+        lab.dataset.val = v;
+        const checked = currentSet ? currentSet.has(v) : false;
+
+        lab.innerHTML = `
+        <input type="checkbox" ${checked ? 'checked' : ''}>
+        <span>${v}</span>
+      `;
+        list.appendChild(lab);
+      });
+
+      const s = panel.querySelector('input[type="search"]');
+      if (s) s.value = '';
+
+      panel.dataset.isDateCol = isDate ? '1' : '0';
+      panel.dataset.dateMode = isDate ? dateMode : '';
+    }
+
+    function openPanelFor(col, th) {
+      openCol = col;
+      populatePanel(col);
+      positionPanelNear(th);
+      panel.style.display = 'block';
+      panel.querySelector('input[type="search"]')?.focus();
+    }
+
+    function buildHeaderUI() {
+      const FILTERABLE_COLS = [];
+      Array.from(thead.cells).forEach((th, idx) => {
+        const title = (th.innerText || '').trim().toLowerCase();
+        if (title === 'ações' || th.classList.contains('no-filter')) return;
+        FILTERABLE_COLS.push(idx);
+      });
+
+      FILTERABLE_COLS.forEach((col) => {
+        const th = thead.cells[col];
+        if (!th) return;
+        if (th.dataset.mdInited === '1') return;
+        th.dataset.mdInited = '1';
+
+        const label = (th.innerText || '').trim();
+        th.innerHTML = `
         <span class="md-th-inner">
           <span>${label}</span>
           <span class="md-th-tools">
@@ -1480,779 +1810,788 @@ async function deleteMandado(id){
         </span>
       `;
 
-      th.querySelector('[data-act="open"]').addEventListener('click', (e)=>{
-        e.stopPropagation();
-        const isOpen = (panel.style.display === 'block' && openCol === col);
-        if (isOpen) { closePanel(); return; }
-        openPanelFor(col, th);
+        th.querySelector('[data-act="open"]').addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isOpen = (panel.style.display === 'block' && openCol === col);
+          if (isOpen) { closePanel(); return; }
+          openPanelFor(col, th);
+        });
+      });
+    }
+
+    panel.querySelector('input[type="search"]').addEventListener('input', (e) => {
+      const q = (e.target.value || '').trim().toLowerCase();
+      panel.querySelectorAll('.md-panel-item').forEach(it => {
+        const v = (it.dataset.val || '').toLowerCase();
+        it.style.display = v.includes(q) ? '' : 'none';
       });
     });
-  }
 
-  panel.querySelector('input[type="search"]').addEventListener('input', (e)=>{
-    const q = (e.target.value || '').trim().toLowerCase();
-    panel.querySelectorAll('.md-panel-item').forEach(it=>{
-      const v = (it.dataset.val || '').toLowerCase();
-      it.style.display = v.includes(q) ? '' : 'none';
-    });
-  });
+    const dateModeWrap = document.getElementById('mdDateMode');
+    if (dateModeWrap) {
+      dateModeWrap.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (openCol === null) return;
+          if (panel.dataset.isDateCol !== '1') return;
+          const mode = btn.dataset.mode;
+          setDateModeUI(true, mode);
+          populatePanel(openCol, mode);
+        });
+      });
+    }
 
-  const dateModeWrap = document.getElementById('mdDateMode');
-  if (dateModeWrap){
-    dateModeWrap.querySelectorAll('button').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
+    panel.querySelectorAll('[data-sort]').forEach(btn => {
+      btn.addEventListener('click', () => {
         if (openCol === null) return;
-        if (panel.dataset.isDateCol !== '1') return;
-        const mode = btn.dataset.mode;
-        setDateModeUI(true, mode);
-        populatePanel(openCol, mode);
+        sort = { col: openCol, dir: btn.dataset.sort };
+        closePanel();
+        apply();
       });
     });
-  }
 
-  panel.querySelectorAll('[data-sort]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
+    panel.querySelector('[data-act="clear"]').addEventListener('click', () => {
       if (openCol === null) return;
-      sort = { col: openCol, dir: btn.dataset.sort };
-      closePanel();
-      apply();
-    });
-  });
-
-  panel.querySelector('[data-act="clear"]').addEventListener('click', ()=>{
-    if (openCol === null) return;
-    delete filters[openCol];
-    closePanel();
-    apply();
-  });
-
-  panel.querySelector('[data-act="ok"]').addEventListener('click', ()=>{
-    if (openCol === null) return;
-
-    const set = new Set();
-    panel.querySelectorAll('.md-panel-item').forEach(it=>{
-      const cb = it.querySelector('input[type="checkbox"]');
-      if (cb && cb.checked) set.add(it.dataset.val);
-    });
-
-    if (!set.size){
       delete filters[openCol];
       closePanel();
       apply();
-      return;
-    }
+    });
 
-    const isDate = panel.dataset.isDateCol === '1';
-    const dateMode = panel.dataset.dateMode || 'day';
+    panel.querySelector('[data-act="ok"]').addEventListener('click', () => {
+      if (openCol === null) return;
 
-    filters[openCol] = isDate
-      ? { type:'date', mode:dateMode, set }
-      : { type:'set', set };
+      const set = new Set();
+      panel.querySelectorAll('.md-panel-item').forEach(it => {
+        const cb = it.querySelector('input[type="checkbox"]');
+        if (cb && cb.checked) set.add(it.dataset.val);
+      });
 
-    closePanel();
-    apply();
-  });
+      if (!set.size) {
+        delete filters[openCol];
+        closePanel();
+        apply();
+        return;
+      }
 
-  document.addEventListener('click', (e)=>{
-    if (panel.style.display !== 'block') return;
-    const inside = e.target.closest && e.target.closest('#mdGlobalFilterPanel');
-    const onHeaderBtn = e.target.closest && e.target.closest('.md-th-btn');
-    if (inside || onHeaderBtn) return;
-    closePanel();
-  });
+      const isDate = panel.dataset.isDateCol === '1';
+      const dateMode = panel.dataset.dateMode || 'day';
 
-  document.addEventListener('keydown', (e)=>{
-    if (e.key === "Escape" && panel.style.display === "block") closePanel();
-  });
+      filters[openCol] = isDate
+        ? { type: 'date', mode: dateMode, set }
+        : { type: 'set', set };
 
-  window.addEventListener('resize', ()=>{ if(openCol!==null){ closePanel(); } });
+      closePanel();
+      apply();
+    });
 
-  window.MD.clearAll = function(){
-    filters = {};
-    sort = null;
-    closePanel();
-    try{ localStorage.removeItem(MD_STATE_KEY); }catch(e){}
-    apply();
-  };
-  window.MD.deleteFromBtn = function(ev, id){
-    ev.preventDefault();
-    ev.stopPropagation();
-    deleteMandado(id);
-  };
+    document.addEventListener('click', (e) => {
+      if (panel.style.display !== 'block') return;
+      const inside = e.target.closest && e.target.closest('#mdGlobalFilterPanel');
+      const onHeaderBtn = e.target.closest && e.target.closest('.md-th-btn');
+      if (inside || onHeaderBtn) return;
+      closePanel();
+    });
 
-  buildHeaderUI();
-  loadState();
-  apply();
-})();
-</script>
+    document.addEventListener('keydown', (e) => {
+      if (e.key === "Escape" && panel.style.display === "block") closePanel();
+    });
 
-<script>
-/* ===================== DOUBLE CLICK NA LINHA PARA EDITAR ===================== */
-(function(){
-  const tbody = document.getElementById("mdTbody");
-  if(!tbody) return;
+    window.addEventListener('resize', () => { if (openCol !== null) { closePanel(); } });
 
-  tbody.addEventListener("dblclick", (e)=>{
-    const tr = e.target.closest("tr");
-    if(!tr) return;
-    if (e.target.closest("button, a, input, select, textarea")) return;
-    if(!tr.querySelector(".md-edit-btn")) return;
-    openEditModalFromRowMD(tr);
-  });
-})();
-</script>
-
-<script>
-/* ===================== SCROLLBAR HORIZONTAL FIXA NO RODAPÉ ===================== */
-(function(){
-  const wrap  = document.querySelector(".md-table-wrap");
-  const fixed = document.getElementById("mdXScrollFixed");
-  const inner = document.getElementById("mdXScrollInner");
-  const table = document.getElementById("mdTable");
-
-  if(!wrap || !fixed || !inner || !table) return;
-
-  let syncing = false;
-
-  function getMaxScroll(el){ return Math.max(0, el.scrollWidth - el.clientWidth); }
-  function positionFixedOverWrap(){
-    const r = wrap.getBoundingClientRect();
-    fixed.style.left = Math.max(0, r.left) + "px";
-    fixed.style.width = Math.max(0, r.width) + "px";
-  }
-  function updateInnerWidth(){
-    const w = Math.max(table.scrollWidth, wrap.scrollWidth);
-    inner.style.width = w + "px";
-  }
-  function toggleIfOverflow(){
-    const hasOverflow = table.scrollWidth > wrap.clientWidth + 2;
-    fixed.style.display = hasOverflow ? "block" : "none";
-  }
-  function syncFixedToWrap(){
-    const maxW = getMaxScroll(wrap);
-    const maxF = getMaxScroll(fixed);
-    if (maxW <= 0 || maxF <= 0) return;
-    fixed.scrollLeft = (wrap.scrollLeft / maxW) * maxF;
-  }
-  function syncWrapToFixed(){
-    const maxW = getMaxScroll(wrap);
-    const maxF = getMaxScroll(fixed);
-    if (maxW <= 0 || maxF <= 0) return;
-    wrap.scrollLeft = (fixed.scrollLeft / maxF) * maxW;
-  }
-  function refresh(){
-    positionFixedOverWrap();
-    updateInnerWidth();
-    toggleIfOverflow();
-    syncFixedToWrap();
-  }
-
-  fixed.addEventListener("scroll", ()=>{
-    if(syncing) return;
-    syncing = true; syncWrapToFixed(); syncing = false;
-  }, { passive:true });
-
-  wrap.addEventListener("scroll", ()=>{
-    if(syncing) return;
-    syncing = true; syncFixedToWrap(); syncing = false;
-  }, { passive:true });
-
-  const ro = new ResizeObserver(()=> refresh());
-  ro.observe(wrap); ro.observe(table);
-
-  window.addEventListener("resize", ()=> refresh());
-  window.addEventListener("scroll", ()=> positionFixedOverWrap(), { passive:true });
-
-  window.MD_XSCROLL = { refresh };
-  refresh();
-})();
-</script>
-
-<script>
-/* ===================== MODAL + DROPDOWNS + CRUD + AUTOCÁLCULOS (TIPO RÉU PRIMEIRO + AUTO FLAGS EM TODOS) ===================== */
-(function(){
-  function _showError(msg){
-    const el = document.getElementById("mdError");
-    if(!el) return;
-    if(!msg){ el.style.display="none"; el.textContent=""; return; }
-    el.style.display="block";
-    el.textContent = msg;
-  }
-
-  function toBRDateText(raw){
-    if(!raw) return '';
-    raw = String(raw).trim();
-    if(raw === '-' || raw === '') return '';
-    if(/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
-    const m1 = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if(m1) return `${m1[3]}/${m1[2]}/${m1[1]}`;
-    return raw;
-  }
-
-  function toDotDecimalMD(s){
-    const n = MD.parseSmartNumber(s);
-    return Number.isFinite(n) ? String(n) : "";
-  }
-
-  function parseBRDateToDate(s){
-    if(!s) return null;
-    s = String(s).trim();
-    const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if(!m) return null;
-    const dd = Number(m[1]), mm = Number(m[2]), yyyy = Number(m[3]);
-    const d = new Date(yyyy, mm - 1, dd);
-    if(d.getFullYear() !== yyyy || d.getMonth() !== (mm - 1) || d.getDate() !== dd) return null;
-    return d;
-  }
-  function formatDateToBR(d){
-    const dd = String(d.getDate()).padStart(2,'0');
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    const yyyy = d.getFullYear();
-    return `${dd}/${mm}/${yyyy}`;
-  }
-  function addDaysBRDate(br, days){
-    const d = parseBRDateToDate(br);
-    if(!d) return "";
-    d.setDate(d.getDate() + (days||0));
-    return formatDateToBR(d);
-  }
-
-  // ======= AUTO FIELDS (com dependências) =======
-  const AUTO = [
-    { inputId: "mdPrevisao",   fieldId: "mdFieldPrevisao"   },
-    { inputId: "mdCorrecao",   fieldId: "mdFieldCorrecao"   },
-    { inputId: "mdHonorarios", fieldId: "mdFieldHonorarios" },
-    { inputId: "mdRepasse",    fieldId: "mdFieldRepasse"    },
-  ];
-
-  const AUTO_DEPS = {
-    mdPrevisao:   ["mdDataQuitacao"],
-    mdCorrecao:   ["mdDeposito","mdSentenca","mdSucumbencia"],
-    mdHonorarios: ["mdSentenca","mdTipoReu"],
-    mdRepasse:    ["mdSentenca","mdAudiencista","mdTipoReu"],
-  };
-
-  const dirty = new Set();
-
-  function setFieldAuto(fieldId, on){
-    const field = document.getElementById(fieldId);
-    if(!field) return;
-    field.classList.toggle("is-auto", !!on);
-  }
-
-  function normalizeTipoReu(){
-    const t = (document.getElementById("mdTipoReu")?.value || "").trim().toLowerCase();
-    if(t === "onibus") return "onibus";
-    if(t === "aereo") return "aereo";
-    return "";
-  }
-
-  function setTipoReuFirstUI(){
-    const tipo = normalizeTipoReu();
-    const sel = document.getElementById("mdTipoReu");
-    const hint = document.getElementById("mdTipoReuHint");
-    if(!sel || !hint) return;
-
-    const need = !tipo;
-    hint.style.display = need ? "block" : "none";
-    sel.classList.toggle("md-invalid", need);
-  }
-
-  /* (2) Correção só habilita quando Depósito > 0.
-     Se Depósito voltar a vazio/0, Correção desabilita, zera e NÃO fica auto-calculando indevidamente. */
-  function updateCorrecaoAvailability(){
-    const input = document.getElementById("mdCorrecao");
-    const depositoEl = document.getElementById("mdDeposito");
-    if(!input || !depositoEl) return;
-
-    const depositoVal = MD.parseSmartNumber(depositoEl.value);
-    const hasDeposito = Number.isFinite(depositoVal) && depositoVal > 0;
-
-    input.disabled = !hasDeposito;
-
-    if(!hasDeposito){
-      input.value = "";
-      dirty.delete("mdCorrecao");
-      setFieldAuto("mdFieldCorrecao", false);
-    }
-  }
-
-  function computeAutoValues(){
-    const dataQuit = document.getElementById("mdDataQuitacao")?.value?.trim() || "";
-    const sentenca = MD.parseSmartNumber(document.getElementById("mdSentenca")?.value);
-    const deposito = MD.parseSmartNumber(document.getElementById("mdDeposito")?.value);
-    const sucumb   = MD.parseSmartNumber(document.getElementById("mdSucumbencia")?.value);
-    const aud      = MD.parseSmartNumber(document.getElementById("mdAudiencista")?.value);
-
-    const tipoReu = normalizeTipoReu();
-
-    const hasDeposito = Number.isFinite(deposito) && deposito > 0;
-    const vDeposito = hasDeposito ? deposito : 0;
-    const vSent     = Number.isFinite(sentenca) ? sentenca : 0;
-    const vSuc      = Number.isFinite(sucumb)   ? sucumb   : 0;
-    const vAud      = Number.isFinite(aud)      ? aud      : 0;
-
-    const previsao = addDaysBRDate(dataQuit, 30);
-
-    const correcaoNum = hasDeposito ? (vDeposito - vSent - vSuc) : NaN;
-    const correcao = Number.isFinite(correcaoNum) ? formatBR_MD(correcaoNum) : "";
-
-    let percHon = 0;
-    if(tipoReu === "aereo")  percHon = 0.30;
-    if(tipoReu === "onibus") percHon = 0.40;
-    const honorariosNum = percHon ? (vSent * percHon) : NaN;
-    const honorarios = Number.isFinite(honorariosNum) ? formatBR_MD(honorariosNum) : "";
-
-    let percRep = 0;
-    if(tipoReu === "aereo")  percRep = 0.70;
-    if(tipoReu === "onibus") percRep = 0.60;
-    const repasseNum = percRep ? ((vSent * percRep) - vAud) : NaN;
-    const repasse = Number.isFinite(repasseNum) ? formatBR_MD(repasseNum) : "";
-
-    return { previsao: previsao || "", correcao, honorarios, repasse, tipoReu };
-  }
-
-  function getAutoMap(vals){
-    return {
-      mdPrevisao:   vals.previsao,
-      mdCorrecao:   vals.correcao,
-      mdHonorarios: vals.honorarios,
-      mdRepasse:    vals.repasse,
+    window.MD.clearAll = function () {
+      filters = {};
+      sort = null;
+      closePanel();
+      try { localStorage.removeItem(MD_STATE_KEY); } catch (e) { }
+      apply();
     };
-  }
+    window.MD.deleteFromBtn = function (ev, id) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      deleteMandado(id);
+    };
 
-  /* ===================== MELHORIA PEDIDA =====================
-     - NÃO recalcula/preenche automaticamente enquanto o input auto estiver focado/selecionado.
-     - Só volta a preencher automático quando o usuário LIMPA e SAI (blur).
-     - Mantém todas as demais regras/funcionalidades.
-  ============================================================ */
-  function recalcAutoFields(policy="fillEmpty", forceIds=[]){
-    const mode = document.getElementById("mdFormMode")?.value || "edit";
-    const vals = computeAutoValues();
-    const map = getAutoMap(vals);
+    buildHeaderUI();
+    loadState();
+    apply();
+  })();
+</script>
 
-    setTipoReuFirstUI();
+<script>
+  /* ===================== DOUBLE CLICK NA LINHA PARA EDITAR ===================== */
+  (function () {
+    const tbody = document.getElementById("mdTbody");
+    if (!tbody) return;
 
-    const toForce = new Set(forceIds || []);
+    tbody.addEventListener("dblclick", (e) => {
+      const tr = e.target.closest("tr");
+      if (!tr) return;
+      if (e.target.closest("button, a, input, select, textarea")) return;
+      if (!tr.querySelector(".md-edit-btn")) return;
+      openEditModalFromRowMD(tr);
+    });
+  })();
+</script>
 
-    AUTO.forEach(({inputId, fieldId})=>{
-      const input = document.getElementById(inputId);
-      if(!input) return;
+<script>
+  /* ===================== SCROLLBAR HORIZONTAL FIXA NO RODAPÉ ===================== */
+  (function () {
+    const wrap = document.querySelector(".md-table-wrap");
+    const fixed = document.getElementById("mdXScrollFixed");
+    const inner = document.getElementById("mdXScrollInner");
+    const table = document.getElementById("mdTable");
 
-      const computed = (map[inputId] || "").toString();
-      const hasComputed = computed.trim() !== "";
+    if (!wrap || !fixed || !inner || !table) return;
 
-      const isFocused = (document.activeElement === input);
+    let syncing = false;
 
-      if(policy === "forceAll"){
-        input.value = computed;
-        dirty.delete(inputId);
-        setFieldAuto(fieldId, hasComputed);
-        return;
+    function getMaxScroll(el) { return Math.max(0, el.scrollWidth - el.clientWidth); }
+    function positionFixedOverWrap() {
+      const r = wrap.getBoundingClientRect();
+      fixed.style.left = Math.max(0, r.left) + "px";
+      fixed.style.width = Math.max(0, r.width) + "px";
+    }
+    function updateInnerWidth() {
+      const w = Math.max(table.scrollWidth, wrap.scrollWidth);
+      inner.style.width = w + "px";
+    }
+    function toggleIfOverflow() {
+      const hasOverflow = table.scrollWidth > wrap.clientWidth + 2;
+      fixed.style.display = hasOverflow ? "block" : "none";
+    }
+    function syncFixedToWrap() {
+      const maxW = getMaxScroll(wrap);
+      const maxF = getMaxScroll(fixed);
+      if (maxW <= 0 || maxF <= 0) return;
+      fixed.scrollLeft = (wrap.scrollLeft / maxW) * maxF;
+    }
+    function syncWrapToFixed() {
+      const maxW = getMaxScroll(wrap);
+      const maxF = getMaxScroll(fixed);
+      if (maxW <= 0 || maxF <= 0) return;
+      wrap.scrollLeft = (fixed.scrollLeft / maxF) * maxW;
+    }
+    function refresh() {
+      positionFixedOverWrap();
+      updateInnerWidth();
+      toggleIfOverflow();
+      syncFixedToWrap();
+    }
+
+    fixed.addEventListener("scroll", () => {
+      if (syncing) return;
+      syncing = true; syncWrapToFixed(); syncing = false;
+    }, { passive: true });
+
+    wrap.addEventListener("scroll", () => {
+      if (syncing) return;
+      syncing = true; syncFixedToWrap(); syncing = false;
+    }, { passive: true });
+
+    const ro = new ResizeObserver(() => refresh());
+    ro.observe(wrap); ro.observe(table);
+
+    window.addEventListener("resize", () => refresh());
+    window.addEventListener("scroll", () => positionFixedOverWrap(), { passive: true });
+
+    window.MD_XSCROLL = { refresh };
+    refresh();
+  })();
+</script>
+
+<script>
+  /* ===================== MODAL + DROPDOWNS + CRUD + AUTOCÁLCULOS (TIPO RÉU PRIMEIRO + AUTO FLAGS EM TODOS) ===================== */
+  (function () {
+    function _showError(msg) {
+      const el = document.getElementById("mdError");
+      if (!el) return;
+      if (!msg) { el.style.display = "none"; el.textContent = ""; return; }
+      el.style.display = "block";
+      el.textContent = msg;
+    }
+
+    function toBRDateText(raw) {
+      if (!raw) return '';
+      raw = String(raw).trim();
+      if (raw === '-' || raw === '') return '';
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
+      const m1 = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m1) return `${m1[3]}/${m1[2]}/${m1[1]}`;
+      return raw;
+    }
+
+    function toDotDecimalMD(s) {
+      const n = MD.parseSmartNumber(s);
+      return Number.isFinite(n) ? String(n) : "";
+    }
+
+    function parseBRDateToDate(s) {
+      if (!s) return null;
+      s = String(s).trim();
+      const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (!m) return null;
+      const dd = Number(m[1]), mm = Number(m[2]), yyyy = Number(m[3]);
+      const d = new Date(yyyy, mm - 1, dd);
+      if (d.getFullYear() !== yyyy || d.getMonth() !== (mm - 1) || d.getDate() !== dd) return null;
+      return d;
+    }
+    function formatDateToBR(d) {
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    }
+    function addDaysBRDate(br, days) {
+      const d = parseBRDateToDate(br);
+      if (!d) return "";
+      d.setDate(d.getDate() + (days || 0));
+      return formatDateToBR(d);
+    }
+
+    // ======= AUTO FIELDS (com dependências) =======
+    const AUTO = [
+      { inputId: "mdPrevisao", fieldId: "mdFieldPrevisao" },
+      { inputId: "mdCorrecao", fieldId: "mdFieldCorrecao" },
+      { inputId: "mdHonorarios", fieldId: "mdFieldHonorarios" },
+      { inputId: "mdRepasse", fieldId: "mdFieldRepasse" },
+    ];
+
+    const AUTO_DEPS = {
+      mdPrevisao: ["mdDataQuitacao"],
+      mdCorrecao: ["mdDeposito", "mdSentenca", "mdSucumbencia"],
+      mdHonorarios: ["mdSentenca", "mdTipoReu", "mdPorcentagemHonorarios"],
+      mdRepasse: ["mdSentenca", "mdAudiencista", "mdTipoReu", "mdPorcentagemHonorarios"],
+    };
+
+    const dirty = new Set();
+
+    function setFieldAuto(fieldId, on) {
+      const field = document.getElementById(fieldId);
+      if (!field) return;
+      field.classList.toggle("is-auto", !!on);
+    }
+
+    function normalizeTipoReu() {
+      const t = (document.getElementById("mdTipoReu")?.value || "").trim().toLowerCase();
+      if (t === "onibus") return "onibus";
+      if (t === "aereo") return "aereo";
+      return "";
+    }
+
+    function setTipoReuFirstUI() {
+      const tipo = normalizeTipoReu();
+      const sel = document.getElementById("mdTipoReu");
+      const hint = document.getElementById("mdTipoReuHint");
+      if (!sel || !hint) return;
+
+      const need = !tipo;
+      hint.style.display = need ? "block" : "none";
+      sel.classList.toggle("md-invalid", need);
+    }
+
+    /* (2) Correção só habilita quando Depósito > 0.
+       Se Depósito voltar a vazio/0, Correção desabilita, zera e NÃO fica auto-calculando indevidamente. */
+    function updateCorrecaoAvailability() {
+      const input = document.getElementById("mdCorrecao");
+      const depositoEl = document.getElementById("mdDeposito");
+      if (!input || !depositoEl) return;
+
+      const depositoVal = MD.parseSmartNumber(depositoEl.value);
+      const hasDeposito = Number.isFinite(depositoVal) && depositoVal > 0;
+
+      input.disabled = !hasDeposito;
+
+      if (!hasDeposito) {
+        input.value = "";
+        dirty.delete("mdCorrecao");
+        setFieldAuto("mdFieldCorrecao", false);
+      }
+    }
+
+    function computeAutoValues() {
+      const dataQuit = document.getElementById("mdDataQuitacao")?.value?.trim() || "";
+      const sentenca = MD.parseSmartNumber(document.getElementById("mdSentenca")?.value);
+      const deposito = MD.parseSmartNumber(document.getElementById("mdDeposito")?.value);
+      const sucumb = MD.parseSmartNumber(document.getElementById("mdSucumbencia")?.value);
+      const aud = MD.parseSmartNumber(document.getElementById("mdAudiencista")?.value);
+
+      const tipoReu = normalizeTipoReu();
+
+      // Lida com porcentagem_honorarios se estiver vazio
+      const elPorcHon = document.getElementById("mdPorcentagemHonorarios");
+      let porcHonVal = document.activeElement !== elPorcHon ? (elPorcHon ? elPorcHon.value.trim() : "") : elPorcHon.value.trim();
+
+      if (elPorcHon && document.activeElement !== elPorcHon && !porcHonVal) {
+        if (tipoReu === "aereo") { elPorcHon.value = "30"; porcHonVal = "30"; }
+        else if (tipoReu === "onibus") { elPorcHon.value = "40"; porcHonVal = "40"; }
       }
 
-      /* ✅ Se o campo auto estiver focado, NÃO preencher/alterar agora.
-         (usuário está digitando/planejando digitar manualmente) */
-      if(isFocused){
-        setFieldAuto(fieldId, false);
-        return;
-      }
+      const nPorcVal = MD.parseSmartNumber(porcHonVal);
+      let percHon = Number.isFinite(nPorcVal) ? nPorcVal / 100.0 : 0;
+      let percRep = Number.isFinite(nPorcVal) ? (100.0 - nPorcVal) / 100.0 : 0;
 
-      if(policy === "forceIds"){
-        if(toForce.has(inputId)){
+      const hasDeposito = Number.isFinite(deposito) && deposito > 0;
+      const vDeposito = hasDeposito ? deposito : 0;
+      const vSent = Number.isFinite(sentenca) ? sentenca : 0;
+      const vSuc = Number.isFinite(sucumb) ? sucumb : 0;
+      const vAud = Number.isFinite(aud) ? aud : 0;
+
+      const previsao = addDaysBRDate(dataQuit, 30);
+
+      const correcaoNum = hasDeposito ? (vDeposito - vSent - vSuc) : NaN;
+      const correcao = Number.isFinite(correcaoNum) ? formatBR_MD(correcaoNum) : "";
+
+      const honorariosNum = percHon ? (vSent * percHon) : NaN;
+      const honorarios = Number.isFinite(honorariosNum) ? formatBR_MD(honorariosNum) : "";
+
+      const repasseNum = percRep ? ((vSent * percRep) - vAud) : NaN;
+      const repasse = Number.isFinite(repasseNum) ? formatBR_MD(repasseNum) : "";
+
+      return { previsao: previsao || "", correcao, honorarios, repasse, tipoReu };
+    }
+
+    function getAutoMap(vals) {
+      return {
+        mdPrevisao: vals.previsao,
+        mdCorrecao: vals.correcao,
+        mdHonorarios: vals.honorarios,
+        mdRepasse: vals.repasse,
+      };
+    }
+
+    /* ===================== MELHORIA PEDIDA =====================
+       - NÃO recalcula/preenche automaticamente enquanto o input auto estiver focado/selecionado.
+       - Só volta a preencher automático quando o usuário LIMPA e SAI (blur).
+       - Mantém todas as demais regras/funcionalidades.
+    ============================================================ */
+    function recalcAutoFields(policy = "fillEmpty", forceIds = []) {
+      const mode = document.getElementById("mdFormMode")?.value || "edit";
+      const vals = computeAutoValues();
+      const map = getAutoMap(vals);
+
+      setTipoReuFirstUI();
+
+      const toForce = new Set(forceIds || []);
+
+      AUTO.forEach(({ inputId, fieldId }) => {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        const computed = (map[inputId] || "").toString();
+        const hasComputed = computed.trim() !== "";
+
+        const isFocused = (document.activeElement === input);
+
+        if (policy === "forceAll") {
           input.value = computed;
           dirty.delete(inputId);
           setFieldAuto(fieldId, hasComputed);
-        } else {
-          if(!dirty.has(inputId) && (input.value || "").trim() === "" && hasComputed){
+          return;
+        }
+
+        /* ✅ Se o campo auto estiver focado, NÃO preencher/alterar agora.
+           (usuário está digitando/planejando digitar manualmente) */
+        if (isFocused) {
+          setFieldAuto(fieldId, false);
+          return;
+        }
+
+        if (policy === "forceIds") {
+          if (toForce.has(inputId)) {
             input.value = computed;
-            setFieldAuto(fieldId, true);
+            dirty.delete(inputId);
+            setFieldAuto(fieldId, hasComputed);
+          } else {
+            if (!dirty.has(inputId) && (input.value || "").trim() === "" && hasComputed) {
+              input.value = computed;
+              setFieldAuto(fieldId, true);
+            }
           }
+          return;
         }
-        return;
-      }
 
-      if(mode === "create"){
-        input.value = computed;
-        dirty.delete(inputId);
-        setFieldAuto(fieldId, hasComputed);
-        return;
-      }
-
-      if(dirty.has(inputId)){
-        setFieldAuto(fieldId, false);
-        return;
-      }
-
-      const current = (input.value || "").toString().trim();
-      if(current !== ""){
-        setFieldAuto(fieldId, false);
-        return;
-      }
-
-      if(hasComputed){
-        input.value = computed;
-        setFieldAuto(fieldId, true);
-      }else{
-        setFieldAuto(fieldId, false);
-      }
-    });
-  }
-
-  function markDirty(inputId, fieldId){
-    dirty.add(inputId);
-    setFieldAuto(fieldId, false);
-  }
-
-  function onDependencyChanged(depId){
-    const affected = [];
-    for(const [autoId, deps] of Object.entries(AUTO_DEPS)){
-      if((deps || []).includes(depId)) affected.push(autoId);
-    }
-    if(!affected.length) return;
-    recalcAutoFields("forceIds", affected);
-    updateCorrecaoAvailability();
-  }
-
-  function bindAutoBehaviorOnce(){
-    const depIds = Array.from(new Set(Object.values(AUTO_DEPS).flat()));
-    depIds.forEach(id=>{
-      const el = document.getElementById(id);
-      if(!el || el.dataset.autoDepBound === "1") return;
-      el.dataset.autoDepBound = "1";
-      const handler = ()=>{ onDependencyChanged(id); };
-      el.addEventListener("input", handler);
-      el.addEventListener("change", handler);
-    });
-
-    AUTO.forEach(({inputId, fieldId})=>{
-      const el = document.getElementById(inputId);
-      if(!el || el.dataset.autoSelfBound === "1") return;
-      el.dataset.autoSelfBound = "1";
-
-      el.addEventListener("input", ()=>{
-        const val = (el.value || "").toString().trim();
-        if(val !== ""){
-          markDirty(inputId, fieldId);
-        }
-      });
-
-      el.addEventListener("change", ()=>{
-        const val = (el.value || "").toString().trim();
-        if(val !== ""){
-          markDirty(inputId, fieldId);
-        }
-      });
-
-      /* ✅ Só recalcula automático se estiver vazio E o usuário SAIU do campo (blur). */
-      el.addEventListener("blur", ()=>{
-        const val = (el.value || "").toString().trim();
-        if(val === ""){
+        if (mode === "create") {
+          input.value = computed;
           dirty.delete(inputId);
-          recalcAutoFields("forceIds", [inputId]);
+          setFieldAuto(fieldId, hasComputed);
+          return;
+        }
+
+        if (dirty.has(inputId)) {
+          setFieldAuto(fieldId, false);
+          return;
+        }
+
+        const current = (input.value || "").toString().trim();
+        if (current !== "") {
+          setFieldAuto(fieldId, false);
+          return;
+        }
+
+        if (hasComputed) {
+          input.value = computed;
+          setFieldAuto(fieldId, true);
+        } else {
+          setFieldAuto(fieldId, false);
         }
       });
-    });
-
-    const tipoEl = document.getElementById("mdTipoReu");
-    if(tipoEl && tipoEl.dataset.tipoWarnBound !== "1"){
-      tipoEl.dataset.tipoWarnBound = "1";
-      tipoEl.addEventListener("input", setTipoReuFirstUI);
-      tipoEl.addEventListener("change", setTipoReuFirstUI);
-    }
-  }
-
-  const sel = {
-    uf: document.getElementById("mdUfSelect"),
-    status: document.getElementById("mdStatusSelect"),
-    reu: document.getElementById("mdReuSelect"),
-    local: document.getElementById("mdLocalSelect"),
-  };
-
-  let _optionsLoaded = false;
-  let _options = null;
-
-  async function loadOptionsOnce(){
-    if (_optionsLoaded) return _options;
-    _optionsLoaded = true;
-
-    try{
-      const resp = await fetch("/api/cadastro-options", { headers: { "Accept": "application/json" }});
-      if(!resp.ok) throw new Error("Falha ao carregar opções");
-      _options = await resp.json();
-    }catch(e){
-      console.error(e);
-      _options = {};
     }
 
-    fillSelect(sel.uf, (_options["fin_uf"] || []));
-    fillSelect(sel.status, (_options["fin_status"] || []));
-    fillSelect(sel.reu, (_options["fin_reu"] || []));
-    fillSelect(sel.local, (_options["fin_local"] || []));
+    function markDirty(inputId, fieldId) {
+      dirty.add(inputId);
+      setFieldAuto(fieldId, false);
+    }
 
-    return _options;
-  }
-
-  function fillSelect(selectEl, items){
-    if(!selectEl) return;
-    const first = selectEl.querySelector('option[value=""]')
-      ? selectEl.querySelector('option[value=""]').outerHTML
-      : '<option value="">Selecione...</option>';
-    selectEl.innerHTML = first;
-
-    (items || []).forEach(v=>{
-      const op = document.createElement("option");
-      op.value = String(v);
-      op.textContent = String(v);
-      selectEl.appendChild(op);
-    });
-  }
-
-  function openModal(mode){
-    const overlay = document.getElementById("mdModalOverlay");
-    const badge = document.getElementById("mdModalBadge");
-    const title = document.getElementById("mdModalTitle");
-    const sub = document.getElementById("mdModalSub");
-    const formMode = document.getElementById("mdFormMode");
-    const saveBtn = document.getElementById("mdSaveBtn");
-
-    _showError("");
-    bindAutoBehaviorOnce();
-
-    AUTO.forEach(({fieldId})=> setFieldAuto(fieldId, false));
-    dirty.clear();
-
-    if(mode === "create"){
-      badge.textContent = "Novo";
-      title.textContent = "Criar mandado";
-      sub.textContent = "Preencha os campos e clique em criar.";
-      formMode.value = "create";
-      document.getElementById("mdId").value = "";
-      saveBtn.textContent = "Criar";
-      _fillForm({});
-
-      recalcAutoFields("forceAll");
+    function onDependencyChanged(depId) {
+      const affected = [];
+      for (const [autoId, deps] of Object.entries(AUTO_DEPS)) {
+        if ((deps || []).includes(depId)) affected.push(autoId);
+      }
+      if (!affected.length) return;
+      recalcAutoFields("forceIds", affected);
       updateCorrecaoAvailability();
-      setTimeout(()=> document.getElementById("mdTipoReu")?.focus(), 0);
-    } else {
-      badge.textContent = "Editar";
-      title.textContent = "Editar mandado";
-      sub.textContent = "Ajuste os campos e clique em salvar.";
-      formMode.value = "edit";
-      saveBtn.textContent = "Salvar";
     }
 
-    overlay.style.display = "flex";
-    overlay.setAttribute("aria-hidden", "false");
-    document.body.classList.add("md-modal-open");
-    setTipoReuFirstUI();
-  }
+    function bindAutoBehaviorOnce() {
+      const depIds = Array.from(new Set(Object.values(AUTO_DEPS).flat()));
+      depIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el || el.dataset.autoDepBound === "1") return;
+        el.dataset.autoDepBound = "1";
+        const handler = () => { onDependencyChanged(id); };
+        el.addEventListener("input", handler);
+        el.addEventListener("change", handler);
+      });
 
-  function closeModal(){
-    const overlay = document.getElementById("mdModalOverlay");
-    overlay.style.display = "none";
-    overlay.setAttribute("aria-hidden", "true");
-    document.body.classList.remove("md-modal-open");
-    _showError("");
-  }
+      AUTO.forEach(({ inputId, fieldId }) => {
+        const el = document.getElementById(inputId);
+        if (!el || el.dataset.autoSelfBound === "1") return;
+        el.dataset.autoSelfBound = "1";
 
-  function setSelectValue(selectEl, value){
-    if(!selectEl) return;
-    const v = (value ?? "").toString().trim();
-    selectEl.value = v;
-    if (v && selectEl.value !== v) selectEl.value = "";
-  }
+        el.addEventListener("input", () => {
+          const val = (el.value || "").toString().trim();
+          if (val !== "") {
+            markDirty(inputId, fieldId);
+          }
+        });
 
-  function _fillForm(row){
-    document.getElementById("mdId").value = row?.id ?? "";
+        el.addEventListener("change", () => {
+          const val = (el.value || "").toString().trim();
+          if (val !== "") {
+            markDirty(inputId, fieldId);
+          }
+        });
 
-    const trv = (row?.tipo_reu ?? "").toString().trim().toLowerCase();
-    if(trv.includes("onib")) document.getElementById("mdTipoReu").value = "onibus";
-    else if(trv.includes("aer")) document.getElementById("mdTipoReu").value = "aereo";
-    else document.getElementById("mdTipoReu").value = "";
-
-    document.getElementById("mdDataQuitacao").value = toBRDateText(row?.data_quitacao ?? "");
-    document.getElementById("mdNumeroProcesso").value = row?.numero_processo ?? "";
-
-    setSelectValue(sel.uf, row?.uf ?? "");
-    setSelectValue(sel.reu, row?.reu ?? "");
-    setSelectValue(sel.status, row?.status ?? "");
-
-    document.getElementById("mdAutor").value = row?.autor ?? "";
-    document.getElementById("mdTel").value = row?.tel ?? "";
-
-    document.getElementById("mdSentenca").value = (row?.sentenca ?? "") !== "" ? formatBR_MD(row?.sentenca) : "";
-    document.getElementById("mdQuitacao").value = (row?.quitacao ?? "") !== "" ? formatBR_MD(row?.quitacao) : "";
-
-    document.getElementById("mdDeposito").value = (row?.deposito ?? "") !== "" ? formatBR_MD(row?.deposito) : "";
-    document.getElementById("mdCorrecao").value = (row?.correcao ?? "") !== "" ? formatBR_MD(row?.correcao) : "";
-    document.getElementById("mdHonorarios").value = (row?.honorarios ?? "") !== "" ? formatBR_MD(row?.honorarios) : "";
-    document.getElementById("mdAudiencista").value = (row?.audiencista ?? "") !== "" ? formatBR_MD(row?.audiencista) : "";
-    document.getElementById("mdRepasse").value = (row?.repasse ?? "") !== "" ? formatBR_MD(row?.repasse) : "";
-    document.getElementById("mdSucumbencia").value = (row?.sucumbencia ?? "") !== "" ? formatBR_MD(row?.sucumbencia) : "";
-
-    document.getElementById("mdPrevisao").value = toBRDateText(row?.previsao ?? "");
-    document.getElementById("mdDataPagamento").value = toBRDateText(row?.data_pagamento ?? "");
-
-    setSelectValue(sel.local, row?.local ?? "");
-
-    /* (13) garante que dá pra limpar o Tipo: se vier null, fica vazio */
-    document.getElementById("mdTipo").value = (row?.tipo ?? "");
-
-    document.getElementById("mdChavePix").value = row?.chave_pix ?? "";
-
-    /* (4) mes_pg fica oculto, mas mantém o valor no DOM pra não perder em edit */
-    document.getElementById("mdMesPg").value = row?.mes_pg ?? "";
-
-    document.getElementById("mdObservacoes").value = row?.observacoes ?? "";
-
-    recalcAutoFields("fillEmpty");
-    setTipoReuFirstUI();
-    updateCorrecaoAvailability();
-  }
-
-  function _collectForm(){
-    const tipoVal = document.getElementById("mdTipo").value.trim();
-
-    return {
-      id: document.getElementById("mdId").value || null,
-      tipo_reu: (document.getElementById("mdTipoReu")?.value || "").trim(),
-      data_quitacao: document.getElementById("mdDataQuitacao").value.trim(),
-      numero_processo: document.getElementById("mdNumeroProcesso").value.trim(),
-      uf_id: (sel.uf?.value || "").trim(),
-      reu: (sel.reu?.value || "").trim(),
-      autor: document.getElementById("mdAutor").value.trim(),
-      tel: document.getElementById("mdTel").value.trim(),
-      sentenca: toDotDecimalMD(document.getElementById("mdSentenca").value),
-      quitacao: toDotDecimalMD(document.getElementById("mdQuitacao").value),
-      deposito: toDotDecimalMD(document.getElementById("mdDeposito").value),
-      correcao: toDotDecimalMD(document.getElementById("mdCorrecao").value),
-      honorarios: toDotDecimalMD(document.getElementById("mdHonorarios").value),
-      audiencista: toDotDecimalMD(document.getElementById("mdAudiencista").value),
-      repasse: toDotDecimalMD(document.getElementById("mdRepasse").value),
-      sucumbencia: toDotDecimalMD(document.getElementById("mdSucumbencia").value),
-      status_id: (sel.status?.value || "").trim(),
-      previsao: document.getElementById("mdPrevisao").value.trim(),
-      data_pagamento: document.getElementById("mdDataPagamento").value.trim(),
-      local: (sel.local?.value || "").trim(),
-
-      /* (13) Se apagar e salvar, manda NULL pra garantir que limpa no banco */
-      tipo: (tipoVal === "" ? null : tipoVal),
-
-      chave_pix: document.getElementById("mdChavePix").value.trim(),
-
-      /* (4) mes_pg oculto no front, mas enviado (ou null) para não “reviver” valor antigo */
-      mes_pg: (document.getElementById("mdMesPg").value.trim() || null),
-
-      observacoes: document.getElementById("mdObservacoes").value.trim(),
-    };
-  }
-
-  function validateBeforeSave(){
-    const tipoEl = document.getElementById("mdTipoReu");
-    const tipo = (tipoEl?.value || "").trim();
-
-    if(!tipo){
-      _showError("Preencha o campo 'Tipo réu' primeiro.");
-      tipoEl?.classList.add("md-invalid");
-      const hint = document.getElementById("mdTipoReuHint");
-      if(hint) hint.style.display = "block";
-      tipoEl?.focus?.();
-      return false;
-    }
-
-    tipoEl?.classList.remove("md-invalid");
-    _showError("");
-    return true;
-  }
-
-  document.addEventListener("keydown", (e)=>{
-    if(e.key !== "Escape") return;
-    const overlay = document.getElementById("mdModalOverlay");
-    if(overlay && overlay.style.display === "flex") closeModal();
-  });
-
-  window.closeModalMD = closeModal;
-
-  window.openCreateModalMD = async function(){
-    await loadOptionsOnce();
-    openModal("create");
-  };
-
-  window.openEditModalFromRowMD = async function(tr){
-    await loadOptionsOnce();
-    try{
-      const raw = tr?.dataset?.row || "{}";
-      const row = JSON.parse(raw);
-      openModal("edit");
-      _fillForm(row);
+        /* ✅ Só recalcula automático se estiver vazio E o usuário SAIU do campo (blur). */
+        el.addEventListener("blur", () => {
+          const val = (el.value || "").toString().trim();
+          if (val === "") {
+            dirty.delete(inputId);
+            recalcAutoFields("forceIds", [inputId]);
+          }
+        });
+      });
 
       const tipoEl = document.getElementById("mdTipoReu");
-      if(tipoEl && !(tipoEl.value || "").trim()){
-        setTimeout(()=> tipoEl.focus(), 0);
+      if (tipoEl && tipoEl.dataset.tipoWarnBound !== "1") {
+        tipoEl.dataset.tipoWarnBound = "1";
+        tipoEl.addEventListener("input", setTipoReuFirstUI);
+        tipoEl.addEventListener("change", setTipoReuFirstUI);
       }
-    }catch(err){
-      console.error("Erro openEditModalFromRowMD:", err);
-      _showError("Não foi possível abrir edição (dados inválidos).");
     }
-  };
 
-  window.submitModalMD = async function(){
-    if(!validateBeforeSave()) return;
+    const sel = {
+      uf: document.getElementById("mdUfSelect"),
+      status: document.getElementById("mdStatusSelect"),
+      reu: document.getElementById("mdReuSelect"),
+      local: document.getElementById("mdLocalSelect"),
+    };
 
-    const mode = document.getElementById("mdFormMode").value;
-    if(mode === "create") return saveCreate();
-    return saveEdit();
-  };
+    let _optionsLoaded = false;
+    let _options = null;
 
-  async function saveEdit(){
-    const payload = _collectForm();
-    if(!payload.id){ _showError("ID do mandado não encontrado."); return; }
+    async function loadOptionsOnce() {
+      if (_optionsLoaded) return _options;
+      _optionsLoaded = true;
 
-    try{
-      const resp = await fetch(`/mandados/${payload.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      try {
+        const resp = await fetch("/api/cadastro-options", { headers: { "Accept": "application/json" } });
+        if (!resp.ok) throw new Error("Falha ao carregar opções");
+        _options = await resp.json();
+      } catch (e) {
+        console.error(e);
+        _options = {};
+      }
+
+      fillSelect(sel.uf, (_options["fin_uf"] || []));
+      fillSelect(sel.status, (_options["fin_status"] || []));
+      fillSelect(sel.reu, (_options["fin_reu"] || []));
+      fillSelect(sel.local, (_options["fin_local"] || []));
+
+      return _options;
+    }
+
+    function fillSelect(selectEl, items) {
+      if (!selectEl) return;
+      const first = selectEl.querySelector('option[value=""]')
+        ? selectEl.querySelector('option[value=""]').outerHTML
+        : '<option value="">Selecione...</option>';
+      selectEl.innerHTML = first;
+
+      (items || []).forEach(v => {
+        const op = document.createElement("option");
+        op.value = String(v);
+        op.textContent = String(v);
+        selectEl.appendChild(op);
       });
+    }
 
-      if(!resp.ok){
-        const txt = await resp.text();
-        _showError(txt || "Erro ao salvar edição.");
-        return;
+    function openModal(mode) {
+      const overlay = document.getElementById("mdModalOverlay");
+      const badge = document.getElementById("mdModalBadge");
+      const title = document.getElementById("mdModalTitle");
+      const sub = document.getElementById("mdModalSub");
+      const formMode = document.getElementById("mdFormMode");
+      const saveBtn = document.getElementById("mdSaveBtn");
+
+      _showError("");
+      bindAutoBehaviorOnce();
+
+      AUTO.forEach(({ fieldId }) => setFieldAuto(fieldId, false));
+      dirty.clear();
+
+      if (mode === "create") {
+        badge.textContent = "Novo";
+        title.textContent = "Criar mandado";
+        sub.textContent = "Preencha os campos e clique em criar.";
+        formMode.value = "create";
+        document.getElementById("mdId").value = "";
+        saveBtn.textContent = "Criar";
+        _fillForm({});
+
+        recalcAutoFields("forceAll");
+        updateCorrecaoAvailability();
+        setTimeout(() => document.getElementById("mdTipoReu")?.focus(), 0);
+      } else {
+        badge.textContent = "Editar";
+        title.textContent = "Editar mandado";
+        sub.textContent = "Ajuste os campos e clique em salvar.";
+        formMode.value = "edit";
+        saveBtn.textContent = "Salvar";
       }
 
-      window.MD?.persistStateNow?.();
-      window.location.reload();
-    }catch(err){
-      console.error(err);
-      _showError("Falha de rede ao salvar.");
+      overlay.style.display = "flex";
+      overlay.setAttribute("aria-hidden", "false");
+      document.body.classList.add("md-modal-open");
+      setTipoReuFirstUI();
     }
-  }
 
-  async function saveCreate(){
-    const payload = _collectForm();
-    payload.id = null;
+    function closeModal() {
+      const overlay = document.getElementById("mdModalOverlay");
+      overlay.style.display = "none";
+      overlay.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("md-modal-open");
+      _showError("");
+    }
 
-    try{
-      const resp = await fetch(`/mandados`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    function setSelectValue(selectEl, value) {
+      if (!selectEl) return;
+      const v = (value ?? "").toString().trim();
+      selectEl.value = v;
+      if (v && selectEl.value !== v) selectEl.value = "";
+    }
 
-      if(!resp.ok){
-        const txt = await resp.text();
-        _showError(txt || "Erro ao criar mandado.");
-        return;
+    function _fillForm(row) {
+      document.getElementById("mdId").value = row?.id ?? "";
+
+      const trv = (row?.tipo_reu ?? "").toString().trim().toLowerCase();
+      if (trv.includes("onib")) document.getElementById("mdTipoReu").value = "onibus";
+      else if (trv.includes("aer")) document.getElementById("mdTipoReu").value = "aereo";
+      else document.getElementById("mdTipoReu").value = "";
+
+      document.getElementById("mdDataQuitacao").value = toBRDateText(row?.data_quitacao ?? "");
+      document.getElementById("mdNumeroProcesso").value = row?.numero_processo ?? "";
+
+      setSelectValue(sel.uf, row?.uf ?? "");
+      setSelectValue(sel.reu, row?.reu ?? "");
+      setSelectValue(sel.status, row?.status ?? "");
+
+      document.getElementById("mdAutor").value = row?.autor ?? "";
+      document.getElementById("mdTel").value = row?.tel ?? "";
+
+      document.getElementById("mdSentenca").value = (row?.sentenca ?? "") !== "" ? formatBR_MD(row?.sentenca) : "";
+      document.getElementById("mdQuitacao").value = (row?.quitacao ?? "") !== "" ? formatBR_MD(row?.quitacao) : "";
+
+      document.getElementById("mdPorcentagemHonorarios").value = (row?.porcentagem_honorarios ?? "") !== "" ? formatBR_MD(row?.porcentagem_honorarios) : "";
+      document.getElementById("mdDeposito").value = (row?.deposito ?? "") !== "" ? formatBR_MD(row?.deposito) : "";
+      document.getElementById("mdCorrecao").value = (row?.correcao ?? "") !== "" ? formatBR_MD(row?.correcao) : "";
+      document.getElementById("mdHonorarios").value = (row?.honorarios ?? "") !== "" ? formatBR_MD(row?.honorarios) : "";
+      document.getElementById("mdAudiencista").value = (row?.audiencista ?? "") !== "" ? formatBR_MD(row?.audiencista) : "";
+      document.getElementById("mdRepasse").value = (row?.repasse ?? "") !== "" ? formatBR_MD(row?.repasse) : "";
+      document.getElementById("mdSucumbencia").value = (row?.sucumbencia ?? "") !== "" ? formatBR_MD(row?.sucumbencia) : "";
+
+      document.getElementById("mdPrevisao").value = toBRDateText(row?.previsao ?? "");
+      document.getElementById("mdDataPagamento").value = toBRDateText(row?.data_pagamento ?? "");
+
+      setSelectValue(sel.local, row?.local ?? "");
+
+      /* (13) garante que dá pra limpar o Tipo: se vier null, fica vazio */
+      document.getElementById("mdTipo").value = (row?.tipo ?? "");
+
+      document.getElementById("mdChavePix").value = row?.chave_pix ?? "";
+
+      /* (4) mes_pg fica oculto, mas mantém o valor no DOM pra não perder em edit */
+      document.getElementById("mdMesPg").value = row?.mes_pg ?? "";
+
+      document.getElementById("mdObservacoes").value = row?.observacoes ?? "";
+
+      recalcAutoFields("fillEmpty");
+      setTipoReuFirstUI();
+      updateCorrecaoAvailability();
+    }
+
+    function _collectForm() {
+      const tipoVal = document.getElementById("mdTipo").value.trim();
+
+      return {
+        id: document.getElementById("mdId").value || null,
+        tipo_reu: (document.getElementById("mdTipoReu")?.value || "").trim(),
+        data_quitacao: document.getElementById("mdDataQuitacao").value.trim(),
+        numero_processo: document.getElementById("mdNumeroProcesso").value.trim(),
+        uf_id: (sel.uf?.value || "").trim(),
+        reu: (sel.reu?.value || "").trim(),
+        autor: document.getElementById("mdAutor").value.trim(),
+        tel: document.getElementById("mdTel").value.trim(),
+        sentenca: toDotDecimalMD(document.getElementById("mdSentenca").value),
+        quitacao: toDotDecimalMD(document.getElementById("mdQuitacao").value),
+        porcentagem_honorarios: toDotDecimalMD(document.getElementById("mdPorcentagemHonorarios").value),
+        deposito: toDotDecimalMD(document.getElementById("mdDeposito").value),
+        correcao: toDotDecimalMD(document.getElementById("mdCorrecao").value),
+        honorarios: toDotDecimalMD(document.getElementById("mdHonorarios").value),
+        audiencista: toDotDecimalMD(document.getElementById("mdAudiencista").value),
+        repasse: toDotDecimalMD(document.getElementById("mdRepasse").value),
+        sucumbencia: toDotDecimalMD(document.getElementById("mdSucumbencia").value),
+        status_id: (sel.status?.value || "").trim(),
+        previsao: document.getElementById("mdPrevisao").value.trim(),
+        data_pagamento: document.getElementById("mdDataPagamento").value.trim(),
+        local: (sel.local?.value || "").trim(),
+
+        /* (13) Se apagar e salvar, manda NULL pra garantir que limpa no banco */
+        tipo: (tipoVal === "" ? null : tipoVal),
+
+        chave_pix: document.getElementById("mdChavePix").value.trim(),
+
+        /* (4) mes_pg oculto no front, mas enviado (ou null) para não “reviver” valor antigo */
+        mes_pg: (document.getElementById("mdMesPg").value.trim() || null),
+
+        observacoes: document.getElementById("mdObservacoes").value.trim(),
+      };
+    }
+
+    function validateBeforeSave() {
+      const tipoEl = document.getElementById("mdTipoReu");
+      const tipo = (tipoEl?.value || "").trim();
+
+      if (!tipo) {
+        _showError("Preencha o campo 'Tipo réu' primeiro.");
+        tipoEl?.classList.add("md-invalid");
+        const hint = document.getElementById("mdTipoReuHint");
+        if (hint) hint.style.display = "block";
+        tipoEl?.focus?.();
+        return false;
       }
 
-      window.MD?.persistStateNow?.();
-      window.location.reload();
-    }catch(err){
-      console.error(err);
-      _showError("Falha de rede ao criar.");
+      tipoEl?.classList.remove("md-invalid");
+      _showError("");
+      return true;
     }
-  }
-})();
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      const overlay = document.getElementById("mdModalOverlay");
+      if (overlay && overlay.style.display === "flex") closeModal();
+    });
+
+    window.closeModalMD = closeModal;
+
+    window.openCreateModalMD = async function () {
+      await loadOptionsOnce();
+      openModal("create");
+    };
+
+    window.openEditModalFromRowMD = async function (tr) {
+      await loadOptionsOnce();
+      try {
+        const raw = tr?.dataset?.row || "{}";
+        const row = JSON.parse(raw);
+        openModal("edit");
+        _fillForm(row);
+
+        const tipoEl = document.getElementById("mdTipoReu");
+        if (tipoEl && !(tipoEl.value || "").trim()) {
+          setTimeout(() => tipoEl.focus(), 0);
+        }
+      } catch (err) {
+        console.error("Erro openEditModalFromRowMD:", err);
+        _showError("Não foi possível abrir edição (dados inválidos).");
+      }
+    };
+
+    window.submitModalMD = async function () {
+      if (!validateBeforeSave()) return;
+
+      const mode = document.getElementById("mdFormMode").value;
+      if (mode === "create") return saveCreate();
+      return saveEdit();
+    };
+
+    async function saveEdit() {
+      const payload = _collectForm();
+      if (!payload.id) { _showError("ID do mandado não encontrado."); return; }
+
+      try {
+        const resp = await fetch(`/mandados/${payload.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text();
+          _showError(txt || "Erro ao salvar edição.");
+          return;
+        }
+
+        window.MD?.persistStateNow?.();
+        window.location.reload();
+      } catch (err) {
+        console.error(err);
+        _showError("Falha de rede ao salvar.");
+      }
+    }
+
+    async function saveCreate() {
+      const payload = _collectForm();
+      payload.id = null;
+
+      try {
+        const resp = await fetch(`/mandados`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text();
+          _showError(txt || "Erro ao criar mandado.");
+          return;
+        }
+
+        window.MD?.persistStateNow?.();
+        window.location.reload();
+      } catch (err) {
+        console.error(err);
+        _showError("Falha de rede ao criar.");
+      }
+    }
+  })();
 </script>
