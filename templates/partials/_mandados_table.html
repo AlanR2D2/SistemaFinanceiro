@@ -2088,8 +2088,8 @@
       sel.classList.toggle("md-invalid", need);
     }
 
-    /* (2) Correção só habilita quando Depósito > 0.
-       Se Depósito voltar a vazio/0, Correção desabilita, zera e NÃO fica auto-calculando indevidamente. */
+    /* (2) Correção: campo NUNCA desabilitado. Usuário sempre pode escrever.
+       Se sem depósito e campo não é manual, limpa o valor auto. */
     function updateCorrecaoAvailability() {
       const input = document.getElementById("mdCorrecao");
       const depositoEl = document.getElementById("mdDeposito");
@@ -2098,11 +2098,11 @@
       const depositoVal = MD.parseSmartNumber(depositoEl.value);
       const hasDeposito = Number.isFinite(depositoVal) && depositoVal > 0;
 
-      input.disabled = !hasDeposito;
+      // Nunca desabilitar o campo
+      input.disabled = false;
 
-      if (!hasDeposito) {
+      if (!hasDeposito && !dirty.has("mdCorrecao")) {
         input.value = "";
-        dirty.delete("mdCorrecao");
         setFieldAuto("mdFieldCorrecao", false);
       }
     }

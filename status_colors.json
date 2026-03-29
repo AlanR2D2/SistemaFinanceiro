@@ -1,0 +1,18 @@
+{
+  "A REPASSAR": {
+    "bg": "#ffff00",
+    "text": "#000000"
+  },
+  "REPASSADO": {
+    "bg": "#c27ba0",
+    "text": "#000000"
+  },
+  "AGUARDANDO AUTORIZAÇÃO PIX (BRADESCO)": {
+    "bg": "#0070c0",
+    "text": "#ffffff"
+  },
+  "AGUARDANDO RETORNO DO CLIENTE": {
+    "bg": "#a2c4c9",
+    "text": "#000000"
+  }
+}

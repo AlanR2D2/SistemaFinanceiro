@@ -2074,7 +2074,9 @@
 </script>
 
 <script>
-  /* ===================== (2) REGRA "CORREÇÃO" DEPENDE DE "VALOR DE DEPÓSITO" (somente se existir no DOM) ===================== */
+  /* ===================== (2) REGRA "CORREÇÃO" DEPENDE DE "VALOR DE DEPÓSITO" ===================== */
+  /* ✅ Campo NUNCA fica desabilitado. Usuário pode escrever sempre que quiser.
+     Se apagar tudo e tirar o foco, volta ao cálculo automático. */
   (function () {
     const getEl = (...ids) => {
       for (const id of ids) {
@@ -2089,7 +2091,8 @@
 
     if (!depositEl || !corrEl) return;
 
-    let lockedNoAuto = false;
+    let correcaoManual = false;
+    let pendingAutoCorr = false;
 
     function depNumber() {
       const n = acParseAnyNumber(depositEl.value);
@@ -2097,49 +2100,67 @@
       return n;
     }
 
-    function setCorrEnabled(enabled) {
-      corrEl.disabled = !enabled;
-      corrEl.style.opacity = enabled ? "" : "0.65";
-      corrEl.style.cursor = enabled ? "" : "not-allowed";
+    function isEditing(inputEl) {
+      return document.activeElement === inputEl;
     }
 
-    function clearCorr() {
-      corrEl.value = "";
-      corrEl.dispatchEvent(new Event("input", { bubbles: true }));
+    function setAutoVisualCorr(isAuto) {
+      const fieldCorrecao = document.getElementById("acFieldCorrecao");
+      if (fieldCorrecao) fieldCorrecao.classList.toggle("is-auto", !!isAuto);
     }
 
     function refresh() {
+      // Se o usuário digitou valor manual, não recalcula
+      if (correcaoManual) return;
+      // Se o usuário está editando e pendente de auto, espera o blur
+      if (pendingAutoCorr && isEditing(corrEl)) return;
+
       const dep = depNumber();
-      const ok = (dep !== null && dep > 0);
 
-      if (!ok) {
-        lockedNoAuto = true;
-        setCorrEnabled(false);
-        clearCorr();
+      if (dep === null) {
+        // Sem depósito: limpa só se não for manual e não estiver editando
+        if (!isEditing(corrEl)) {
+          corrEl.value = "";
+          setAutoVisualCorr(false);
+        }
         return;
       }
 
-      setCorrEnabled(true);
-      if (lockedNoAuto) {
-        return;
-      }
+      const vAcordo = acParseAnyNumber(document.getElementById("acValorAcordo")?.value) || 0;
+      const vSucumb = acParseAnyNumber(document.getElementById("acSucumbencia")?.value) || 0;
 
-      if (!lockedNoAuto) {
-        const fieldCorrecao = document.getElementById("acFieldCorrecao");
-        const vAcordo = acParseAnyNumber(document.getElementById("acValorAcordo")?.value) || 0;
-        const vSucumb = acParseAnyNumber(document.getElementById("acSucumbencia")?.value) || 0;
-
-        const autoCorr = dep - vAcordo - vSucumb;
+      const autoCorr = dep - vAcordo - vSucumb;
+      if (!isEditing(corrEl)) {
         corrEl.value = acFormatBR(autoCorr);
-        if (fieldCorrecao) fieldCorrecao.classList.add("is-auto");
+        setAutoVisualCorr(true);
       }
     }
 
+    // Enquanto digita
     corrEl.addEventListener("input", () => {
       const v = (corrEl.value || "").trim();
-      const fieldCorrecao = document.getElementById("acFieldCorrecao");
-      if (fieldCorrecao && v !== "") fieldCorrecao.classList.remove("is-auto");
-      if (v !== "") lockedNoAuto = true;
+
+      if (v === "") {
+        // Usuário apagou tudo: marca pendência, só recalcula no blur
+        correcaoManual = false;
+        pendingAutoCorr = true;
+        setAutoVisualCorr(false);
+        return;
+      }
+
+      // Usuário digitou algo: vira manual
+      correcaoManual = true;
+      pendingAutoCorr = false;
+      setAutoVisualCorr(false);
+    });
+
+    // Ao tirar foco
+    corrEl.addEventListener("blur", () => {
+      const v = (corrEl.value || "").trim();
+      if (pendingAutoCorr && v === "") {
+        pendingAutoCorr = false;
+        refresh();
+      }
     });
 
     depositEl.addEventListener("input", refresh);
@@ -2155,7 +2176,9 @@
     if (typeof _openCreate === "function") {
       window.openCreateModal = async function (...args) {
         const r = await _openCreate.apply(this, args);
-        lockedNoAuto = false;
+        correcaoManual = false;
+        pendingAutoCorr = false;
+        setAutoVisualCorr(false);
         refresh();
         return r;
       };
@@ -2164,8 +2187,15 @@
     if (typeof _openEdit === "function") {
       window.openEditModalFromRow = async function (...args) {
         const r = await _openEdit.apply(this, args);
-        lockedNoAuto = false;
-        refresh();
+        // Se já tem valor de correção salvo, marca como manual
+        const existingCorr = (corrEl.value || "").trim();
+        correcaoManual = !!existingCorr;
+        pendingAutoCorr = false;
+        if (!correcaoManual) {
+          refresh();
+        } else {
+          setAutoVisualCorr(false);
+        }
         return r;
       };
     }
@@ -2623,22 +2653,22 @@
     }
 
     function calcConferencia() {
-      // indices: Honorarios(15), Audiencista(16), Conferencia(17), Repasse(18), Sucumbencia(20)
+      // indices corretos: Honorarios(17), Audiencista(18), Conferencia(19), Repasse(20), Sucumbencia(22)
       tbody.querySelectorAll("tr").forEach(tr => {
         if (!tr.classList.contains("ac-row")) return;
 
-        const hon = acParseAnyNumber(getCellText(tr, 15));
-        const aud = acParseAnyNumber(getCellText(tr, 16));
-        const rep = acParseAnyNumber(getCellText(tr, 18));
-        const suc = acParseAnyNumber(getCellText(tr, 20));
+        const hon = acParseAnyNumber(getCellText(tr, 17));
+        const aud = acParseAnyNumber(getCellText(tr, 18));
+        const rep = acParseAnyNumber(getCellText(tr, 20));
+        const suc = acParseAnyNumber(getCellText(tr, 22));
 
         const hasAny = Number.isFinite(hon) || Number.isFinite(aud) || Number.isFinite(rep) || Number.isFinite(suc);
 
         if (!hasAny) {
-          setCellText(tr, 17, "-");
+          setCellText(tr, 19, "-");
         } else {
           const sum = (Number.isFinite(hon) ? hon : 0) + (Number.isFinite(aud) ? aud : 0) + (Number.isFinite(rep) ? rep : 0) + (Number.isFinite(suc) ? suc : 0);
-          setCellText(tr, 17, (typeof acFormatBR === 'function' ? acFormatBR(sum) : sum.toFixed(2).replace('.', ',')));
+          setCellText(tr, 19, (typeof acFormatBR === 'function' ? acFormatBR(sum) : sum.toFixed(2).replace('.', ',')));
         }
       });
     }
