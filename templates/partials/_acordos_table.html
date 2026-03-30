@@ -1224,11 +1224,14 @@
 </script>
 
 <script>
-  /* ===================== APLICA REGRAS DE COR (HIERARQUIA) ===================== */
+  /* ===================== APLICA REGRAS DE COR (HIERARQUIA DINÂMICA) ===================== */
   (function () {
     const tbody = document.getElementById("acTbody");
     const table = document.getElementById("acTable");
     if (!tbody || !table) return;
+
+    /* Mapas carregados da API: { VALUE_UPPER: { cor, hierarquia } } */
+    let colorData = { status: {}, local: {}, conta: {} };
 
     function norm(s) {
       return String(s ?? "")
@@ -1237,68 +1240,74 @@
         .replace(/\s+/g, " ");
     }
 
-    function clearColorClasses(tr) {
-      tr.classList.remove(
-        "ac-colored",
-        "ac-row-cnpj",
-        "ac-row-arepassar",
-        "ac-row-repassado",
-        "ac-row-iddeposito",
-        "ac-row-aguardando-pix",
-        "ac-row-aguardando-retorno"
-      );
+    function clearRowColor(tr) {
+      tr.classList.remove("ac-colored");
+      tr.style.backgroundColor = "";
+      Array.from(tr.cells).forEach(td => { td.style.color = ""; });
+    }
+
+    function applyColor(tr, bgHex, textHex) {
+      tr.style.backgroundColor = bgHex;
+      tr.classList.add("ac-colored");
+      if (textHex) {
+        Array.from(tr.cells).forEach(td => { td.style.color = textHex; });
+      }
     }
 
     function applyRule(tr) {
-      clearColorClasses(tr);
+      clearRowColor(tr);
 
       let rowObj = {};
       try { rowObj = JSON.parse(tr.dataset.row || "{}"); } catch (_) { rowObj = {}; }
 
-      const tipo = norm(rowObj.tipo ?? tr.cells[13]?.innerText);
+      const tipo   = norm(rowObj.tipo   ?? tr.cells[13]?.innerText);
       const status = norm(rowObj.status ?? tr.cells[8]?.innerText);
-      const local = norm(rowObj.local ?? tr.cells[12]?.innerText);
+      const local  = norm(rowObj.local  ?? tr.cells[12]?.innerText);
 
-      // (7) tipo = CNPJ
+      // tipo = CNPJ — prioridade máxima (hardcoded)
       if (tipo === "CNPJ") {
-        tr.classList.add("ac-colored", "ac-row-cnpj");
+        applyColor(tr, "#ff00ff", "#ffffff");
         return;
       }
-      // (8) status = A REPASSAR
-      if (status === "A REPASSAR") {
-        tr.classList.add("ac-colored", "ac-row-arepassar");
-        return;
-      }
-      // (9) status = REPASSADO
-      if (status === "REPASSADO") {
-        tr.classList.add("ac-colored", "ac-row-repassado");
-        return;
-      }
-      // (10) local = ID DEPÓSITO
-      if (local === "ID DEPÓSITO" || local === "ID DEPOSITO") {
-        tr.classList.add("ac-colored", "ac-row-iddeposito");
-        return;
-      }
-      // (11) status = AGUARDANDO AUTORIZAÇÃO PIX (BRADESCO)
-      if (status === "AGUARDANDO AUTORIZAÇÃO PIX (BRADESCO)" || status === "AGUARDANDO AUTORIZACAO PIX (BRADESCO)") {
-        tr.classList.add("ac-colored", "ac-row-aguardando-pix");
-        return;
-      }
-      // (12) status = AGUARDANDO RETORNO DO CLIENTE
-      if (status === "AGUARDANDO RETORNO DO CLIENTE") {
-        tr.classList.add("ac-colored", "ac-row-aguardando-retorno");
-        return;
-      }
+
+      // Coletar candidatos com hierarquia
+      const candidates = [];
+
+      const sData = colorData.status[status];
+      if (sData) candidates.push(sData);
+
+      const lData = colorData.local[local];
+      if (lData) candidates.push(lData);
+
+      if (!candidates.length) return;
+
+      // Ordenar por hierarquia (1 = 1ª = mais prioritário)
+      candidates.sort((a, b) => (a.hierarquia || 2) - (b.hierarquia || 2));
+
+      applyColor(tr, candidates[0].cor, candidates[0].cor_letra);
     }
 
     function applyAll() {
       tbody.querySelectorAll("tr.ac-row").forEach(tr => applyRule(tr));
     }
 
-    applyAll();
-    window.AC_COLORS = { refresh: applyAll };
+    async function loadAndApply() {
+      try {
+        const resp = await fetch("/api/row-colors");
+        if (resp.ok) {
+          colorData = await resp.json();
+        }
+      } catch (e) {
+        console.warn("Falha ao carregar cores:", e);
+      }
+      applyAll();
+    }
+
+    loadAndApply();
+    window.AC_COLORS = { refresh: applyAll, reload: loadAndApply };
   })();
 </script>
+
 
 <script>
   /* ===================== TABELA + FILTROS + DATAS BR + TOTAIS (HON/AUD/SUC + TOTAL) ===================== */

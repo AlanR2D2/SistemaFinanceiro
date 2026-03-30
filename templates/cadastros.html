@@ -17,7 +17,7 @@
     background:#fff;
     border:1px solid var(--mw-border);
     border-radius: 14px;
-    overflow:hidden;
+    overflow:visible;
   }
   .tm-card-h{
     padding: 16px 18px;
@@ -97,8 +97,9 @@
     color:#0f172a;
     vertical-align:middle;
     white-space:nowrap;
-    overflow:hidden;
+    overflow:visible;
     text-overflow:ellipsis;
+    position: relative;
   }
 
   .pill{
@@ -116,7 +117,7 @@
   .pill.on{ background: rgba(22,163,74,.10); border-color: rgba(22,163,74,.25); color:#14532d; }
   .pill.off{ background: rgba(100,116,139,.10); border-color: rgba(100,116,139,.22); color:#334155; }
 
-  /* “célula editável” discreta */
+  /* "célula editável" discreta */
   .cell-input{
     width:100%;
     height: 36px;
@@ -175,6 +176,116 @@
     color:#7f1d1d;
     font-weight:700;
   }
+
+  .alert-ok{
+    margin: 12px 18px 0;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(22,163,74,.25);
+    background: rgba(22,163,74,.08);
+    color:#14532d;
+    font-weight:700;
+  }
+
+  /* ===================== COLOR PICKER (SWATCHES) ===================== */
+  .color-picker-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .color-swatch-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 2px solid var(--mw-border);
+    cursor: pointer;
+    position: relative;
+    transition: border-color .15s;
+  }
+  .color-swatch-btn:hover { border-color: #94a3b8; }
+  .color-swatch-btn.empty {
+    background: repeating-conic-gradient(#e5e7eb 0% 25%, #fff 0% 50%) 50%/12px 12px;
+  }
+
+  .color-dropdown {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid var(--mw-border);
+    border-radius: 12px;
+    padding: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+    width: 230px;
+  }
+  .color-dropdown.open { display: block; }
+
+  .color-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+  }
+
+  .color-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform .12s, border-color .12s;
+  }
+  .color-dot:hover { transform: scale(1.18); border-color: #334155; }
+  .color-dot.selected { border-color: #0f172a; transform: scale(1.15); box-shadow: 0 0 0 2px #fff, 0 0 0 4px #0f172a; }
+
+  .color-clear-btn {
+    margin-top: 8px;
+    width: 100%;
+    padding: 6px;
+    border-radius: 8px;
+    border: 1px solid var(--mw-border);
+    background: #f8fafc;
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    cursor: pointer;
+    text-align: center;
+  }
+  .color-clear-btn:hover { background: #eef2f7; }
+
+  /* Font color toggle (preto/branco) */
+  .font-color-toggle {
+    display: inline-flex;
+    border-radius: 8px;
+    border: 1px solid var(--mw-border);
+    overflow: hidden;
+    height: 28px;
+  }
+  .font-color-toggle button {
+    border: none;
+    width: 32px;
+    height: 100%;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 800;
+    transition: box-shadow .12s;
+    outline: none;
+  }
+  .font-color-toggle button.fc-black {
+    background: #000;
+    color: #fff;
+  }
+  .font-color-toggle button.fc-white {
+    background: #fff;
+    color: #000;
+  }
+  .font-color-toggle button.active {
+    box-shadow: inset 0 0 0 2px #1b2aa6;
+  }
+  .font-color-toggle button:not(.active) {
+    opacity: 0.35;
+  }
 </style>
 
 <div class="tm-page">
@@ -195,6 +306,10 @@
 
     {% if error %}
       <div class="alert">Atenção: {{ error }}</div>
+    {% endif %}
+
+    {% if ok %}
+      <div class="alert-ok">{{ ok }}</div>
     {% endif %}
 
     <div class="tm-toolbar">
@@ -220,9 +335,18 @@
       <table class="tm">
         <thead>
           <tr>
-            <th style="width:55%;">{{ cfg.label }}</th>
-            <th style="width:15%;">Ativo</th>
-            <th style="width:30%; text-align:right;">Ações</th>
+            <th style="width:{% if cor_col %}35{% else %}55{% endif %}%;">{{ cfg.label }}</th>
+            {% if cor_col %}
+              <th style="width:8%;">Cor</th>
+            {% endif %}
+            {% if cor_letra_col %}
+              <th style="width:8%;">Letra</th>
+            {% endif %}
+            {% if hierarquia_col %}
+              <th style="width:12%;">Hierarquia</th>
+            {% endif %}
+            <th style="width:12%;">Ativo</th>
+            <th style="width:{% if cor_col %}20{% else %}30{% endif %}%; text-align:right;">Ações</th>
           </tr>
         </thead>
         <tbody>
@@ -234,6 +358,42 @@
                   <input type="hidden" name="old_value" value="{{ r[value_col] }}">
                   <input class="cell-input" name="value" value="{{ r[value_col] }}">
               </td>
+
+              {% if cor_col %}
+              <td>
+                  <div class="color-picker-wrap">
+                    <input type="hidden" name="cor" value="{{ r.get(cor_col) or '' }}">
+                    <button type="button"
+                            class="color-swatch-btn {{ 'empty' if not r.get(cor_col) else '' }}"
+                            style="{{ 'background:' + r[cor_col] + ';' if r.get(cor_col) else '' }}"
+                            onclick="toggleColorDropdown(this)"></button>
+                    <div class="color-dropdown"></div>
+                  </div>
+              </td>
+              {% endif %}
+
+              {% if cor_letra_col %}
+              <td>
+                  {% set cl_val = r.get(cor_letra_col) or '#000000' %}
+                  <input type="hidden" name="cor_letra" value="{{ cl_val }}">
+                  <div class="font-color-toggle">
+                    <button type="button" class="fc-black {{ 'active' if cl_val != '#ffffff' else '' }}"
+                            onclick="setFontColor(this, '#000000')">A</button>
+                    <button type="button" class="fc-white {{ 'active' if cl_val == '#ffffff' else '' }}"
+                            onclick="setFontColor(this, '#ffffff')">A</button>
+                  </div>
+              </td>
+              {% endif %}
+
+              {% if hierarquia_col %}
+              <td>
+                  {% set h_val = r.get(hierarquia_col, 2) %}
+                  <select name="hierarquia" class="cell-input" style="width:80px; height:32px; padding:0 6px; font-size:12px;">
+                    <option value="1" {{ 'selected' if h_val == 1 else '' }}>1ª</option>
+                    <option value="2" {{ 'selected' if h_val != 1 else '' }}>2ª</option>
+                  </select>
+              </td>
+              {% endif %}
 
               <td>
                   {% set is_active = (r[ativo_col] == 1) %}
@@ -261,7 +421,7 @@
 
           {% if not rows %}
             <tr>
-              <td colspan="3" style="padding:16px 14px; color:#64748b;">
+              <td colspan="{{ (1 + (1 if cor_col else 0) + (1 if hierarquia_col else 0) + 2) }}" style="padding:16px 14px; color:#64748b;">
                 Nenhum registro encontrado.
               </td>
             </tr>
@@ -286,6 +446,42 @@
           <label class="gs-label" style="display:block; font-size:12px; color:#475569; margin-bottom:6px;">Valor</label>
           <input class="tm-search" style="min-width:100%;" name="value" placeholder="Digite o valor..." />
         </div>
+
+        {% if cor_col %}
+        <div style="width:100px;">
+          <label style="display:block; font-size:12px; color:#475569; margin-bottom:6px;">Cor</label>
+          <div class="color-picker-wrap">
+            <input type="hidden" name="cor" value="">
+            <button type="button" class="color-swatch-btn empty"
+                    onclick="toggleColorDropdown(this)"></button>
+            <div class="color-dropdown"></div>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if hierarquia_col %}
+        <div style="width:100px;">
+          <label style="display:block; font-size:12px; color:#475569; margin-bottom:6px;">Hierarquia</label>
+          <select name="hierarquia" class="cell-input" style="height:40px; padding:0 8px;">
+            <option value="1">1ª</option>
+            <option value="2" selected>2ª</option>
+          </select>
+        </div>
+        {% endif %}
+
+        {% if cor_letra_col %}
+        <div style="width:90px;">
+          <label style="display:block; font-size:12px; color:#475569; margin-bottom:6px;">Letra</label>
+          <input type="hidden" name="cor_letra" value="#000000">
+          <div class="font-color-toggle">
+            <button type="button" class="fc-black active"
+                    onclick="setFontColor(this, '#000000')">A</button>
+            <button type="button" class="fc-white"
+                    onclick="setFontColor(this, '#ffffff')">A</button>
+          </div>
+        </div>
+        {% endif %}
+
         <div style="width:140px;">
           <label style="display:block; font-size:12px; color:#475569; margin-bottom:6px;">Ativo</label>
           <label class="pill on" style="height:40px; display:flex; align-items:center; justify-content:center; gap:10px;">
@@ -314,6 +510,107 @@
   // fecha clicando fora
   document.getElementById("addBackdrop")?.addEventListener("click", (e) => {
     if (e.target.id === "addBackdrop") closeAddModal();
+  });
+
+  // ===================== FONT COLOR TOGGLE =====================
+  function setFontColor(btn, colorHex) {
+    const wrap = btn.closest(".font-color-toggle");
+    if (!wrap) return;
+
+    // Atualiza input hidden
+    const hiddenInput = wrap.parentElement.querySelector('input[name="cor_letra"]');
+    if (hiddenInput) hiddenInput.value = colorHex;
+
+    // Atualiza classes dos botaos
+    wrap.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  }
+
+  // ===================== COLOR PICKER =====================
+  const COLOR_PALETTE = [
+    "#ff00ff", "#ffff00", "#c27ba0", "#00b050", "#0070c0", "#a2c4c9",
+    "#ff0000", "#ff6600", "#ff9900", "#ffcc00", "#ccff00", "#66ff00",
+    "#00ff00", "#00ff99", "#00ffcc", "#00ccff", "#0099ff", "#0033ff",
+    "#6600ff", "#9900ff", "#cc00ff", "#ff0099", "#ff3366",
+    "#c0c0c0", "#808080", "#ffcccc", "#ccffcc", "#ccccff", "#ffffcc", "#ffd700"
+  ];
+
+  function buildColorGrid(dropdown, currentColor, hiddenInput, swatchBtn) {
+    dropdown.innerHTML = "";
+
+    const grid = document.createElement("div");
+    grid.className = "color-grid";
+
+    COLOR_PALETTE.forEach(hex => {
+      const dot = document.createElement("div");
+      dot.className = "color-dot" + (currentColor === hex ? " selected" : "");
+      dot.style.background = hex;
+      dot.title = hex;
+      dot.addEventListener("click", (e) => {
+        e.stopPropagation();
+        hiddenInput.value = hex;
+        swatchBtn.style.background = hex;
+        swatchBtn.classList.remove("empty");
+        dropdown.classList.remove("open");
+        // update selected state
+        grid.querySelectorAll(".color-dot").forEach(d => d.classList.remove("selected"));
+        dot.classList.add("selected");
+      });
+      grid.appendChild(dot);
+    });
+
+    dropdown.appendChild(grid);
+
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.className = "color-clear-btn";
+    clearBtn.textContent = "Sem cor";
+    clearBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hiddenInput.value = "";
+      swatchBtn.style.background = "";
+      swatchBtn.classList.add("empty");
+      dropdown.classList.remove("open");
+      grid.querySelectorAll(".color-dot").forEach(d => d.classList.remove("selected"));
+    });
+    dropdown.appendChild(clearBtn);
+  }
+
+  function toggleColorDropdown(btn) {
+    const wrap = btn.closest(".color-picker-wrap");
+    const dropdown = wrap.querySelector(".color-dropdown");
+    const hiddenInput = wrap.querySelector('input[name="cor"]');
+
+    // close all other open dropdowns
+    document.querySelectorAll(".color-dropdown.open").forEach(d => {
+      if (d !== dropdown) d.classList.remove("open");
+    });
+
+    if (!dropdown.classList.contains("open")) {
+      buildColorGrid(dropdown, (hiddenInput.value || "").trim(), hiddenInput, btn);
+
+      // Position dropdown below the button using fixed coordinates
+      const rect = btn.getBoundingClientRect();
+      dropdown.style.left = rect.left + "px";
+      dropdown.style.top = (rect.bottom + 4) + "px";
+
+      // If dropdown would go off-screen bottom, show it above
+      const dropH = 320;
+      if (rect.bottom + dropH > window.innerHeight) {
+        dropdown.style.top = Math.max(4, rect.top - dropH - 4) + "px";
+      }
+
+      dropdown.classList.add("open");
+    } else {
+      dropdown.classList.remove("open");
+    }
+  }
+
+  // Fechar dropdown ao clicar fora
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".color-picker-wrap")) {
+      document.querySelectorAll(".color-dropdown.open").forEach(d => d.classList.remove("open"));
+    }
   });
 
   // Busca dinâmica (client-side) — filtra a tabela enquanto digita
@@ -347,7 +644,7 @@
         if(!existing){
           const nr = document.createElement('tr');
           nr.className = 'no-results';
-          nr.innerHTML = '<td colspan="3" style="padding:16px 14px; color:#64748b;">Nenhum registro encontrado.</td>';
+          nr.innerHTML = '<td colspan="{{ 4 if cor_col else 3 }}" style="padding:16px 14px; color:#64748b;">Nenhum registro encontrado.</td>';
           tbody.appendChild(nr);
         }
       } else if(existing){ existing.remove(); }

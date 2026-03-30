@@ -819,8 +819,8 @@ def require_admin():
 
 
 CADASTRO_TABLES = {
-    "fin_conta": {"label": "Conta", "value_col": "conta", "ativo_col": "ativo", "refs": []},
-    "fin_local": {"label": "Local", "value_col": "local", "ativo_col": "ativo", "refs": [
+    "fin_conta": {"label": "Conta", "value_col": "conta", "ativo_col": "ativo", "cor_col": "cor", "cor_letra_col": "cor_letra", "hierarquia_col": "hierarquia", "refs": []},
+    "fin_local": {"label": "Local", "value_col": "local", "ativo_col": "ativo", "cor_col": "cor", "cor_letra_col": "cor_letra", "hierarquia_col": "hierarquia", "refs": [
         {"table": TABLE_ACORDOS, "col": "local"},
         {"table": TABLE_MANDADOS, "col": "local"},
     ]},
@@ -834,7 +834,7 @@ CADASTRO_TABLES = {
         {"table": TABLE_ACORDOS, "col": "reu"},
         {"table": TABLE_MANDADOS, "col": "reu"},
     ]},
-    "fin_status": {"label": "Status", "value_col": "status", "ativo_col": "ativo", "refs": [
+    "fin_status": {"label": "Status", "value_col": "status", "ativo_col": "ativo", "cor_col": "cor", "cor_letra_col": "cor_letra", "hierarquia_col": "hierarquia", "refs": [
         {"table": TABLE_ACORDOS, "col": "status"},
         {"table": TABLE_MANDADOS, "col": "status"},
     ]},
@@ -885,6 +885,30 @@ def api_cadastro_options():
     return jsonify(options)
 
 
+@app.get("/api/status-colors")
+@app.get("/api/row-colors")
+@login_required
+def api_row_colors():
+    """Retorna cores e hierarquia de status, local e conta para colorir linhas."""
+    def _build_map(table_name, value_col):
+        rows = sb_select(table_name, columns=f"{value_col},cor,cor_letra,hierarquia", limit=5000)
+        m = {}
+        for r in rows:
+            v = (r.get(value_col) or "").strip()
+            c = (r.get("cor") or "").strip()
+            h = r.get("hierarquia")
+            cl = (r.get("cor_letra") or "").strip()
+            if v and c:
+                m[v.upper()] = {"cor": c, "cor_letra": cl or "#000000", "hierarquia": h if h else 2}
+        return m
+
+    return jsonify({
+        "status": _build_map("fin_status", "status"),
+        "local": _build_map("fin_local", "local"),
+        "conta": _build_map("fin_conta", "conta"),
+    })
+
+
 @app.get("/cadastros")
 @login_required
 def cadastros():
@@ -897,10 +921,21 @@ def cadastros():
     cfg = CADASTRO_TABLES[table]
     value_col = cfg["value_col"]
     ativo_col = cfg["ativo_col"]
+    cor_col = cfg.get("cor_col")
+    cor_letra_col = cfg.get("cor_letra_col")
+    hierarquia_col = cfg.get("hierarquia_col")
+
+    columns = f"{value_col},{ativo_col}"
+    if cor_col:
+        columns += f",{cor_col}"
+    if cor_letra_col:
+        columns += f",{cor_letra_col}"
+    if hierarquia_col:
+        columns += f",{hierarquia_col}"
 
     rows = sb_select(
         table,
-        columns=f"{value_col},{ativo_col}",
+        columns=columns,
         limit=5000,
         order_col=value_col,
         desc=False
@@ -913,6 +948,9 @@ def cadastros():
         cfg=cfg,
         value_col=value_col,
         ativo_col=ativo_col,
+        cor_col=cor_col,
+        cor_letra_col=cor_letra_col,
+        hierarquia_col=hierarquia_col,
         rows=rows,
         error=request.args.get("error"),
         ok=request.args.get("ok"),
@@ -944,7 +982,19 @@ def cadastros_add(table):
     except Exception:
         pass
 
-    supabase.table(table).insert({value_col: value, ativo_col: ativo}).execute()
+    row_data = {value_col: value, ativo_col: ativo}
+    cor_col = cfg.get("cor_col")
+    if cor_col:
+        row_data[cor_col] = (request.form.get("cor") or "").strip() or None
+    cor_letra_col = cfg.get("cor_letra_col")
+    if cor_letra_col:
+        row_data[cor_letra_col] = (request.form.get("cor_letra") or "#000000").strip()
+    hierarquia_col = cfg.get("hierarquia_col")
+    if hierarquia_col:
+        h_val = (request.form.get("hierarquia") or "").strip()
+        row_data[hierarquia_col] = int(h_val) if h_val in ("1", "2") else 2
+
+    supabase.table(table).insert(row_data).execute()
     return redirect(url_for("cadastros", table=table, ok="Registro adicionado."))
 
 
@@ -982,9 +1032,19 @@ def cadastros_update(table):
         except Exception:
             pass
 
-    supabase.table(table).update(
-        {value_col: new_value, ativo_col: ativo}
-    ).eq(value_col, old_value).execute()
+    update_data = {value_col: new_value, ativo_col: ativo}
+    cor_col = cfg.get("cor_col")
+    if cor_col:
+        update_data[cor_col] = (request.form.get("cor") or "").strip() or None
+    cor_letra_col = cfg.get("cor_letra_col")
+    if cor_letra_col:
+        update_data[cor_letra_col] = (request.form.get("cor_letra") or "#000000").strip()
+    hierarquia_col = cfg.get("hierarquia_col")
+    if hierarquia_col:
+        h_val = (request.form.get("hierarquia") or "").strip()
+        update_data[hierarquia_col] = int(h_val) if h_val in ("1", "2") else 2
+
+    supabase.table(table).update(update_data).eq(value_col, old_value).execute()
 
     return redirect(url_for("cadastros", table=table, ok="Registro atualizado."))
 

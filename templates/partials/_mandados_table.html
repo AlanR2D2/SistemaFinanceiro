@@ -1356,10 +1356,12 @@
 </script>
 
 <script>
-  /* ===================== APLICA REGRAS DE COR (HIERARQUIA) ===================== */
+  /* ===================== APLICA REGRAS DE COR (HIERARQUIA DINÂMICA) ===================== */
   (function () {
     const tbody = document.getElementById("mdTbody");
     if (!tbody) return;
+
+    let colorData = { status: {}, local: {}, conta: {} };
 
     function norm(s) {
       return String(s ?? "")
@@ -1368,60 +1370,70 @@
         .replace(/\s+/g, " ");
     }
 
-    function clearColorClasses(tr) {
-      tr.classList.remove(
-        "md-colored",
-        "ac-row-cnpj",
-        "ac-row-arepassar",
-        "ac-row-repassado",
-        "ac-row-iddeposito",
-        "ac-row-aguardando-pix",
-        "ac-row-aguardando-retorno"
-      );
+    function clearRowColor(tr) {
+      tr.classList.remove("md-colored");
+      tr.style.backgroundColor = "";
+      Array.from(tr.cells).forEach(td => { td.style.color = ""; });
+    }
+
+    function applyColor(tr, bgHex, textHex) {
+      tr.style.backgroundColor = bgHex;
+      tr.classList.add("md-colored");
+      if (textHex) {
+        Array.from(tr.cells).forEach(td => { td.style.color = textHex; });
+      }
     }
 
     function applyRule(tr) {
-      clearColorClasses(tr);
+      clearRowColor(tr);
 
       let rowObj = {};
       try { rowObj = JSON.parse(tr.dataset.row || "{}"); } catch (_) { rowObj = {}; }
 
-      const tipo = norm(rowObj.tipo ?? tr.cells[12]?.innerText);
+      const tipo   = norm(rowObj.tipo   ?? tr.cells[12]?.innerText);
       const status = norm(rowObj.status ?? tr.cells[8]?.innerText);
-      const local = norm(rowObj.local ?? tr.cells[11]?.innerText);
+      const local  = norm(rowObj.local  ?? tr.cells[11]?.innerText);
 
+      // tipo = CNPJ — prioridade máxima (hardcoded)
       if (tipo === "CNPJ") {
-        tr.classList.add("md-colored", "ac-row-cnpj");
+        applyColor(tr, "#ff00ff", "#ffffff");
         return;
       }
-      if (status === "A REPASSAR") {
-        tr.classList.add("md-colored", "ac-row-arepassar");
-        return;
-      }
-      if (status === "REPASSADO") {
-        tr.classList.add("md-colored", "ac-row-repassado");
-        return;
-      }
-      if (local === "ID DEPÓSITO" || local === "ID DEPOSITO") {
-        tr.classList.add("md-colored", "ac-row-iddeposito");
-        return;
-      }
-      if (status === "AGUARDANDO AUTORIZAÇÃO PIX (BRADESCO)" || status === "AGUARDANDO AUTORIZACAO PIX (BRADESCO)") {
-        tr.classList.add("md-colored", "ac-row-aguardando-pix");
-        return;
-      }
-      if (status === "AGUARDANDO RETORNO DO CLIENTE") {
-        tr.classList.add("md-colored", "ac-row-aguardando-retorno");
-        return;
-      }
+
+      // Coletar candidatos com hierarquia
+      const candidates = [];
+
+      const sData = colorData.status[status];
+      if (sData) candidates.push(sData);
+
+      const lData = colorData.local[local];
+      if (lData) candidates.push(lData);
+
+      if (!candidates.length) return;
+
+      candidates.sort((a, b) => (a.hierarquia || 2) - (b.hierarquia || 2));
+
+      applyColor(tr, candidates[0].cor, candidates[0].cor_letra);
     }
 
     function applyAll() {
       tbody.querySelectorAll("tr.md-row").forEach(tr => applyRule(tr));
     }
 
-    applyAll();
-    window.MD_COLORS = { refresh: applyAll };
+    async function loadAndApply() {
+      try {
+        const resp = await fetch("/api/row-colors");
+        if (resp.ok) {
+          colorData = await resp.json();
+        }
+      } catch (e) {
+        console.warn("Falha ao carregar cores:", e);
+      }
+      applyAll();
+    }
+
+    loadAndApply();
+    window.MD_COLORS = { refresh: applyAll, reload: loadAndApply };
   })();
 </script>
 
