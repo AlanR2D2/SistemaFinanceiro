@@ -73,7 +73,7 @@
   .ac-totals {
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(4, minmax(160px, 1fr));
+    grid-template-columns: repeat(5, minmax(160px, 1fr));
     gap: 10px;
     padding: 12px 16px;
     border-bottom: 1px solid #e5e7eb;
@@ -135,7 +135,7 @@
     }
   }
 
-  @media (max-width: 480px) {
+  @media (max-width: 520px) {
     .ac-totals {
       grid-template-columns: 1fr;
     }
@@ -767,10 +767,16 @@
       <div class="ac-total-sub">Somatório dos visíveis</div>
     </div>
 
+    <div class="ac-total-box">
+      <div class="ac-total-label">Correção</div>
+      <div class="ac-total-value" id="acSumCorrecao">R$ 0,00</div>
+      <div class="ac-total-sub">Somatório dos visíveis</div>
+    </div>
+
     <div class="ac-total-box total">
       <div class="ac-total-label">Total geral</div>
       <div class="ac-total-value" id="acSumTotalGeral">R$ 0,00</div>
-      <div class="ac-total-sub">Soma dos 3 campos</div>
+      <div class="ac-total-sub">Soma dos 4 campos</div>
     </div>
   </div>
   {% endif %}
@@ -1322,6 +1328,7 @@
       honorarios: document.getElementById("acSumHonorarios"),
       audiencista: document.getElementById("acSumAudiencista"),
       sucumbencia: document.getElementById("acSumSucumbencia"),
+      correcao: document.getElementById("acSumCorrecao"),
       total: document.getElementById("acSumTotalGeral"),
     };
 
@@ -1441,24 +1448,26 @@
     }
 
     function computeTotalsFromVisibleRows(visibleRows) {
-      let sHon = 0, sAud = 0, sSuc = 0;
+      let sHon = 0, sAud = 0, sSuc = 0, sCorr = 0;
 
       for (const tr of visibleRows) {
         const obj = readRowObj(tr);
 
         // Indices updated to match new column order
-        // Honorários = 17, Audiencista = 18, Sucumbência = 22
+        // Correção = 16, Honorários = 17, Audiencista = 18, Sucumbência = 22
         const vHon = (obj.honorarios ?? textOfCell(tr, 17));
         const vAud = (obj.audiencista ?? textOfCell(tr, 18));
         const vSuc = (obj.sucumbencia ?? textOfCell(tr, 22));
+        const vCorr = (obj.correcao ?? textOfCell(tr, 16));
 
         sHon += numFromAny(vHon);
         sAud += numFromAny(vAud);
         sSuc += numFromAny(vSuc);
+        sCorr += numFromAny(vCorr);
       }
 
-      const total = sHon + sAud + sSuc;
-      return { sHon, sAud, sSuc, total };
+      const total = sHon + sAud + sSuc + sCorr;
+      return { sHon, sAud, sSuc, sCorr, total };
     }
 
     function renderTotals() {
@@ -1468,6 +1477,7 @@
       if (sumEls.honorarios) sumEls.honorarios.textContent = acMoneyBRL(t.sHon);
       if (sumEls.audiencista) sumEls.audiencista.textContent = acMoneyBRL(t.sAud);
       if (sumEls.sucumbencia) sumEls.sucumbencia.textContent = acMoneyBRL(t.sSuc);
+      if (sumEls.correcao) sumEls.correcao.textContent = acMoneyBRL(t.sCorr);
       if (sumEls.total) sumEls.total.textContent = acMoneyBRL(t.total);
     }
 
