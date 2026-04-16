@@ -807,10 +807,10 @@
           </th>
           <th>HONORÁRIOS</th>
           <th>AUDIENCISTA</th>
-          <!-- Conferência calculada no front: Honorários + Audiencista + Sucumbência + Repasse -->
+          <!-- Conferência calculada no front: Correção + Honorários + Audiencista + Sucumbência + Repasse -->
           <th>
             CONFERÊNCIA
-            <span class="ac-info" title="Soma: Honorários + Audiencista + Sucumbência + Repasse">i</span>
+            <span class="ac-info" title="Soma: Correção + Honorários + Audiencista + Sucumbência + Repasse">i</span>
           </th>
           <th>REPASSE</th>
           <th>CHAVE PIX</th>
@@ -2672,21 +2672,22 @@
     }
 
     function calcConferencia() {
-      // indices corretos: Honorarios(17), Audiencista(18), Conferencia(19), Repasse(20), Sucumbencia(22)
+      // indices corretos: Correcao(16), Honorarios(17), Audiencista(18), Conferencia(19), Repasse(20), Sucumbencia(22)
       tbody.querySelectorAll("tr").forEach(tr => {
         if (!tr.classList.contains("ac-row")) return;
 
+        const cor = acParseAnyNumber(getCellText(tr, 16));
         const hon = acParseAnyNumber(getCellText(tr, 17));
         const aud = acParseAnyNumber(getCellText(tr, 18));
         const rep = acParseAnyNumber(getCellText(tr, 20));
         const suc = acParseAnyNumber(getCellText(tr, 22));
 
-        const hasAny = Number.isFinite(hon) || Number.isFinite(aud) || Number.isFinite(rep) || Number.isFinite(suc);
+        const hasAny = Number.isFinite(cor) || Number.isFinite(hon) || Number.isFinite(aud) || Number.isFinite(rep) || Number.isFinite(suc);
 
         if (!hasAny) {
           setCellText(tr, 19, "-");
         } else {
-          const sum = (Number.isFinite(hon) ? hon : 0) + (Number.isFinite(aud) ? aud : 0) + (Number.isFinite(rep) ? rep : 0) + (Number.isFinite(suc) ? suc : 0);
+          const sum = (Number.isFinite(cor) ? cor : 0) + (Number.isFinite(hon) ? hon : 0) + (Number.isFinite(aud) ? aud : 0) + (Number.isFinite(rep) ? rep : 0) + (Number.isFinite(suc) ? suc : 0);
           setCellText(tr, 19, (typeof acFormatBR === 'function' ? acFormatBR(sum) : sum.toFixed(2).replace('.', ',')));
         }
       });
