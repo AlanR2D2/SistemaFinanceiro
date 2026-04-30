@@ -192,6 +192,9 @@
             <div class="font-bold text-gray-800 leading-tight">Sistema Financeiro</div>
             <div class="text-xs text-gray-500">{{ current_user.nome or current_user.login }}</div>
             <div class="text-xs text-gray-500">Hierarquia: {{ current_user.hierarquia }}</div>
+            {% if tenant %}
+            <div class="text-xs text-indigo-600 font-semibold mt-1">{{ tenant }}</div>
+            {% endif %}
           </div>
 
           <button id="collapseBtn"

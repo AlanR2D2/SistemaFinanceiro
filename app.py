@@ -6,7 +6,7 @@ from datetime import date, datetime
 from collections import Counter
 
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, redirect, url_for, jsonify, abort, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, jsonify, abort, send_from_directory, session
 from flask_login import (
     LoginManager, UserMixin, login_user, login_required,
     logout_user, current_user
@@ -34,6 +34,14 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 TABLE_USERS = "fin_users"
 TABLE_ACORDOS = "fin_acordos"
 TABLE_MANDADOS = "fin_mandados"
+
+# ===================== MULTI-TENANT =====================
+TENANT_EMPRESAS = {
+    "Dra Consumidor": "dra_consumidor",
+    "Aeroline": "aeroline",
+}
+# Tabelas que NÃO recebem filtro de tenant (são compartilhadas)
+TABLES_SEM_TENANT = {"fin_uf"}
 
 # ===================== AUTH =====================
 
@@ -70,11 +78,17 @@ def inject_user_flags():
         if current_user and current_user.is_authenticated:
             return {
                 "is_admin": bool(getattr(current_user, "is_admin", False)),
-                "user_role": getattr(current_user, "role", "")
+                "user_role": getattr(current_user, "role", ""),
+                "tenant": session.get("tenant", ""),
             }
     except Exception:
         pass
-    return {"is_admin": False, "user_role": ""}
+    return {"is_admin": False, "user_role": "", "tenant": ""}
+
+
+def _get_tenant() -> str:
+    """Retorna o tenant da sessão atual."""
+    return session.get("tenant", "Dra Consumidor")
 
 
 def _get_user_by_login(login: str) -> dict | None:
@@ -142,6 +156,10 @@ def login():
 def login_post():
     username = (request.form.get("username") or "").strip()
     password = (request.form.get("password") or "").strip()
+    empresa = (request.form.get("empresa") or "").strip()
+
+    if empresa not in TENANT_EMPRESAS:
+        return render_template("login.html", error="Selecione uma empresa válida.")
 
     user_data = _get_user_by_login(username)
     if not user_data:
@@ -151,8 +169,14 @@ def login_post():
     if not ok:
         return render_template("login.html", error="Usuário ou senha inválidos.")
 
+    # Verificar se o usuário tem acesso à empresa selecionada
+    coluna_empresa = TENANT_EMPRESAS[empresa]
+    if not user_data.get(coluna_empresa):
+        return render_template("login.html", error="Você não tem acesso a esta empresa.")
+
     _maybe_migrate_plain_password_to_hash(user_data, ok)
     login_user(User(user_data))
+    session["tenant"] = empresa
     return redirect(url_for("dashboard"))
 
 
@@ -291,8 +315,12 @@ def _derive_finalizado_from_status(status: str) -> int:
     return 1 if s.startswith("FINALIZADO") else 0
 
 
-def sb_select(table: str, columns="*", limit=300, order_col=None, desc=True, filters=None):
+def sb_select(table: str, columns="*", limit=300, order_col=None, desc=True, filters=None, skip_tenant=False):
     q = supabase.table(table).select(columns)
+
+    # Filtro de tenant automático
+    if not skip_tenant and table not in TABLES_SEM_TENANT:
+        q = q.eq("tenant", _get_tenant())
 
     if filters:
         for (col, op, val) in filters:
@@ -318,8 +346,12 @@ def sb_select(table: str, columns="*", limit=300, order_col=None, desc=True, fil
 
 
 def sb_select_or_like(table: str, columns="*", limit=300, order_col=None, desc=True,
-                      or_ilike_cols=None, qtext=None, extra_filters=None):
+                      or_ilike_cols=None, qtext=None, extra_filters=None, skip_tenant=False):
     query = supabase.table(table).select(columns)
+
+    # Filtro de tenant automático
+    if not skip_tenant and table not in TABLES_SEM_TENANT:
+        query = query.eq("tenant", _get_tenant())
 
     if qtext and or_ilike_cols:
         qtext = (qtext or "").strip()
@@ -604,6 +636,7 @@ def acordos_create():
         "observacoes": data.get("observacoes"),
         "mes_pg": data.get("mes_pg"),
         "finalizado": _derive_finalizado_from_status(status_txt),
+        "tenant": _get_tenant(),
     }
 
     payload = clean_payload(payload, NUMERIC_FIELDS_ACORDOS)
@@ -740,6 +773,7 @@ def mandados_create():
         "mes_pg": data.get("mes_pg"),
 
         "finalizado": _derive_finalizado_from_status(status_txt),
+        "tenant": _get_tenant(),
     }
 
     payload = clean_payload(payload, NUMERIC_FIELDS_MANDADOS)
@@ -852,11 +886,15 @@ def _cad_value_in_use(table_key: str, value: str) -> bool:
     if not value or not refs:
         return False
 
+    tenant = _get_tenant()
     for ref in refs:
         t = ref["table"]
         c = ref["col"]
         try:
-            r = supabase.table(t).select("id").eq(c, value).limit(1).execute()
+            q = supabase.table(t).select("id").eq(c, value)
+            if t not in TABLES_SEM_TENANT:
+                q = q.eq("tenant", tenant)
+            r = q.limit(1).execute()
             if getattr(r, "data", None):
                 return True
         except Exception:
@@ -976,13 +1014,19 @@ def cadastros_add(table):
         return redirect(url_for("cadastros", table=table, error="Informe um valor."))
 
     try:
-        dup = supabase.table(table).select(value_col).ilike(value_col, value).limit(1).execute()
+        dup_q = supabase.table(table).select(value_col).ilike(value_col, value)
+        if table not in TABLES_SEM_TENANT:
+            dup_q = dup_q.eq("tenant", _get_tenant())
+        dup = dup_q.limit(1).execute()
         if getattr(dup, "data", None):
             return redirect(url_for("cadastros", table=table, error="Valor já existe."))
     except Exception:
         pass
 
     row_data = {value_col: value, ativo_col: ativo}
+    # Tenant para cadastros (exceto fin_uf)
+    if table not in TABLES_SEM_TENANT:
+        row_data["tenant"] = _get_tenant()
     cor_col = cfg.get("cor_col")
     if cor_col:
         row_data[cor_col] = (request.form.get("cor") or "").strip() or None
@@ -1026,7 +1070,10 @@ def cadastros_update(table):
 
     if new_value != old_value:
         try:
-            dup = supabase.table(table).select(value_col).ilike(value_col, new_value).limit(1).execute()
+            dup_q = supabase.table(table).select(value_col).ilike(value_col, new_value)
+            if table not in TABLES_SEM_TENANT:
+                dup_q = dup_q.eq("tenant", _get_tenant())
+            dup = dup_q.limit(1).execute()
             if getattr(dup, "data", None):
                 return redirect(url_for("cadastros", table=table, error="Já existe um registro com esse valor."))
         except Exception:
@@ -1044,7 +1091,10 @@ def cadastros_update(table):
         h_val = (request.form.get("hierarquia") or "").strip()
         update_data[hierarquia_col] = int(h_val) if h_val in ("1", "2") else 2
 
-    supabase.table(table).update(update_data).eq(value_col, old_value).execute()
+    q_update = supabase.table(table).update(update_data).eq(value_col, old_value)
+    if table not in TABLES_SEM_TENANT:
+        q_update = q_update.eq("tenant", _get_tenant())
+    q_update.execute()
 
     return redirect(url_for("cadastros", table=table, ok="Registro atualizado."))
 
@@ -1066,7 +1116,10 @@ def cadastros_delete(table):
     if _cad_value_in_use(table, value):
         return redirect(url_for("cadastros", table=table, error="Este valor está em uso em Acordos/Mandados. Exclusão bloqueada."))
 
-    supabase.table(table).delete().eq(value_col, value).execute()
+    q_del = supabase.table(table).delete().eq(value_col, value)
+    if table not in TABLES_SEM_TENANT:
+        q_del = q_del.eq("tenant", _get_tenant())
+    q_del.execute()
     return redirect(url_for("cadastros", table=table, ok="Registro excluído."))
 
 # ===================== CONFIG (TODOS OS USUÁRIOS) =====================
@@ -1129,7 +1182,10 @@ def users_admin():
     require_admin()
     s = (request.args.get("s") or "").strip()
 
-    cols = "login,nome,email,hierarquia,created_at,updated_at"
+    tenant = _get_tenant()
+    coluna_empresa = TENANT_EMPRESAS.get(tenant, "dra_consumidor")
+
+    cols = "login,nome,email,hierarquia,dra_consumidor,aeroline,created_at,updated_at"
     if s:
         rows = sb_select_or_like(
             TABLE_USERS,
@@ -1138,10 +1194,14 @@ def users_admin():
             order_col="login",
             desc=False,
             or_ilike_cols=["login", "nome", "email", "hierarquia"],
-            qtext=s
+            qtext=s,
+            skip_tenant=True
         )
     else:
-        rows = sb_select(TABLE_USERS, columns=cols, limit=2000, order_col="login", desc=False)
+        rows = sb_select(TABLE_USERS, columns=cols, limit=2000, order_col="login", desc=False, skip_tenant=True)
+
+    # Filtrar apenas usuários com acesso à empresa atual
+    rows = [r for r in rows if r.get(coluna_empresa) == 1]
 
     return render_template("users.html", rows=rows, error=request.args.get("error"), ok=request.args.get("ok"))
 
@@ -1162,24 +1222,39 @@ def users_add():
     if not login:
         return redirect(url_for("users_admin", error="Informe o login."))
 
+    if hierarquia not in ("user", "gestor", "financeiro", "admin"):
+        hierarquia = "user"
+
+    tenant = _get_tenant()
+    coluna_empresa = TENANT_EMPRESAS.get(tenant, "dra_consumidor")
+
+    existing = _get_user_by_login(login)
+    if existing:
+        # Usuário já existe — só ativa acesso à empresa atual
+        if existing.get(coluna_empresa) == 1:
+            return redirect(url_for("users_admin", error="Este usuário já tem acesso a esta empresa."))
+        try:
+            supabase.table(TABLE_USERS).update({coluna_empresa: 1}).eq("login", login).execute()
+        except Exception:
+            return redirect(url_for("users_admin", error="Falha ao atualizar acesso do usuário."))
+        return redirect(url_for("users_admin", ok=f"Usuário '{login}' já existia. Acesso à empresa '{tenant}' concedido."))
+
+    # Usuário novo — precisa de senha
     if senha != senha2:
         return redirect(url_for("users_admin", error="Senha e confirmação não conferem."))
 
     if len(senha) < 6:
         return redirect(url_for("users_admin", error="Senha deve ter pelo menos 6 caracteres."))
 
-    if hierarquia not in ("user", "gestor", "financeiro", "admin"):
-        hierarquia = "user"
-
-    if _get_user_by_login(login):
-        return redirect(url_for("users_admin", error="Login já existe."))
-
+    # Cria com acesso apenas à empresa atual
     payload = {
         "login": login,
         "nome": nome,
         "email": email,
         "hierarquia": hierarquia,
         "senha": _hash_password(senha),
+        "dra_consumidor": 1 if coluna_empresa == "dra_consumidor" else 0,
+        "aeroline": 1 if coluna_empresa == "aeroline" else 0,
     }
 
     try:
