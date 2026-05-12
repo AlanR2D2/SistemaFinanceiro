@@ -1,0 +1,97 @@
+{% extends "staff/base.html" %}
+{% block title %}Tenants — Staff{% endblock %}
+
+{% block content %}
+<div class="staff-card">
+  <div class="staff-card-h">
+    <div>
+      <div class="staff-card-title">Tenants</div>
+      <div class="staff-card-sub">Adicione, renomeie, ative/desative ou exclua empresas do sistema.</div>
+    </div>
+    <button class="btn btn-amber" type="button" onclick="openAdd()">Adicionar tenant</button>
+  </div>
+
+  {% if error %}<div class="alert" style="margin: 12px 18px 0;">{{ error }}</div>{% endif %}
+  {% if ok %}<div class="ok" style="margin: 12px 18px 0;">{{ ok }}</div>{% endif %}
+
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th style="width: 32%;">Nome</th>
+        <th style="width: 16%;">Status</th>
+        <th style="width: 22%;">Criado em</th>
+        <th style="width: 30%; text-align:right;">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in rows %}
+      <tr>
+        <td>
+          <form method="post" action="{{ url_for('staff_tenants_rename') }}" style="display:flex; gap:8px; align-items:center;">
+            <input type="hidden" name="old_nome" value="{{ t.nome }}">
+            <input class="inp" name="nome" value="{{ t.nome }}" style="min-width: 200px;">
+        </td>
+        <td>
+          {% if t.ativo == 1 %}<span class="pill green">Ativo</span>{% else %}<span class="pill red">Inativo</span>{% endif %}
+        </td>
+        <td style="color: var(--staff-muted);">{{ (t.created_at or '')[:10] }}</td>
+        <td style="text-align:right;">
+            <button class="btn btn-amber" type="submit">Renomear</button>
+          </form>
+
+          <form method="post" action="{{ url_for('staff_tenants_toggle') }}" style="display:inline;">
+            <input type="hidden" name="nome" value="{{ t.nome }}">
+            <button class="btn" type="submit" style="margin-left:6px;">
+              {% if t.ativo == 1 %}Desativar{% else %}Ativar{% endif %}
+            </button>
+          </form>
+
+          <form method="post" action="{{ url_for('staff_tenants_delete') }}" style="display:inline;"
+                onsubmit="return confirm('Excluir o tenant {{ t.nome }}? Só funciona se estiver totalmente vazio.');">
+            <input type="hidden" name="nome" value="{{ t.nome }}">
+            <button class="btn btn-danger" type="submit" style="margin-left:6px;">Excluir</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      {% if not rows %}
+      <tr><td colspan="4" style="color:var(--staff-muted); padding: 16px;">Nenhum tenant cadastrado.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<!-- MODAL ADD -->
+<div id="addBackdrop" class="modal-backdrop">
+  <div class="modal">
+    <div class="modal-h">
+      <div style="font-weight:900;">Novo tenant</div>
+      <button class="modal-close" onclick="closeAdd()">×</button>
+    </div>
+    <div class="modal-b">
+      <form method="post" action="{{ url_for('staff_tenants_add') }}">
+        <div class="field">
+          <label>Nome do tenant *</label>
+          <input class="inp" name="nome" placeholder="Ex: Nova Empresa" required style="width:100%;">
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+          <button class="btn" type="button" onclick="closeAdd()">Cancelar</button>
+          <button class="btn btn-amber" type="submit">Criar</button>
+        </div>
+        <div style="margin-top:10px; font-size:12px; color: var(--staff-muted);">
+          O tenant será criado vazio. Cadastros (status, local, conta etc.) começam zerados.
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function openAdd(){ document.getElementById('addBackdrop').style.display = 'flex'; }
+  function closeAdd(){ document.getElementById('addBackdrop').style.display = 'none'; }
+  document.getElementById('addBackdrop')?.addEventListener('click', (e)=>{ if(e.target.id === 'addBackdrop') closeAdd(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeAdd(); });
+</script>
+{% endblock %}

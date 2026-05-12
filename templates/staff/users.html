@@ -1,0 +1,217 @@
+{% extends "staff/base.html" %}
+{% block title %}Usuários — Staff{% endblock %}
+
+{% block content %}
+<div class="staff-card">
+  <div class="staff-card-h">
+    <div>
+      <div class="staff-card-title">Usuários (todos os tenants)</div>
+      <div class="staff-card-sub">Adicione, edite, mova entre tenants ou resete senha de qualquer usuário.</div>
+    </div>
+    <button class="btn btn-amber" type="button" onclick="openAdd()">Adicionar usuário</button>
+  </div>
+
+  {% if error %}<div class="alert" style="margin: 12px 18px 0;">{{ error }}</div>{% endif %}
+  {% if ok %}<div class="ok" style="margin: 12px 18px 0;">{{ ok }}</div>{% endif %}
+
+  {% if temp_flash %}
+  <div class="ok" style="margin: 12px 18px 0;">
+    Senha temporária para <b>{{ temp_flash.login }}</b>:
+    <code style="background:#0f1530; padding: 4px 8px; border-radius: 6px; color:#fcd34d; margin: 0 6px; font-family: ui-monospace, monospace;">{{ temp_flash.senha }}</code>
+    — copie agora, ela <b>não será mostrada de novo</b>.
+  </div>
+  {% endif %}
+
+  <form method="get" action="{{ url_for('staff_users') }}" style="padding: 14px 18px; display:flex; gap: 10px; flex-wrap:wrap; border-bottom: 1px solid var(--staff-border);">
+    <input class="inp" type="text" name="s" value="{{ s or '' }}" placeholder="Buscar login, nome, email..." style="min-width: 260px;">
+    <select class="sel" name="tenant" style="min-width: 200px;">
+      <option value="">Todos os tenants</option>
+      {% for t in tenants %}
+      <option value="{{ t }}" {% if t == tenant_filter %}selected{% endif %}>{{ t }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-amber" type="submit">Filtrar</button>
+    {% if s or tenant_filter %}
+      <a class="btn" href="{{ url_for('staff_users') }}">Limpar</a>
+    {% endif %}
+    <div style="margin-left:auto; color: var(--staff-muted); font-size: 12px; align-self:center;">
+      Total: {{ rows|length }}
+    </div>
+  </form>
+
+  <div style="overflow-x:auto;">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th style="width: 14%;">Login</th>
+          <th style="width: 18%;">Nome</th>
+          <th style="width: 20%;">Email</th>
+          <th style="width: 10%;">Hierarquia</th>
+          <th style="width: 12%;">Tenant</th>
+          <th style="width: 26%; text-align:right;">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in rows %}
+        {% set h = (u.hierarquia or 'user')|lower %}
+        <tr>
+          <td style="font-weight:800; color:#fff;">{{ u.login }}</td>
+          <td>
+            <form method="post" action="{{ url_for('staff_users_update') }}" style="display:flex; gap:6px; align-items:center;">
+              <input type="hidden" name="login" value="{{ u.login }}">
+              <input class="inp" name="nome" value="{{ u.nome or '' }}" placeholder="Nome">
+          </td>
+          <td>
+              <input class="inp" name="email" value="{{ u.email or '' }}" placeholder="Email">
+          </td>
+          <td>
+              <select class="sel" name="hierarquia">
+                <option value="user" {% if h == 'user' %}selected{% endif %}>user</option>
+                <option value="gestor" {% if h == 'gestor' %}selected{% endif %}>gestor</option>
+                <option value="financeiro" {% if h == 'financeiro' %}selected{% endif %}>financeiro</option>
+                <option value="admin" {% if h == 'admin' %}selected{% endif %}>admin</option>
+              </select>
+          </td>
+          <td>
+            <span class="pill amber">{{ u.tenant or '—' }}</span>
+          </td>
+          <td style="text-align:right; white-space:nowrap;">
+              <button class="btn btn-amber" type="submit">Salvar</button>
+            </form>
+
+            <button class="btn" type="button" style="margin-left:6px;"
+                    onclick="openMove('{{ u.login }}','{{ u.tenant or '' }}')">
+              Mover
+            </button>
+
+            <form method="post" action="{{ url_for('staff_users_reset_password') }}" style="display:inline;"
+                  onsubmit="return confirm('Gerar nova senha temporária para {{ u.login }}?');">
+              <input type="hidden" name="login" value="{{ u.login }}">
+              <button class="btn" type="submit" style="margin-left:6px;">Reset senha</button>
+            </form>
+
+            <form method="post" action="{{ url_for('staff_users_delete') }}" style="display:inline;"
+                  onsubmit="return confirm('Excluir o usuário {{ u.login }}?');">
+              <input type="hidden" name="login" value="{{ u.login }}">
+              <button class="btn btn-danger" type="submit" style="margin-left:6px;">Excluir</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not rows %}
+        <tr><td colspan="6" style="color: var(--staff-muted); padding: 16px;">Nenhum usuário encontrado.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL ADD USER -->
+<div id="addBackdrop" class="modal-backdrop">
+  <div class="modal">
+    <div class="modal-h">
+      <div style="font-weight:900;">Novo usuário</div>
+      <button class="modal-close" onclick="closeAdd()">×</button>
+    </div>
+    <div class="modal-b">
+      <form method="post" action="{{ url_for('staff_users_add') }}">
+        <div class="grid2">
+          <div class="field">
+            <label>Login *</label>
+            <input class="inp" name="login" placeholder="ex: joao.silva" required style="width:100%;">
+          </div>
+          <div class="field">
+            <label>Tenant *</label>
+            <select class="sel" name="tenant" required style="width:100%;">
+              <option value="">Selecione...</option>
+              {% for t in tenants %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>Nome</label>
+            <input class="inp" name="nome" placeholder="Nome completo" style="width:100%;">
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input class="inp" name="email" placeholder="email@dominio.com" style="width:100%;">
+          </div>
+          <div class="field">
+            <label>Hierarquia</label>
+            <select class="sel" name="hierarquia" style="width:100%;">
+              <option value="user">user</option>
+              <option value="gestor">gestor</option>
+              <option value="financeiro">financeiro</option>
+              <option value="admin">admin</option>
+            </select>
+          </div>
+          <div class="field"></div>
+          <div class="field">
+            <label>Senha *</label>
+            <input class="inp" name="senha" type="password" required style="width:100%;">
+          </div>
+          <div class="field">
+            <label>Confirmar senha *</label>
+            <input class="inp" name="senha2" type="password" required style="width:100%;">
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+          <button class="btn" type="button" onclick="closeAdd()">Cancelar</button>
+          <button class="btn btn-amber" type="submit">Criar</button>
+        </div>
+        <div style="margin-top:10px; font-size:12px; color: var(--staff-muted);">
+          Se o tenant escolhido ainda não tem nenhum admin, o usuário criado vira admin automaticamente.
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MOVE -->
+<div id="moveBackdrop" class="modal-backdrop">
+  <div class="modal">
+    <div class="modal-h">
+      <div style="font-weight:900;" id="moveTitle">Mover usuário</div>
+      <button class="modal-close" onclick="closeMove()">×</button>
+    </div>
+    <div class="modal-b">
+      <form method="post" action="{{ url_for('staff_users_move') }}">
+        <input type="hidden" name="login" id="moveLogin">
+        <div class="field">
+          <label>Novo tenant *</label>
+          <select class="sel" name="tenant" id="moveTenant" required style="width:100%;">
+            {% for t in tenants %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+          </select>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+          <button class="btn" type="button" onclick="closeMove()">Cancelar</button>
+          <button class="btn btn-amber" type="submit">Mover</button>
+        </div>
+        <div style="margin-top:10px; font-size:12px; color: var(--staff-muted);">
+          Atenção: registros (acordos/mandados) do tenant atual permanecem lá. Apenas o vínculo do usuário muda.
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function openAdd(){ document.getElementById('addBackdrop').style.display = 'flex'; }
+  function closeAdd(){ document.getElementById('addBackdrop').style.display = 'none'; }
+  function openMove(login, tenantAtual){
+    document.getElementById('moveLogin').value = login;
+    document.getElementById('moveTitle').textContent = 'Mover usuário — ' + login;
+    const sel = document.getElementById('moveTenant');
+    for (const opt of sel.options){
+      opt.disabled = (opt.value === tenantAtual);
+    }
+    document.getElementById('moveBackdrop').style.display = 'flex';
+  }
+  function closeMove(){ document.getElementById('moveBackdrop').style.display = 'none'; }
+
+  document.getElementById('addBackdrop')?.addEventListener('click', (e)=>{ if(e.target.id === 'addBackdrop') closeAdd(); });
+  document.getElementById('moveBackdrop')?.addEventListener('click', (e)=>{ if(e.target.id === 'moveBackdrop') closeMove(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape'){ closeAdd(); closeMove(); } });
+</script>
+{% endblock %}

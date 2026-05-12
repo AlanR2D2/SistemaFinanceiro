@@ -92,9 +92,11 @@ SENHA_APP_GMAIL=xxxx xxxx xxxx xxxx        # Senha de app Google
 
 | Tabela          | Descrição                              |
 |-----------------|----------------------------------------|
-| `fin_users`     | Usuários do sistema (login, senha hash, nome, email, hierarquia) |
+| `fin_users`     | Usuários do sistema (login, senha hash, nome, email, hierarquia, **tenant**) |
 | `fin_acordos`   | Registros de acordos judiciais          |
 | `fin_mandados`  | Registros de mandados judiciais         |
+| `fin_tenants`   | Fonte da verdade dos tenants (empresas) — `nome` único, `ativo` 0/1 |
+| `fin_staff`     | Usuários administrativos cross-tenant (painel staff) — `login` PK, `email` único, `senha` hash |
 
 ### Tabelas de Cadastro Auxiliar
 
@@ -118,7 +120,15 @@ SENHA_APP_GMAIL=xxxx xxxx xxxx xxxx        # Senha de app Google
 
 ### Campos de fin_users
 
-`login` (PK, texto), `senha` (hash Werkzeug), `nome`, `email`, `hierarquia`, `dra_consumidor` (0/1), `aeroline` (0/1), `created_at`, `updated_at`
+`login` (PK, texto), `senha` (hash Werkzeug), `nome`, `email`, `hierarquia`, **`tenant` (NOT NULL)**, `created_at`, `updated_at`
+
+### Campos de fin_tenants
+
+`id` (PK), `nome` (UNIQUE), `ativo` (0/1), `created_at`, `updated_at`
+
+### Campos de fin_staff
+
+`login` (PK, texto), `email` (UNIQUE), `senha` (hash Werkzeug), `nome`, `created_at`, `updated_at`
 
 ---
 
@@ -126,33 +136,35 @@ SENHA_APP_GMAIL=xxxx xxxx xxxx xxxx        # Senha de app Google
 
 ### Conceito
 
-O sistema atende **duas empresas** (tenants): **Dra Consumidor** e **Aeroline**.
-- Todas as tabelas de dados possuem coluna `tenant` (TEXT) — exceto `fin_uf` que é compartilhada.
-- Na tela de login, o usuário seleciona a empresa antes de autenticar.
-- A empresa selecionada é armazenada em `session["tenant"]`.
+O sistema é multi-tenant — atende N empresas. Os tenants iniciais são **Dra Consumidor** e **Aeroline**, mas outros podem ser criados pelo staff a qualquer momento.
+
+- Cada usuário pertence a **um** tenant (coluna `tenant` em `fin_users`, NOT NULL).
+- Todas as tabelas de dados/cadastros possuem coluna `tenant` (TEXT) — exceto `fin_uf` que é compartilhada (`TABLES_SEM_TENANT`).
+- O usuário não escolhe empresa no login: o tenant vem do próprio usuário e é validado contra `fin_tenants` ativo.
+- A empresa do usuário fica em `session["tenant"]`.
 - Todas as queries de leitura filtram por `tenant` automaticamente via `sb_select` / `sb_select_or_like`.
-- Todos os INSERTs incluem `tenant` no payload.
+- Todos os INSERTs em tabelas com tenant incluem `tenant` no payload.
+- Cache em memória dos tenants ativos via `_load_active_tenants()` (TTL 60s) — invalidado pelo painel staff em add/rename/toggle/delete.
 
-### Controle de acesso por empresa
+### Invariante de admin por tenant
 
-- `fin_users` possui colunas `dra_consumidor` e `aeroline` (integer 0/1).
-- No login, o sistema verifica se a coluna da empresa selecionada = 1 para o usuário.
-- Na tela de usuários, ao adicionar:
-  - Se o login já existe: apenas atualiza a coluna da empresa atual para 1.
-  - Se não existe: cria o usuário com acesso apenas à empresa atual.
+- Todo tenant **deve ter pelo menos um usuário com `hierarquia='admin'`**.
+- Quando o staff cria o primeiro usuário num tenant que ainda não tem admin, o sistema força `hierarquia='admin'` (mesmo se o staff escolher outra coisa).
+- Update/delete/move bloqueiam operações que deixariam o tenant sem nenhum admin.
 
-### Mapa de empresas
+### Painel de Staff
 
-| Empresa        | Coluna fin_users | Valor tenant |
-|----------------|------------------|--------------|
-| Dra Consumidor | `dra_consumidor` | `Dra Consumidor` |
-| Aeroline       | `aeroline`       | `Aeroline`    |
+Existe um painel `/staff` para usuários administrativos (`fin_staff`) gerenciarem tenants e usuários cross-tenant.
 
-### Sync scripts
+- Autenticação: email + senha contra `fin_staff` (independente do Flask-Login dos usuários comuns).
+- Sessão própria: `session["staff_login"]`.
+- Pode criar/renomear/ativar-desativar/excluir tenants.
+  - Renomear faz cascata em todas as tabelas com coluna `tenant`.
+  - Excluir só funciona se o tenant não tiver nenhum registro em nenhuma tabela.
+- Pode criar/editar/mover entre tenants/excluir usuários, e gerar senha temporária (mostrada uma única vez).
+- Tela "Minha conta" do staff permite trocar nome, email e senha do próprio staff.
 
-- `sync_mandados.py` e `sync_acordos.py` aceitam parâmetro `tenant` (default: `Dra Consumidor`).
-- Uso: `python sync_mandados.py "Aeroline"` ou `python sync_acordos.py "Aeroline"`.
-- O sync apaga apenas registros do tenant informado antes de inserir.
+Staff inicial seedado pela migração SQL: `leadfabrix@gmail.com` (senha `La.260425`).
 
 ---
 
@@ -160,11 +172,12 @@ O sistema atende **duas empresas** (tenants): **Dra Consumidor** e **Aeroline**.
 
 ### Mecanismo
 
-- **Flask-Login** gerencia sessões.
+- **Flask-Login** gerencia sessões dos usuários comuns.
 - Senhas armazenadas com **hash Werkzeug** (pbkdf2/scrypt).
 - Migração automática de senhas legadas em texto plano para hash no primeiro login bem-sucedido.
 - Classe `User(UserMixin)` carregada por `login` (campo PK de `fin_users`).
-- No login, o usuário seleciona a **empresa** (dropdown). O sistema valida acesso à empresa antes de autenticar.
+- O login pede apenas usuário e senha — o tenant vem do próprio registro do usuário e é validado contra `fin_tenants` ativo.
+- O staff tem auth separada (`session["staff_login"]`) — não usa Flask-Login.
 
 ### Hierarquias (Permissões)
 
@@ -251,6 +264,26 @@ O sistema atende **duas empresas** (tenants): **Dra Consumidor** e **Aeroline**.
 |--------|-----------|----------------------------------------------|
 | GET    | `/config` | Página de configurações pessoais             |
 | POST   | `/config` | Atualiza nome, e-mail e/ou senha do usuário  |
+
+### Staff (Cross-Tenant)
+
+| Método | Rota                                | Descrição                                            |
+|--------|-------------------------------------|------------------------------------------------------|
+| GET/POST | `/staff/login`                    | Login do staff (email + senha)                       |
+| GET    | `/staff/logout`                     | Sair                                                 |
+| GET    | `/staff`                            | Dashboard staff (KPIs globais + visão por tenant)    |
+| GET    | `/staff/tenants`                    | Lista de tenants                                     |
+| POST   | `/staff/tenants/add`                | Cria tenant                                          |
+| POST   | `/staff/tenants/rename`             | Renomeia tenant (cascata em todas as tabelas)        |
+| POST   | `/staff/tenants/toggle`             | Ativa/desativa tenant                                |
+| POST   | `/staff/tenants/delete`             | Exclui tenant (só se totalmente vazio)               |
+| GET    | `/staff/users`                      | Lista global de usuários (filtros: tenant, busca)    |
+| POST   | `/staff/users/add`                  | Cria usuário em qualquer tenant                      |
+| POST   | `/staff/users/update`               | Edita nome/email/hierarquia                          |
+| POST   | `/staff/users/move`                 | Move usuário entre tenants                           |
+| POST   | `/staff/users/reset-password`       | Gera senha temporária (mostrada uma única vez)       |
+| POST   | `/staff/users/delete`               | Exclui usuário                                       |
+| GET/POST | `/staff/account`                  | Minha conta do staff (nome, email, senha)            |
 
 ### Fix estático
 

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Chivunk/miniconda3/**)",
+      "Read(//c/Users/Chivunk/AppData/Local/miniconda3/**)",
+      "Read(//c/Users/alang/AppData/Local/miniconda3/**)"
+    ]
+  }
+}

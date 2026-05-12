@@ -1,0 +1,61 @@
+{% extends "staff/base.html" %}
+{% block title %}Dashboard Staff{% endblock %}
+
+{% block content %}
+<div style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px;">
+  <div class="staff-card" style="padding: 16px;">
+    <div style="font-size:12px; color: var(--staff-muted); font-weight:800;">TENANTS</div>
+    <div style="font-size: 28px; font-weight: 900; color:#fff; margin-top:4px;">{{ total_tenants }}</div>
+  </div>
+  <div class="staff-card" style="padding: 16px;">
+    <div style="font-size:12px; color: var(--staff-muted); font-weight:800;">USUÁRIOS</div>
+    <div style="font-size: 28px; font-weight: 900; color:#fff; margin-top:4px;">{{ total_users }}</div>
+  </div>
+  <div class="staff-card" style="padding: 16px;">
+    <div style="font-size:12px; color: var(--staff-muted); font-weight:800;">ACORDOS</div>
+    <div style="font-size: 28px; font-weight: 900; color:#fff; margin-top:4px;">{{ total_acordos }}</div>
+  </div>
+  <div class="staff-card" style="padding: 16px;">
+    <div style="font-size:12px; color: var(--staff-muted); font-weight:800;">MANDADOS</div>
+    <div style="font-size: 28px; font-weight: 900; color:#fff; margin-top:4px;">{{ total_mandados }}</div>
+  </div>
+</div>
+
+<div class="staff-card">
+  <div class="staff-card-h">
+    <div>
+      <div class="staff-card-title">Visão por tenant</div>
+      <div class="staff-card-sub">Resumo de usuários e dados em cada empresa.</div>
+    </div>
+    <a href="{{ url_for('staff_tenants') }}" class="btn btn-amber">Gerenciar tenants</a>
+  </div>
+
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Tenant</th>
+        <th>Status</th>
+        <th style="text-align:right;">Usuários</th>
+        <th style="text-align:right;">Acordos</th>
+        <th style="text-align:right;">Mandados</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in stats %}
+      <tr>
+        <td style="font-weight:800; color:#fff;">{{ s.nome }}</td>
+        <td>
+          {% if s.ativo == 1 %}<span class="pill green">Ativo</span>{% else %}<span class="pill red">Inativo</span>{% endif %}
+        </td>
+        <td style="text-align:right;">{{ s.users }}</td>
+        <td style="text-align:right;">{{ s.acordos }}</td>
+        <td style="text-align:right;">{{ s.mandados }}</td>
+      </tr>
+      {% endfor %}
+      {% if not stats %}
+      <tr><td colspan="5" style="color:var(--staff-muted); padding: 16px;">Nenhum tenant cadastrado.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

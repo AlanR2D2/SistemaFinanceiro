@@ -1,0 +1,58 @@
+{% extends "staff/base.html" %}
+{% block title %}Minha conta — Staff{% endblock %}
+
+{% block content %}
+<div class="staff-card" style="max-width: 720px;">
+  <div class="staff-card-h">
+    <div>
+      <div class="staff-card-title">Minha conta</div>
+      <div class="staff-card-sub">Atualize seu nome, email e senha do painel staff.</div>
+    </div>
+  </div>
+
+  {% if error %}<div class="alert" style="margin: 12px 18px 0;">{{ error }}</div>{% endif %}
+  {% if ok %}<div class="ok" style="margin: 12px 18px 0;">{{ ok }}</div>{% endif %}
+
+  <form method="post" action="{{ url_for('staff_account_post') }}" style="padding: 16px 18px;">
+    <div class="grid2">
+      <div class="field">
+        <label>Login (não editável)</label>
+        <input class="inp" value="{{ staff.login }}" disabled style="width:100%;">
+      </div>
+      <div class="field">
+        <label>Nome</label>
+        <input class="inp" name="nome" value="{{ staff.nome or '' }}" style="width:100%;">
+      </div>
+      <div class="field" style="grid-column: span 2;">
+        <label>Email</label>
+        <input class="inp" name="email" value="{{ staff.email or '' }}" style="width:100%;">
+      </div>
+    </div>
+
+    <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--staff-border);">
+      <div style="font-weight: 900; color:#fff; margin-bottom: 10px;">Trocar senha</div>
+      <div class="grid2">
+        <div class="field" style="grid-column: span 2;">
+          <label>Senha atual</label>
+          <input class="inp" name="senha_atual" type="password" autocomplete="current-password" style="width:100%;">
+        </div>
+        <div class="field">
+          <label>Nova senha</label>
+          <input class="inp" name="senha_nova" type="password" autocomplete="new-password" style="width:100%;">
+        </div>
+        <div class="field">
+          <label>Confirmar nova senha</label>
+          <input class="inp" name="senha_nova2" type="password" autocomplete="new-password" style="width:100%;">
+        </div>
+      </div>
+      <div style="margin-top: 8px; font-size: 12px; color: var(--staff-muted);">
+        Senha do staff deve ter ao menos 8 caracteres.
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:18px;">
+      <button class="btn btn-amber" type="submit">Salvar alterações</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

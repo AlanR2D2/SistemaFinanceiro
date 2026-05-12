@@ -34,14 +34,63 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 TABLE_USERS = "fin_users"
 TABLE_ACORDOS = "fin_acordos"
 TABLE_MANDADOS = "fin_mandados"
+TABLE_TENANTS = "fin_tenants"
+TABLE_STAFF = "fin_staff"
 
 # ===================== MULTI-TENANT =====================
-TENANT_EMPRESAS = {
-    "Dra Consumidor": "dra_consumidor",
-    "Aeroline": "aeroline",
-}
 # Tabelas que NÃO recebem filtro de tenant (são compartilhadas)
 TABLES_SEM_TENANT = {"fin_uf"}
+
+# Cache simples de tenants ativos (TTL em segundos)
+_TENANTS_CACHE = {"ts": 0.0, "data": []}
+_TENANTS_CACHE_TTL = 60.0
+
+
+def _load_active_tenants() -> list[dict]:
+    """Lê fin_tenants com cache em memória."""
+    import time
+    now = time.time()
+    if (now - _TENANTS_CACHE["ts"]) < _TENANTS_CACHE_TTL and _TENANTS_CACHE["data"]:
+        return _TENANTS_CACHE["data"]
+    try:
+        res = supabase.table(TABLE_TENANTS).select("nome,ativo").order("nome").execute()
+        data = getattr(res, "data", None) or []
+    except Exception:
+        data = []
+    _TENANTS_CACHE["ts"] = now
+    _TENANTS_CACHE["data"] = data
+    return data
+
+
+def _tenant_existe_ativo(nome: str) -> bool:
+    nome = (nome or "").strip()
+    if not nome:
+        return False
+    for t in _load_active_tenants():
+        if (t.get("nome") or "").strip() == nome and int(t.get("ativo") or 0) == 1:
+            return True
+    return False
+
+
+def _invalidate_tenants_cache():
+    _TENANTS_CACHE["ts"] = 0.0
+    _TENANTS_CACHE["data"] = []
+
+
+def _tenant_admin_count(tenant: str, exclude_login: str | None = None) -> int:
+    """Conta usuários com hierarquia=admin no tenant. Usado para garantir que sempre exista ao menos 1 admin."""
+    tenant = (tenant or "").strip()
+    if not tenant:
+        return 0
+    try:
+        q = supabase.table(TABLE_USERS).select("login").eq("tenant", tenant).eq("hierarquia", "admin")
+        if exclude_login:
+            q = q.neq("login", exclude_login)
+        res = q.limit(5000).execute()
+        rows = getattr(res, "data", None) or []
+        return len(rows)
+    except Exception:
+        return 0
 
 # ===================== AUTH =====================
 
@@ -156,10 +205,6 @@ def login():
 def login_post():
     username = (request.form.get("username") or "").strip()
     password = (request.form.get("password") or "").strip()
-    empresa = (request.form.get("empresa") or "").strip()
-
-    if empresa not in TENANT_EMPRESAS:
-        return render_template("login.html", error="Selecione uma empresa válida.")
 
     user_data = _get_user_by_login(username)
     if not user_data:
@@ -169,14 +214,16 @@ def login_post():
     if not ok:
         return render_template("login.html", error="Usuário ou senha inválidos.")
 
-    # Verificar se o usuário tem acesso à empresa selecionada
-    coluna_empresa = TENANT_EMPRESAS[empresa]
-    if not user_data.get(coluna_empresa):
-        return render_template("login.html", error="Você não tem acesso a esta empresa.")
+    tenant = (user_data.get("tenant") or "").strip()
+    if not tenant:
+        return render_template("login.html", error="Usuário sem empresa atribuída. Contate o staff.")
+
+    if not _tenant_existe_ativo(tenant):
+        return render_template("login.html", error="Empresa inativa. Contate o staff.")
 
     _maybe_migrate_plain_password_to_hash(user_data, ok)
     login_user(User(user_data))
-    session["tenant"] = empresa
+    session["tenant"] = tenant
     return redirect(url_for("dashboard"))
 
 
@@ -1182,10 +1229,7 @@ def users_admin():
     require_admin()
     s = (request.args.get("s") or "").strip()
 
-    tenant = _get_tenant()
-    coluna_empresa = TENANT_EMPRESAS.get(tenant, "dra_consumidor")
-
-    cols = "login,nome,email,hierarquia,dra_consumidor,aeroline,created_at,updated_at"
+    cols = "login,nome,email,hierarquia,tenant,created_at,updated_at"
     if s:
         rows = sb_select_or_like(
             TABLE_USERS,
@@ -1195,13 +1239,9 @@ def users_admin():
             desc=False,
             or_ilike_cols=["login", "nome", "email", "hierarquia"],
             qtext=s,
-            skip_tenant=True
         )
     else:
-        rows = sb_select(TABLE_USERS, columns=cols, limit=2000, order_col="login", desc=False, skip_tenant=True)
-
-    # Filtrar apenas usuários com acesso à empresa atual
-    rows = [r for r in rows if r.get(coluna_empresa) == 1]
+        rows = sb_select(TABLE_USERS, columns=cols, limit=2000, order_col="login", desc=False)
 
     return render_template("users.html", rows=rows, error=request.args.get("error"), ok=request.args.get("ok"))
 
@@ -1226,35 +1266,28 @@ def users_add():
         hierarquia = "user"
 
     tenant = _get_tenant()
-    coluna_empresa = TENANT_EMPRESAS.get(tenant, "dra_consumidor")
 
     existing = _get_user_by_login(login)
     if existing:
-        # Usuário já existe — só ativa acesso à empresa atual
-        if existing.get(coluna_empresa) == 1:
-            return redirect(url_for("users_admin", error="Este usuário já tem acesso a esta empresa."))
-        try:
-            supabase.table(TABLE_USERS).update({coluna_empresa: 1}).eq("login", login).execute()
-        except Exception:
-            return redirect(url_for("users_admin", error="Falha ao atualizar acesso do usuário."))
-        return redirect(url_for("users_admin", ok=f"Usuário '{login}' já existia. Acesso à empresa '{tenant}' concedido."))
+        return redirect(url_for("users_admin", error="Já existe um usuário com este login."))
 
-    # Usuário novo — precisa de senha
     if senha != senha2:
         return redirect(url_for("users_admin", error="Senha e confirmação não conferem."))
 
     if len(senha) < 6:
         return redirect(url_for("users_admin", error="Senha deve ter pelo menos 6 caracteres."))
 
-    # Cria com acesso apenas à empresa atual
+    # Se o tenant não tem nenhum admin, força o primeiro usuário criado a ser admin
+    if _tenant_admin_count(tenant) == 0:
+        hierarquia = "admin"
+
     payload = {
         "login": login,
         "nome": nome,
         "email": email,
         "hierarquia": hierarquia,
         "senha": _hash_password(senha),
-        "dra_consumidor": 1 if coluna_empresa == "dra_consumidor" else 0,
-        "aeroline": 1 if coluna_empresa == "aeroline" else 0,
+        "tenant": tenant,
     }
 
     try:
@@ -1276,6 +1309,10 @@ def users_update():
     if not login:
         return redirect(url_for("users_admin", error="Login inválido."))
 
+    alvo = _get_user_by_login(login)
+    if not alvo or (alvo.get("tenant") or "") != _get_tenant():
+        return redirect(url_for("users_admin", error="Usuário não encontrado neste tenant."))
+
     payload = {}
 
     if mode == "reset_password":
@@ -1296,6 +1333,12 @@ def users_update():
 
         if hierarquia not in ("user", "gestor", "financeiro", "admin"):
             hierarquia = "user"
+
+        # Invariante: o tenant precisa ter ao menos 1 admin
+        old_h = (alvo.get("hierarquia") or "").strip().lower()
+        if old_h == "admin" and hierarquia != "admin":
+            if _tenant_admin_count(_get_tenant(), exclude_login=login) < 1:
+                return redirect(url_for("users_admin", error="Não é possível remover o último admin deste tenant."))
 
         payload["nome"] = nome
         payload["email"] = email
@@ -1321,12 +1364,601 @@ def users_delete():
     if login == current_user.login:
         return redirect(url_for("users_admin", error="Você não pode excluir o próprio usuário logado."))
 
+    alvo = _get_user_by_login(login)
+    if not alvo or (alvo.get("tenant") or "") != _get_tenant():
+        return redirect(url_for("users_admin", error="Usuário não encontrado neste tenant."))
+
+    # Invariante: não pode deixar o tenant sem admin
+    if (alvo.get("hierarquia") or "").strip().lower() == "admin":
+        if _tenant_admin_count(_get_tenant(), exclude_login=login) < 1:
+            return redirect(url_for("users_admin", error="Não é possível excluir o último admin deste tenant."))
+
     try:
         supabase.table(TABLE_USERS).delete().eq("login", login).execute()
     except Exception:
         return redirect(url_for("users_admin", error="Falha ao excluir usuário."))
 
     return redirect(url_for("users_admin", ok="Usuário excluído."))
+
+# ===================== STAFF (CROSS-TENANT) =====================
+
+import secrets
+import string
+from functools import wraps
+
+# Tabelas que possuem coluna `tenant` (usadas para cascata de rename e validação de delete)
+ALL_TENANT_TABLES = (
+    TABLE_USERS,
+    TABLE_ACORDOS,
+    TABLE_MANDADOS,
+    "fin_status",
+    "fin_local",
+    "fin_conta",
+    "fin_patrono_reu",
+    "fin_prazo_estimado",
+    "fin_reu",
+)
+
+
+def _get_staff_by_login(login: str) -> dict | None:
+    login = (login or "").strip()
+    if not login:
+        return None
+    try:
+        res = supabase.table(TABLE_STAFF).select("*").eq("login", login).limit(1).execute()
+        rows = getattr(res, "data", None) or []
+        return rows[0] if rows else None
+    except Exception:
+        return None
+
+
+def _get_staff_by_email(email: str) -> dict | None:
+    email = (email or "").strip().lower()
+    if not email:
+        return None
+    try:
+        res = supabase.table(TABLE_STAFF).select("*").ilike("email", email).limit(1).execute()
+        rows = getattr(res, "data", None) or []
+        return rows[0] if rows else None
+    except Exception:
+        return None
+
+
+def _current_staff() -> dict | None:
+    login = session.get("staff_login")
+    if not login:
+        return None
+    return _get_staff_by_login(login)
+
+
+def staff_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not session.get("staff_login"):
+            return redirect(url_for("staff_login"))
+        staff = _get_staff_by_login(session["staff_login"])
+        if not staff:
+            session.pop("staff_login", None)
+            return redirect(url_for("staff_login"))
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def _generate_temp_password(length: int = 12) -> str:
+    alphabet = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def _pop_staff_flash_temp_password() -> dict | None:
+    data = session.pop("staff_flash_temp_password", None)
+    return data
+
+
+# ---------- AUTH STAFF ----------
+
+@app.get("/staff/login")
+def staff_login():
+    if session.get("staff_login"):
+        return redirect(url_for("staff_dashboard"))
+    return render_template("staff/login.html", error=request.args.get("error"))
+
+
+@app.post("/staff/login")
+def staff_login_post():
+    email = (request.form.get("email") or "").strip()
+    password = (request.form.get("password") or "").strip()
+
+    if not email or not password:
+        return render_template("staff/login.html", error="Informe email e senha.")
+
+    staff = _get_staff_by_email(email)
+    if not staff:
+        return render_template("staff/login.html", error="Credenciais inválidas.")
+
+    if not _password_ok(password, staff.get("senha", "")):
+        return render_template("staff/login.html", error="Credenciais inválidas.")
+
+    # Encerra qualquer sessão de tenant em paralelo
+    try:
+        logout_user()
+    except Exception:
+        pass
+    session.pop("tenant", None)
+
+    session["staff_login"] = staff["login"]
+    return redirect(url_for("staff_dashboard"))
+
+
+@app.get("/staff/logout")
+def staff_logout():
+    session.pop("staff_login", None)
+    session.pop("staff_flash_temp_password", None)
+    return redirect(url_for("staff_login"))
+
+
+# ---------- DASHBOARD STAFF ----------
+
+@app.get("/staff")
+@staff_required
+def staff_dashboard():
+    staff = _current_staff() or {}
+
+    try:
+        tenants = supabase.table(TABLE_TENANTS).select("nome,ativo").order("nome").execute()
+        tenants = getattr(tenants, "data", None) or []
+    except Exception:
+        tenants = []
+
+    # Contagens por tenant
+    stats = []
+    total_users = 0
+    total_acordos = 0
+    total_mandados = 0
+    for t in tenants:
+        nome = t.get("nome") or ""
+        try:
+            u = supabase.table(TABLE_USERS).select("login").eq("tenant", nome).limit(5000).execute()
+            uc = len(getattr(u, "data", None) or [])
+        except Exception:
+            uc = 0
+        try:
+            a = supabase.table(TABLE_ACORDOS).select("id").eq("tenant", nome).limit(50000).execute()
+            ac = len(getattr(a, "data", None) or [])
+        except Exception:
+            ac = 0
+        try:
+            m = supabase.table(TABLE_MANDADOS).select("id").eq("tenant", nome).limit(50000).execute()
+            mc = len(getattr(m, "data", None) or [])
+        except Exception:
+            mc = 0
+
+        total_users += uc
+        total_acordos += ac
+        total_mandados += mc
+
+        stats.append({
+            "nome": nome,
+            "ativo": int(t.get("ativo") or 0),
+            "users": uc,
+            "acordos": ac,
+            "mandados": mc,
+        })
+
+    return render_template(
+        "staff/dashboard.html",
+        staff=staff,
+        stats=stats,
+        total_tenants=len(tenants),
+        total_users=total_users,
+        total_acordos=total_acordos,
+        total_mandados=total_mandados,
+    )
+
+
+# ---------- TENANTS ----------
+
+@app.get("/staff/tenants")
+@staff_required
+def staff_tenants():
+    staff = _current_staff() or {}
+    try:
+        res = supabase.table(TABLE_TENANTS).select("*").order("nome").execute()
+        rows = getattr(res, "data", None) or []
+    except Exception:
+        rows = []
+    return render_template(
+        "staff/tenants.html",
+        staff=staff,
+        rows=rows,
+        error=request.args.get("error"),
+        ok=request.args.get("ok"),
+    )
+
+
+@app.post("/staff/tenants/add")
+@staff_required
+def staff_tenants_add():
+    nome = (request.form.get("nome") or "").strip()
+    if not nome:
+        return redirect(url_for("staff_tenants", error="Informe o nome do tenant."))
+
+    try:
+        dup = supabase.table(TABLE_TENANTS).select("nome").ilike("nome", nome).limit(1).execute()
+        if getattr(dup, "data", None):
+            return redirect(url_for("staff_tenants", error="Já existe um tenant com este nome."))
+    except Exception:
+        pass
+
+    try:
+        supabase.table(TABLE_TENANTS).insert({"nome": nome, "ativo": 1}).execute()
+    except Exception:
+        return redirect(url_for("staff_tenants", error="Falha ao criar tenant."))
+
+    _invalidate_tenants_cache()
+    return redirect(url_for("staff_tenants", ok=f"Tenant '{nome}' criado."))
+
+
+@app.post("/staff/tenants/rename")
+@staff_required
+def staff_tenants_rename():
+    old_nome = (request.form.get("old_nome") or "").strip()
+    new_nome = (request.form.get("nome") or "").strip()
+
+    if not old_nome or not new_nome:
+        return redirect(url_for("staff_tenants", error="Nome inválido."))
+
+    if old_nome == new_nome:
+        return redirect(url_for("staff_tenants", ok="Nome inalterado."))
+
+    try:
+        dup = supabase.table(TABLE_TENANTS).select("nome").ilike("nome", new_nome).limit(1).execute()
+        if getattr(dup, "data", None):
+            return redirect(url_for("staff_tenants", error="Já existe um tenant com este nome."))
+    except Exception:
+        pass
+
+    # Cascata: renomeia em fin_tenants e em todas as tabelas com coluna tenant
+    try:
+        supabase.table(TABLE_TENANTS).update({"nome": new_nome}).eq("nome", old_nome).execute()
+    except Exception:
+        return redirect(url_for("staff_tenants", error="Falha ao renomear tenant."))
+
+    falhas = []
+    for tbl in ALL_TENANT_TABLES:
+        try:
+            supabase.table(tbl).update({"tenant": new_nome}).eq("tenant", old_nome).execute()
+        except Exception:
+            falhas.append(tbl)
+
+    _invalidate_tenants_cache()
+
+    if falhas:
+        return redirect(url_for("staff_tenants", error=f"Renomeado, mas falhou em: {', '.join(falhas)}."))
+    return redirect(url_for("staff_tenants", ok=f"Tenant renomeado para '{new_nome}'."))
+
+
+@app.post("/staff/tenants/toggle")
+@staff_required
+def staff_tenants_toggle():
+    nome = (request.form.get("nome") or "").strip()
+    if not nome:
+        return redirect(url_for("staff_tenants", error="Tenant inválido."))
+
+    try:
+        res = supabase.table(TABLE_TENANTS).select("ativo").eq("nome", nome).limit(1).execute()
+        rows = getattr(res, "data", None) or []
+        if not rows:
+            return redirect(url_for("staff_tenants", error="Tenant não encontrado."))
+        novo = 0 if int(rows[0].get("ativo") or 0) == 1 else 1
+        supabase.table(TABLE_TENANTS).update({"ativo": novo}).eq("nome", nome).execute()
+    except Exception:
+        return redirect(url_for("staff_tenants", error="Falha ao alterar status."))
+
+    _invalidate_tenants_cache()
+    return redirect(url_for("staff_tenants", ok=f"Tenant '{nome}' agora está {'ativo' if novo == 1 else 'inativo'}."))
+
+
+@app.post("/staff/tenants/delete")
+@staff_required
+def staff_tenants_delete():
+    nome = (request.form.get("nome") or "").strip()
+    if not nome:
+        return redirect(url_for("staff_tenants", error="Tenant inválido."))
+
+    # Bloqueia se houver qualquer registro associado
+    bloqueios = []
+    for tbl in ALL_TENANT_TABLES:
+        try:
+            r = supabase.table(tbl).select("tenant").eq("tenant", nome).limit(1).execute()
+            if getattr(r, "data", None):
+                bloqueios.append(tbl)
+        except Exception:
+            pass
+
+    if bloqueios:
+        return redirect(url_for(
+            "staff_tenants",
+            error=f"Tenant '{nome}' tem dados em: {', '.join(bloqueios)}. Exclusão bloqueada."
+        ))
+
+    try:
+        supabase.table(TABLE_TENANTS).delete().eq("nome", nome).execute()
+    except Exception:
+        return redirect(url_for("staff_tenants", error="Falha ao excluir tenant."))
+
+    _invalidate_tenants_cache()
+    return redirect(url_for("staff_tenants", ok=f"Tenant '{nome}' excluído."))
+
+
+# ---------- USERS (GLOBAL) ----------
+
+@app.get("/staff/users")
+@staff_required
+def staff_users():
+    staff = _current_staff() or {}
+    s = (request.args.get("s") or "").strip()
+    tenant_filter = (request.args.get("tenant") or "").strip()
+
+    try:
+        q = supabase.table(TABLE_USERS).select("login,nome,email,hierarquia,tenant,created_at,updated_at").order("login")
+        if tenant_filter:
+            q = q.eq("tenant", tenant_filter)
+        if s:
+            parts = [f"{c}.ilike.*{s}*" for c in ("login", "nome", "email", "hierarquia")]
+            q = q.or_(",".join(parts))
+        res = q.limit(5000).execute()
+        rows = getattr(res, "data", None) or []
+    except Exception:
+        rows = []
+
+    try:
+        tens = supabase.table(TABLE_TENANTS).select("nome").order("nome").execute()
+        tenants = [t["nome"] for t in (getattr(tens, "data", None) or [])]
+    except Exception:
+        tenants = []
+
+    temp_flash = _pop_staff_flash_temp_password()
+
+    return render_template(
+        "staff/users.html",
+        staff=staff,
+        rows=rows,
+        tenants=tenants,
+        tenant_filter=tenant_filter,
+        s=s,
+        temp_flash=temp_flash,
+        error=request.args.get("error"),
+        ok=request.args.get("ok"),
+    )
+
+
+@app.post("/staff/users/add")
+@staff_required
+def staff_users_add():
+    login = (request.form.get("login") or "").strip()
+    nome = (request.form.get("nome") or "").strip()
+    email = (request.form.get("email") or "").strip()
+    hierarquia = (request.form.get("hierarquia") or "user").strip().lower()
+    tenant = (request.form.get("tenant") or "").strip()
+    senha = (request.form.get("senha") or "").strip()
+    senha2 = (request.form.get("senha2") or "").strip()
+
+    if not login or not tenant:
+        return redirect(url_for("staff_users", error="Login e tenant são obrigatórios."))
+
+    if hierarquia not in ("user", "gestor", "financeiro", "admin"):
+        hierarquia = "user"
+
+    if not _tenant_existe_ativo(tenant):
+        # Permite criar em tenant inativo? Vamos validar contra existência apenas
+        try:
+            r = supabase.table(TABLE_TENANTS).select("nome").eq("nome", tenant).limit(1).execute()
+            if not (getattr(r, "data", None) or []):
+                return redirect(url_for("staff_users", error="Tenant inválido."))
+        except Exception:
+            return redirect(url_for("staff_users", error="Tenant inválido."))
+
+    if _get_user_by_login(login):
+        return redirect(url_for("staff_users", error="Já existe um usuário com este login."))
+
+    if senha != senha2:
+        return redirect(url_for("staff_users", error="Senha e confirmação não conferem."))
+
+    if len(senha) < 6:
+        return redirect(url_for("staff_users", error="Senha deve ter pelo menos 6 caracteres."))
+
+    # Tenant precisa ter pelo menos 1 admin — força o primeiro usuário a ser admin
+    if _tenant_admin_count(tenant) == 0:
+        hierarquia = "admin"
+
+    payload = {
+        "login": login,
+        "nome": nome,
+        "email": email,
+        "hierarquia": hierarquia,
+        "senha": _hash_password(senha),
+        "tenant": tenant,
+    }
+    try:
+        supabase.table(TABLE_USERS).insert(payload).execute()
+    except Exception:
+        return redirect(url_for("staff_users", error="Falha ao criar usuário."))
+
+    return redirect(url_for("staff_users", ok=f"Usuário '{login}' criado no tenant '{tenant}'."))
+
+
+@app.post("/staff/users/update")
+@staff_required
+def staff_users_update():
+    login = (request.form.get("login") or "").strip()
+    nome = (request.form.get("nome") or "").strip()
+    email = (request.form.get("email") or "").strip()
+    hierarquia = (request.form.get("hierarquia") or "user").strip().lower()
+
+    if not login:
+        return redirect(url_for("staff_users", error="Login inválido."))
+
+    alvo = _get_user_by_login(login)
+    if not alvo:
+        return redirect(url_for("staff_users", error="Usuário não encontrado."))
+
+    if hierarquia not in ("user", "gestor", "financeiro", "admin"):
+        hierarquia = "user"
+
+    old_h = (alvo.get("hierarquia") or "").strip().lower()
+    tenant = (alvo.get("tenant") or "").strip()
+
+    if old_h == "admin" and hierarquia != "admin":
+        if _tenant_admin_count(tenant, exclude_login=login) < 1:
+            return redirect(url_for("staff_users", error=f"Não é possível remover o último admin do tenant '{tenant}'."))
+
+    try:
+        supabase.table(TABLE_USERS).update({
+            "nome": nome,
+            "email": email,
+            "hierarquia": hierarquia,
+        }).eq("login", login).execute()
+    except Exception:
+        return redirect(url_for("staff_users", error="Falha ao atualizar usuário."))
+
+    return redirect(url_for("staff_users", ok=f"Usuário '{login}' atualizado."))
+
+
+@app.post("/staff/users/move")
+@staff_required
+def staff_users_move():
+    login = (request.form.get("login") or "").strip()
+    novo_tenant = (request.form.get("tenant") or "").strip()
+
+    if not login or not novo_tenant:
+        return redirect(url_for("staff_users", error="Dados inválidos."))
+
+    alvo = _get_user_by_login(login)
+    if not alvo:
+        return redirect(url_for("staff_users", error="Usuário não encontrado."))
+
+    tenant_atual = (alvo.get("tenant") or "").strip()
+    if tenant_atual == novo_tenant:
+        return redirect(url_for("staff_users", ok="Usuário já está neste tenant."))
+
+    try:
+        r = supabase.table(TABLE_TENANTS).select("nome").eq("nome", novo_tenant).limit(1).execute()
+        if not (getattr(r, "data", None) or []):
+            return redirect(url_for("staff_users", error="Tenant destino inexistente."))
+    except Exception:
+        return redirect(url_for("staff_users", error="Tenant destino inválido."))
+
+    # Invariante: não deixar o tenant de origem sem admin
+    if (alvo.get("hierarquia") or "").strip().lower() == "admin":
+        if _tenant_admin_count(tenant_atual, exclude_login=login) < 1:
+            return redirect(url_for("staff_users", error=f"Mover este admin deixaria o tenant '{tenant_atual}' sem nenhum admin."))
+
+    try:
+        supabase.table(TABLE_USERS).update({"tenant": novo_tenant}).eq("login", login).execute()
+    except Exception:
+        return redirect(url_for("staff_users", error="Falha ao mover usuário."))
+
+    return redirect(url_for("staff_users", ok=f"Usuário '{login}' movido para '{novo_tenant}'."))
+
+
+@app.post("/staff/users/reset-password")
+@staff_required
+def staff_users_reset_password():
+    login = (request.form.get("login") or "").strip()
+    if not login:
+        return redirect(url_for("staff_users", error="Login inválido."))
+
+    if not _get_user_by_login(login):
+        return redirect(url_for("staff_users", error="Usuário não encontrado."))
+
+    temp = _generate_temp_password()
+    try:
+        supabase.table(TABLE_USERS).update({"senha": _hash_password(temp)}).eq("login", login).execute()
+    except Exception:
+        return redirect(url_for("staff_users", error="Falha ao resetar senha."))
+
+    session["staff_flash_temp_password"] = {"login": login, "senha": temp}
+    return redirect(url_for("staff_users", ok=f"Senha de '{login}' redefinida."))
+
+
+@app.post("/staff/users/delete")
+@staff_required
+def staff_users_delete():
+    login = (request.form.get("login") or "").strip()
+    if not login:
+        return redirect(url_for("staff_users", error="Login inválido."))
+
+    alvo = _get_user_by_login(login)
+    if not alvo:
+        return redirect(url_for("staff_users", error="Usuário não encontrado."))
+
+    tenant = (alvo.get("tenant") or "").strip()
+    if (alvo.get("hierarquia") or "").strip().lower() == "admin":
+        if _tenant_admin_count(tenant, exclude_login=login) < 1:
+            return redirect(url_for("staff_users", error=f"Não é possível excluir o último admin do tenant '{tenant}'."))
+
+    try:
+        supabase.table(TABLE_USERS).delete().eq("login", login).execute()
+    except Exception:
+        return redirect(url_for("staff_users", error="Falha ao excluir usuário."))
+
+    return redirect(url_for("staff_users", ok=f"Usuário '{login}' excluído."))
+
+
+# ---------- MINHA CONTA (STAFF) ----------
+
+@app.get("/staff/account")
+@staff_required
+def staff_account():
+    staff = _current_staff() or {}
+    return render_template(
+        "staff/account.html",
+        staff=staff,
+        error=request.args.get("error"),
+        ok=request.args.get("ok"),
+    )
+
+
+@app.post("/staff/account")
+@staff_required
+def staff_account_post():
+    staff = _current_staff()
+    if not staff:
+        return redirect(url_for("staff_login"))
+
+    nome = (request.form.get("nome") or "").strip()
+    email = (request.form.get("email") or "").strip()
+    senha_atual = (request.form.get("senha_atual") or "").strip()
+    senha_nova = (request.form.get("senha_nova") or "").strip()
+    senha_nova2 = (request.form.get("senha_nova2") or "").strip()
+
+    payload = {}
+    if nome:
+        payload["nome"] = nome
+    if email:
+        payload["email"] = email
+
+    if any([senha_atual, senha_nova, senha_nova2]):
+        if not (senha_atual and senha_nova and senha_nova2):
+            return redirect(url_for("staff_account", error="Preencha senha atual, nova e confirmação."))
+        if senha_nova != senha_nova2:
+            return redirect(url_for("staff_account", error="Confirmação da nova senha não confere."))
+        if len(senha_nova) < 8:
+            return redirect(url_for("staff_account", error="A nova senha deve ter pelo menos 8 caracteres."))
+        if not _password_ok(senha_atual, staff.get("senha", "")):
+            return redirect(url_for("staff_account", error="Senha atual incorreta."))
+        payload["senha"] = _hash_password(senha_nova)
+
+    if not payload:
+        return redirect(url_for("staff_account", ok="Nada para atualizar."))
+
+    try:
+        supabase.table(TABLE_STAFF).update(payload).eq("login", staff["login"]).execute()
+    except Exception:
+        return redirect(url_for("staff_account", error="Falha ao atualizar."))
+
+    return redirect(url_for("staff_account", ok="Dados atualizados."))
+
 
 # ===================== RUN =====================
 
