@@ -114,6 +114,7 @@
       <button class="modal-close" onclick="closeAdd()">×</button>
     </div>
     <div class="modal-b">
+      <div id="addModalError" class="alert" style="display:none; margin: 0 0 14px;"></div>
       <form method="post" action="{{ url_for('staff_users_add') }}">
         <div class="grid2">
           <div class="field">
@@ -196,9 +197,16 @@
 {% endblock %}
 
 {% block scripts %}
+{% if form_flash %}
+<script id="__form_flash" type="application/json">{{ form_flash | tojson }}</script>
+{% endif %}
 <script>
   function openAdd(){ document.getElementById('addBackdrop').style.display = 'flex'; }
-  function closeAdd(){ document.getElementById('addBackdrop').style.display = 'none'; }
+  function closeAdd(){
+    document.getElementById('addBackdrop').style.display = 'none';
+    const box = document.getElementById('addModalError');
+    if(box){ box.style.display='none'; box.textContent=''; }
+  }
   function openMove(login, tenantAtual){
     document.getElementById('moveLogin').value = login;
     document.getElementById('moveTitle').textContent = 'Mover usuário — ' + login;
@@ -213,5 +221,36 @@
   document.getElementById('addBackdrop')?.addEventListener('click', (e)=>{ if(e.target.id === 'addBackdrop') closeAdd(); });
   document.getElementById('moveBackdrop')?.addEventListener('click', (e)=>{ if(e.target.id === 'moveBackdrop') closeMove(); });
   document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape'){ closeAdd(); closeMove(); } });
+
+  // Reabre o modal com inputs preservados quando o backend devolveu um form_flash
+  (function(){
+    const node = document.getElementById('__form_flash');
+    if(!node) return;
+    let flash;
+    try { flash = JSON.parse(node.textContent); } catch(_) { return; }
+    if(!flash || flash.modal !== 'add_user') return;
+
+    const fd = flash.form_data || {};
+    const form = document.querySelector('#addBackdrop form');
+    if(form){
+      for (const [k, v] of Object.entries(fd)){
+        const el = form.querySelector(`[name="${k}"]`);
+        if(!el) continue;
+        if(el.tagName === 'SELECT'){
+          [...el.options].forEach(o => { o.selected = (o.value === (v ?? '')); });
+        } else {
+          el.value = v ?? '';
+        }
+      }
+    }
+
+    const box = document.getElementById('addModalError');
+    if(box && flash.error){
+      box.textContent = flash.error;
+      box.style.display = 'block';
+    }
+
+    openAdd();
+  })();
 </script>
 {% endblock %}

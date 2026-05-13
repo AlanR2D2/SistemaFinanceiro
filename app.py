@@ -1292,8 +1292,9 @@ def users_add():
 
     try:
         supabase.table(TABLE_USERS).insert(payload).execute()
-    except Exception:
-        return redirect(url_for("users_admin", error="Falha ao criar usuário."))
+    except Exception as e:
+        app.logger.exception("Falha ao criar usuário (tenant)")
+        return redirect(url_for("users_admin", error=f"Falha ao criar usuário: {e}"))
 
     return redirect(url_for("users_admin", ok="Usuário criado com sucesso."))
 
@@ -1452,6 +1453,19 @@ def _generate_temp_password(length: int = 12) -> str:
 def _pop_staff_flash_temp_password() -> dict | None:
     data = session.pop("staff_flash_temp_password", None)
     return data
+
+
+def _pop_staff_flash_form() -> dict | None:
+    return session.pop("staff_flash_form", None)
+
+
+def _flash_staff_form_error(modal: str, error: str, form_data: dict | None = None):
+    """Guarda erro + dados do form para reabrir o modal preservando inputs."""
+    session["staff_flash_form"] = {
+        "modal": modal,
+        "error": error,
+        "form_data": form_data or {},
+    }
 
 
 # ---------- AUTH STAFF ----------
@@ -1718,6 +1732,10 @@ def staff_users():
         tenants = []
 
     temp_flash = _pop_staff_flash_temp_password()
+    form_flash = _pop_staff_flash_form()
+
+    # Erro principal: flash > query param
+    error_msg = (form_flash or {}).get("error") or request.args.get("error")
 
     return render_template(
         "staff/users.html",
@@ -1727,7 +1745,8 @@ def staff_users():
         tenant_filter=tenant_filter,
         s=s,
         temp_flash=temp_flash,
-        error=request.args.get("error"),
+        form_flash=form_flash,
+        error=error_msg,
         ok=request.args.get("ok"),
     )
 
@@ -1743,46 +1762,56 @@ def staff_users_add():
     senha = (request.form.get("senha") or "").strip()
     senha2 = (request.form.get("senha2") or "").strip()
 
+    form_data = {"login": login, "nome": nome, "email": email, "hierarquia": hierarquia, "tenant": tenant}
+
+    def fail(msg: str):
+        _flash_staff_form_error("add_user", msg, form_data)
+        return redirect(url_for("staff_users"))
+
     if not login or not tenant:
-        return redirect(url_for("staff_users", error="Login e tenant são obrigatórios."))
+        return fail("Login e tenant são obrigatórios.")
 
     if hierarquia not in ("user", "gestor", "financeiro", "admin"):
         hierarquia = "user"
+        form_data["hierarquia"] = hierarquia
 
-    if not _tenant_existe_ativo(tenant):
-        # Permite criar em tenant inativo? Vamos validar contra existência apenas
-        try:
-            r = supabase.table(TABLE_TENANTS).select("nome").eq("nome", tenant).limit(1).execute()
-            if not (getattr(r, "data", None) or []):
-                return redirect(url_for("staff_users", error="Tenant inválido."))
-        except Exception:
-            return redirect(url_for("staff_users", error="Tenant inválido."))
+    try:
+        r = supabase.table(TABLE_TENANTS).select("nome").eq("nome", tenant).limit(1).execute()
+        if not (getattr(r, "data", None) or []):
+            return fail("Tenant inválido.")
+    except Exception:
+        return fail("Tenant inválido.")
 
     if _get_user_by_login(login):
-        return redirect(url_for("staff_users", error="Já existe um usuário com este login."))
+        return fail("Já existe um usuário com este login.")
 
     if senha != senha2:
-        return redirect(url_for("staff_users", error="Senha e confirmação não conferem."))
+        return fail("Senha e confirmação não conferem.")
 
     if len(senha) < 6:
-        return redirect(url_for("staff_users", error="Senha deve ter pelo menos 6 caracteres."))
+        return fail("Senha deve ter pelo menos 6 caracteres.")
 
     # Tenant precisa ter pelo menos 1 admin — força o primeiro usuário a ser admin
     if _tenant_admin_count(tenant) == 0:
         hierarquia = "admin"
 
+    # Converte strings vazias em NULL para colunas opcionais (evita colisão de UNIQUE em email='')
     payload = {
         "login": login,
-        "nome": nome,
-        "email": email,
+        "nome": nome or None,
+        "email": email or None,
         "hierarquia": hierarquia,
         "senha": _hash_password(senha),
         "tenant": tenant,
     }
     try:
         supabase.table(TABLE_USERS).insert(payload).execute()
-    except Exception:
-        return redirect(url_for("staff_users", error="Falha ao criar usuário."))
+    except Exception as e:
+        app.logger.exception("Falha ao criar usuário (staff)")
+        msg = str(e)
+        if "duplicate key" in msg.lower() and "email" in msg.lower():
+            msg = "Já existe um usuário com este email."
+        return fail(f"Falha ao criar usuário: {msg}")
 
     return redirect(url_for("staff_users", ok=f"Usuário '{login}' criado no tenant '{tenant}'."))
 
