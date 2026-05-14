@@ -755,23 +755,14 @@
     ensureStyles();
     bindHelpButton();
 
-    // 1) Há uma fila em andamento (vindo de navegação cross-page)?
+    // Único auto-start permitido: continuar uma fila já em andamento
+    // (vindo de navegação cross-page disparada pelo próprio usuário
+    // ao escolher um tour no menu do botão "?").
+    // Não há mais auto-trigger no primeiro login — o tour só roda quando
+    // o usuário clica no ícone "?" e escolhe uma opção.
     const queue = getQueue();
     if (queue && queue.length) {
-      // Aguarda 300ms pro DOM estabilizar antes de continuar a fila
       setTimeout(() => processQueue(), 300);
-      return;
-    }
-
-    // 2) Primeiro login? Dispara fluxo completo.
-    if (!ctx.visto) {
-      // Garante que a página atual seja a alvo do primeiro tour da fila
-      if (window.location.pathname !== '/') {
-        setQueue(buildWelcomeQueue());
-        navigateTo('/');
-        return;
-      }
-      setTimeout(() => runWelcomeFlow(), 800);
     }
   }
 
