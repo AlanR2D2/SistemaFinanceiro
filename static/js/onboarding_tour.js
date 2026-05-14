@@ -40,6 +40,150 @@
 
   function isMobile() { return window.innerWidth < 768; }
 
+  function ensureStyles() {
+    if (document.getElementById('sf-onb-styles')) return;
+    const css = `
+/* === Onboarding tour: overrides do driver.js para alinhar com a UI do app === */
+.driver-popover {
+  font-family: 'Inter', sans-serif !important;
+  border-radius: 14px !important;
+  padding: 18px 20px 14px 20px !important;
+  max-width: 420px !important;
+  box-shadow: 0 24px 70px rgba(0,0,0,.25) !important;
+  border: 1px solid #e5e7eb !important;
+}
+.driver-popover-title {
+  font-size: 15.5px !important;
+  font-weight: 800 !important;
+  color: #111827 !important;
+  margin: 0 0 8px 0 !important;
+  padding-right: 28px !important;  /* espaço pro X */
+  line-height: 1.3 !important;
+}
+.driver-popover-description {
+  font-size: 13.5px !important;
+  line-height: 1.55 !important;
+  color: #374151 !important;
+  margin: 0 0 14px 0 !important;
+}
+.driver-popover-description b,
+.driver-popover-description strong {
+  color: #111827 !important;
+  font-weight: 800 !important;
+}
+
+/* RODAPÉ — alinhamento limpo: Pular à esquerda, progresso + navegação à direita */
+.driver-popover-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  margin-top: 4px !important;
+  padding-top: 4px !important;
+}
+.driver-popover-progress-text {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #6b7280 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+}
+.driver-popover-navigation-btns {
+  display: inline-flex !important;
+  gap: 6px !important;
+}
+
+/* Botões prev / next / done */
+.driver-popover button.driver-popover-prev-btn,
+.driver-popover button.driver-popover-next-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 7px 14px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  border-radius: 10px !important;
+  text-shadow: none !important;
+  cursor: pointer !important;
+  line-height: 1.2 !important;
+  min-width: 80px !important;
+}
+.driver-popover button.driver-popover-prev-btn {
+  background: #fff !important;
+  color: #374151 !important;
+  border: 1px solid #e5e7eb !important;
+}
+.driver-popover button.driver-popover-prev-btn:hover {
+  background: #f3f4f6 !important;
+}
+.driver-popover button.driver-popover-next-btn {
+  background: #4f46e5 !important;
+  color: #fff !important;
+  border: 1px solid #4f46e5 !important;
+}
+.driver-popover button.driver-popover-next-btn:hover {
+  background: #4338ca !important;
+}
+.driver-popover button.driver-popover-prev-btn:focus,
+.driver-popover button.driver-popover-next-btn:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(79,70,229,.25) !important;
+}
+
+/* Botão X (fechar) — discreto no canto direito */
+.driver-popover-close-btn {
+  width: 28px !important;
+  height: 28px !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  color: #9ca3af !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  top: 12px !important;
+  right: 12px !important;
+}
+.driver-popover-close-btn:hover {
+  color: #111827 !important;
+  background: #f3f4f6 !important;
+}
+
+/* "Pular onboarding" — link à esquerda, empurra o resto pra direita */
+.driver-popover .sf-skip-btn {
+  margin-right: auto !important;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 4px 2px !important;
+  color: #6b7280 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  text-decoration: underline !important;
+  letter-spacing: 0.01em !important;
+}
+.driver-popover .sf-skip-btn:hover {
+  color: #111827 !important;
+}
+
+/* Seta do popover combinando com a borda */
+.driver-popover-arrow {
+  border-color: #fff !important;
+}
+
+@media (max-width: 520px) {
+  .driver-popover { padding: 14px 16px 12px 16px !important; max-width: calc(100vw - 24px) !important; }
+  .driver-popover-title { font-size: 14.5px !important; }
+  .driver-popover-description { font-size: 13px !important; }
+  .driver-popover button.driver-popover-prev-btn,
+  .driver-popover button.driver-popover-next-btn { min-width: 0 !important; padding: 7px 10px !important; }
+}
+    `;
+    const style = document.createElement('style');
+    style.id = 'sf-onb-styles';
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
+
   function canSeeAdmin() {
     const h = (global.SF_ONBOARDING && global.SF_ONBOARDING.hierarquia) || '';
     return ['admin', 'financeiro', 'gestor', 'administrador', 'master'].indexOf(h) !== -1;
@@ -334,7 +478,13 @@
 
   /* ------------ Disparar um tour específico ------------ */
 
-  function runTourByKey(key, onDone) {
+  function runTourByKey(key, opts) {
+    opts = opts || {};
+    // Suporta forma antiga: runTourByKey(key, fn) → fn é onDone.
+    if (typeof opts === 'function') opts = { onDone: opts };
+    const onDone = opts.onDone;
+    const onSkip = opts.onSkip; // se setado, renderiza botão "Pular onboarding"
+
     const def = TOURS[key];
     if (!def) { if (onDone) onDone(); return; }
     if (def.requerAdmin && !canSeeAdmin()) { if (onDone) onDone(); return; }
@@ -348,12 +498,14 @@
 
     const steps = def.steps();
     if (!steps.length) {
-      // Sem nenhum elemento disponível na página: pula.
       if (onDone) onDone();
       return;
     }
 
-    const inst = drive({
+    let inst;
+    let skipped = false;
+
+    const config = {
       showProgress: true,
       animate: true,
       allowClose: true,
@@ -365,8 +517,37 @@
       prevBtnText: '← Anterior',
       doneBtnText: 'Concluir',
       steps: steps,
-      onDestroyed: () => { if (onDone) onDone(); },
-    });
+      onDestroyed: () => {
+        if (skipped) {
+          if (onSkip) onSkip();
+        } else {
+          if (onDone) onDone();
+        }
+      },
+    };
+
+    // Botão "Pular onboarding" — só aparece quando onSkip é fornecido
+    // (i.e., durante o fluxo de boas-vindas).
+    if (onSkip) {
+      config.onPopoverRender = (popover) => {
+        if (!popover || !popover.footer) return;
+        if (popover.footer.querySelector('.sf-skip-btn')) return;
+
+        const skipBtn = document.createElement('button');
+        skipBtn.type = 'button';
+        skipBtn.className = 'sf-skip-btn';
+        skipBtn.textContent = 'Pular onboarding';
+        skipBtn.addEventListener('click', () => {
+          skipped = true;
+          if (inst && inst.destroy) inst.destroy();
+        });
+
+        // Insere como primeiro filho do rodapé (canto esquerdo)
+        popover.footer.insertBefore(skipBtn, popover.footer.firstChild);
+      };
+    }
+
+    inst = drive(config);
     inst.drive();
   }
 
@@ -429,20 +610,26 @@
       : Promise.resolve(null);
 
     wait.then(() => {
-      runTourByKey(nextKey, () => {
-        // Tour atual concluído → shift e processa próximo
-        const cur = getQueue() || [];
-        setQueue(cur.slice(1));
-        const remaining = getQueue();
-        if (remaining && remaining.length) {
-          // Há mais — navega pra próxima página
-          processQueue();
-        } else {
-          // Acabou tudo
+      runTourByKey(nextKey, {
+        onDone: () => {
+          // Tour atual concluído → shift e processa próximo
+          const cur = getQueue() || [];
+          setQueue(cur.slice(1));
+          const remaining = getQueue();
+          if (remaining && remaining.length) {
+            processQueue();
+          } else {
+            clearQueue();
+            markOnboardingAsSeen();
+            showToast('🎉 Tour concluído! Você pode rever pelo ícone "?" no topo.');
+          }
+        },
+        onSkip: () => {
+          // Usuário clicou "Pular onboarding" → encerra TUDO
           clearQueue();
           markOnboardingAsSeen();
-          showToast('🎉 Tour concluído! Você pode rever pelo ícone "?" no topo.');
-        }
+          showToast('Onboarding pulado. Pode rever a qualquer momento pelo ícone "?" no topo.');
+        },
       });
     });
 
@@ -565,6 +752,7 @@
     const ctx = global.SF_ONBOARDING || {};
     if (!ctx.autenticado) return;
 
+    ensureStyles();
     bindHelpButton();
 
     // 1) Há uma fila em andamento (vindo de navegação cross-page)?
