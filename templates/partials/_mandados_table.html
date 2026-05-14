@@ -785,7 +785,7 @@
           <div class="md-sum-label">Correção</div>
         </div>
         <div class="md-sum-value" id="mdSumCorrecao">R$ 0,00</div>
-        <div class="md-sum-sub">Somatório dos visíveis</div>
+        <div class="md-sum-sub">Total dos filtrados</div>
       </div>
 
       <div class="md-sum-card">
@@ -793,7 +793,7 @@
           <div class="md-sum-label">Honorários</div>
         </div>
         <div class="md-sum-value" id="mdSumHonorarios">R$ 0,00</div>
-        <div class="md-sum-sub">Somatório dos visíveis</div>
+        <div class="md-sum-sub">Total dos filtrados</div>
       </div>
 
       <div class="md-sum-card">
@@ -801,7 +801,7 @@
           <div class="md-sum-label">Audiencista</div>
         </div>
         <div class="md-sum-value" id="mdSumAudiencista">R$ 0,00</div>
-        <div class="md-sum-sub">Somatório dos visíveis</div>
+        <div class="md-sum-sub">Total dos filtrados</div>
       </div>
 
       <div class="md-sum-card">
@@ -809,7 +809,7 @@
           <div class="md-sum-label">Sucumbência</div>
         </div>
         <div class="md-sum-value" id="mdSumSucumbencia">R$ 0,00</div>
-        <div class="md-sum-sub">Somatório dos visíveis</div>
+        <div class="md-sum-sub">Total dos filtrados</div>
       </div>
 
       <!-- (1) TOTAL FINAL agora NÃO soma repasse -->
@@ -827,7 +827,7 @@
           <div class="md-sum-label">Depósito</div>
         </div>
         <div class="md-sum-value" id="mdSumDeposito">R$ 0,00</div>
-        <div class="md-sum-sub">Somatório dos visíveis</div>
+        <div class="md-sum-sub">Total dos filtrados</div>
       </div>
 
       <div class="md-sum-card">
@@ -835,14 +835,17 @@
           <div class="md-sum-label">Repasse</div>
         </div>
         <div class="md-sum-value" id="mdSumRepasse">R$ 0,00</div>
-        <div class="md-sum-sub">Somatório dos visíveis</div>
+        <div class="md-sum-sub">Total dos filtrados</div>
       </div>
     </div>
   </div>
   {% endif %}
 
-  <div class="md-table-wrap">
-    <table class="md-table" id="mdTable">
+  <div class="md-table-wrap" id="mdTableWrap">
+    <table class="md-table" id="mdTable"
+           data-finalizado="{{ finalizado_value if finalizado_value is defined else 0 }}"
+           data-default-sort-col="data_quitacao"
+           data-default-sort-dir="desc">
       <thead>
         <tr>
           <th>DATA QUITAÇÃO</th>
@@ -888,109 +891,12 @@
       </thead>
 
       <tbody id="mdTbody">
-        {% for r in rows %}
-        <tr data-row='{{ r|tojson|safe }}' data-id="{{ r.id }}" class="md-row">
-          <td class="whitespace-nowrap">
-            <div class="clamp-2 md-date">{{ r.data_quitacao or "-" }}</div>
-          </td>
-          <td class="font-medium whitespace-nowrap">
-            <div class="clamp-2">{{ r.numero_processo or "-" }}</div>
-          </td>
-          <td>
-            <div class="clamp-2">{{ r.uf or "-" }}</div>
-          </td>
-          <td>
-            <div class="clamp-2">{{ r.reu or "-" }}</div>
-          </td>
-          <td style="min-width:220px; max-width:340px;">
-            <div class="clamp-2">{{ r.autor or "-" }}</div>
-          </td>
-          <td>
-            <div class="clamp-2">{{ r.tel or "-" }}</div>
-          </td>
-
-          <td class="md-number" style="min-width:260px; max-width:360px;">
-            <div class="clamp-2 md-money">{{ r.sentenca or "-" }}</div>
-          </td>
-          <td class="md-number">
-            <div class="clamp-2 md-money">{{ r.quitacao or "-" }}</div>
-          </td>
-          <td style="min-width:260px; max-width:360px;">
-            <div class="clamp-2">{{ r.status or "-" }}</div>
-          </td>
-          <td>
-            <div class="clamp-2 md-date">{{ r.previsao or "-" }}</div>
-          </td>
-          <td class="whitespace-nowrap">
-            <div class="clamp-2 md-date">{{ r.data_pagamento or "-" }}</div>
-          </td>
-          <td>
-            <div class="clamp-2">{{ r.local or "-" }}</div>
-          </td>
-          <td>
-            <div class="clamp-2">{{ r.tipo or "-" }}</div>
-          </td>
-
-          <td>
-            <div class="clamp-2">{{ r.tipo_reu or "-" }}</div>
-          </td>
-
-          <td class="md-number">
-            <div class="clamp-2 md-money">{{ r.porcentagem_honorarios or "-" }}</div>
-          </td>
-          <td class="md-number">
-            <div class="clamp-2 md-money">{{ r.deposito or "-" }}</div>
-          </td>
-          <td class="md-number">
-            <div class="clamp-2 md-money">{{ r.correcao or "-" }}</div>
-          </td>
-          <td class="md-number">
-            <div class="clamp-2 md-money">{{ r.honorarios or "-" }}</div>
-          </td>
-          <td class="md-number">
-            <div class="clamp-2 md-money">{{ r.audiencista or "-" }}</div>
-          </td>
-
-          <!-- (3) conferência calculada via JS -->
-          <td class="md-number">
-            <div class="clamp-2 md-money">-</div>
-          </td>
-
-          <td class="md-number">
-            <div class="clamp-2 md-money">{{ r.repasse or "-" }}</div>
-          </td>
-
-          <td>
-            <div class="clamp-2">{{ r.chave_pix or "-" }}</div>
-          </td>
-          <td class="md-number">
-            <div class="clamp-2 md-money">{{ r.sucumbencia or "-" }}</div>
-          </td>
-          <td style="min-width:320px; max-width:520px;">
-            <div class="clamp-2">{{ r.observacoes or "-" }}</div>
-          </td>
-
-          <td class="whitespace-nowrap">
-            <div class="clamp-2 md-date">{{ r.created_at or "-" }}</div>
-          </td>
-          <td class="whitespace-nowrap">
-            <div class="clamp-2 md-date">{{ r.updated_at or "-" }}</div>
-          </td>
-
-          <td style="text-align:right; white-space:nowrap;">
-            <button class="md-btn md-edit-btn" type="button"
-              onclick="openEditModalFromRowMD(this.closest('tr'))">Editar</button>
-            <button class="md-btn" type="button" style="margin-left:8px;border-color:#fecaca;color:#dc2626;"
-              onclick="MD.deleteFromBtn(event, {{ r.id }})">Excluir</button>
-          </td>
+        <tr id="mdLoadingRow">
+          <td colspan="26" style="padding:18px; color:#6b7280;">Carregando registros...</td>
         </tr>
-        {% endfor %}
-
-        {% if rows|length == 0 %}
-        <tr>
+        <tr id="mdEmptyRow" style="display:none;">
           <td colspan="26" style="padding:18px; color:#6b7280;">Nenhum registro encontrado.</td>
         </tr>
-        {% endif %}
       </tbody>
     </table>
   </div>
@@ -1283,20 +1189,29 @@
 </script>
 
 <script>
-  /* ===================== FORMATA NÚMEROS DA TABELA (APENAS EXIBIÇÃO) + (3) CONFERÊNCIA CALCULADA ===================== */
+  /* ===================== FORMATA NÚMEROS/DATAS + CONFERÊNCIA (re-executável) ===================== */
   (function () {
-    /* colunas numéricas (índices) */
     const numericCols = [6, 7, 14, 15, 16, 17, 18, 19, 20, 22];
 
     const COL_CORRECAO = 16;
     const COL_HONORARIOS = 17;
     const COL_AUDIENCISTA = 18;
-    const COL_CONFERENCIA = 19; /* (3) calculada */
+    const COL_CONFERENCIA = 19;
     const COL_REPASSE = 20;
     const COL_SUCUMBENCIA = 22;
 
     const tbody = document.getElementById("mdTbody");
     if (!tbody) return;
+
+    function toBRDate(raw) {
+      if (raw === null || raw === undefined) return '-';
+      let s = String(raw).trim();
+      if (!s || s === '-') return '-';
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+      return s;
+    }
 
     function setCellText(tr, idx, text) {
       const td = tr.cells[idx];
@@ -1313,8 +1228,10 @@
       return raw === '' ? '-' : raw;
     }
 
-    tbody.querySelectorAll("tr").forEach(tr => {
-      /* formata as colunas numéricas existentes (inclui repasse) */
+    function formatRow(tr) {
+      if (!tr || tr.dataset.mdFmt === "1") return;
+
+      /* formata as colunas numéricas */
       numericCols.forEach(idx => {
         const td = tr.cells[idx];
         if (!td) return;
@@ -1324,7 +1241,15 @@
         div.textContent = raw === '-' ? '-' : (formatBR_MD(raw) || raw);
       });
 
-      /* Conferência = Correção + Honorários + Audiencista + Sucumbência + Repasse */
+      /* formata datas */
+      tr.querySelectorAll(".md-date").forEach(div => {
+        div.textContent = toBRDate(div.textContent.trim());
+      });
+
+      tr.dataset.mdFmt = "1";
+    }
+
+    function calcConferenciaRow(tr) {
       const cor = MD.parseSmartNumber(getCellText(tr, COL_CORRECAO));
       const hon = MD.parseSmartNumber(getCellText(tr, COL_HONORARIOS));
       const aud = MD.parseSmartNumber(getCellText(tr, COL_AUDIENCISTA));
@@ -1332,11 +1257,8 @@
       const rep = MD.parseSmartNumber(getCellText(tr, COL_REPASSE));
 
       const hasAny =
-        Number.isFinite(cor) ||
-        Number.isFinite(hon) ||
-        Number.isFinite(aud) ||
-        Number.isFinite(suc) ||
-        Number.isFinite(rep);
+        Number.isFinite(cor) || Number.isFinite(hon) || Number.isFinite(aud) ||
+        Number.isFinite(suc) || Number.isFinite(rep);
 
       if (!hasAny) {
         setCellText(tr, COL_CONFERENCIA, "-");
@@ -1347,11 +1269,27 @@
           (Number.isFinite(aud) ? aud : 0) +
           (Number.isFinite(suc) ? suc : 0) +
           (Number.isFinite(rep) ? rep : 0);
-
         setCellText(tr, COL_CONFERENCIA, formatBR_MD(sum) || "-");
       }
+    }
 
-    });
+    function refreshFmt() {
+      Array.from(tbody.rows).forEach(tr => {
+        if (tr.classList.contains("md-row")) formatRow(tr);
+      });
+    }
+
+    function refreshConf() {
+      Array.from(tbody.rows).forEach(tr => {
+        if (tr.classList.contains("md-row")) calcConferenciaRow(tr);
+      });
+    }
+
+    window.MD_FMT = { refresh: refreshFmt, formatRow, toBRDate };
+    window.MD_CONFERENCIA = { refresh: refreshConf };
+
+    refreshFmt();
+    refreshConf();
   })();
 </script>
 
@@ -1387,12 +1325,9 @@
     function applyRule(tr) {
       clearRowColor(tr);
 
-      let rowObj = {};
-      try { rowObj = JSON.parse(tr.dataset.row || "{}"); } catch (_) { rowObj = {}; }
-
-      const tipo   = norm(rowObj.tipo   ?? tr.cells[12]?.innerText);
-      const status = norm(rowObj.status ?? tr.cells[8]?.innerText);
-      const local  = norm(rowObj.local  ?? tr.cells[11]?.innerText);
+      const tipo   = norm(tr.cells[12]?.innerText);
+      const status = norm(tr.cells[8]?.innerText);
+      const local  = norm(tr.cells[11]?.innerText);
 
       // tipo = CNPJ — prioridade máxima (hardcoded)
       if (tipo === "CNPJ") {
@@ -1438,15 +1373,20 @@
 </script>
 
 <script>
-  /* ===================== TABELA + FILTROS + SOMATÓRIOS + PERSISTÊNCIA ===================== */
+  /* ===================== TABELA PAGINADA + FILTROS SERVER-SIDE + TOTAIS GLOBAIS ===================== */
+  /* Carrega linhas via /api/mandados em páginas (scroll infinito).
+     Totais somam SEMPRE todos os registros que casam com os filtros — independente da página. */
   (function () {
     const table = document.getElementById('mdTable');
+    const wrap = document.getElementById('mdTableWrap');
     const thead = table?.tHead?.rows?.[0];
     const tbody = document.getElementById('mdTbody');
     const badge = document.getElementById('mdFilteredBadge');
     const countEl = document.getElementById('mdRowsCount');
+    const loadingRow = document.getElementById('mdLoadingRow');
+    const emptyRow = document.getElementById('mdEmptyRow');
 
-    if (!thead || !tbody) return;
+    if (!table || !thead || !tbody || !wrap) return;
 
     const sumEls = {
       correcao: document.getElementById("mdSumCorrecao"),
@@ -1458,6 +1398,58 @@
       deposito: document.getElementById("mdSumDeposito"),
     };
 
+    /* ---------- Mapa coluna → campo no banco ---------- */
+    const COL_FIELDS = {
+      0: 'data_quitacao',
+      1: 'numero_processo',
+      2: 'uf',
+      3: 'reu',
+      4: 'autor',
+      5: 'tel',
+      6: 'sentenca',
+      7: 'quitacao',
+      8: 'status',
+      9: 'previsao',
+      10: 'data_pagamento',
+      11: 'local',
+      12: 'tipo',
+      13: 'tipo_reu',
+      14: 'porcentagem_honorarios',
+      15: 'deposito',
+      16: 'correcao',
+      17: 'honorarios',
+      18: 'audiencista',
+      // 19 = Conferência (calculada)
+      20: 'repasse',
+      21: 'chave_pix',
+      22: 'sucumbencia',
+      23: 'observacoes',
+      24: 'created_at',
+      25: 'updated_at',
+      // 26 = Ações
+    };
+    const FIELD_TO_COL = {};
+    Object.entries(COL_FIELDS).forEach(([k, v]) => { FIELD_TO_COL[v] = Number(k); });
+
+    const DATE_FIELDS = new Set(['data_quitacao', 'previsao', 'data_pagamento', 'created_at', 'updated_at']);
+
+    const FINALIZADO = parseInt(table.dataset.finalizado || '0', 10);
+    const DEFAULT_SORT_COL = table.dataset.defaultSortCol || 'data_quitacao';
+    const DEFAULT_SORT_DIR = table.dataset.defaultSortDir || 'desc';
+    const PAGE_SIZE = 100;
+
+    const state = {
+      filters: {},
+      sort: null,
+      page: 0,
+      hasMore: true,
+      loading: false,
+      totalCount: 0,
+      filteredCount: 0,
+      reqId: 0,
+    };
+
+    /* ---------- Helpers ---------- */
     function toBRDateText(raw) {
       if (!raw) return '-';
       raw = String(raw).trim();
@@ -1481,352 +1473,416 @@
       return `${mm}/${yyyy}`;
     }
 
-    tbody.querySelectorAll('.md-date').forEach(el => {
-      el.textContent = toBRDateText(el.textContent);
-    });
+    function escapeHtml(v) {
+      if (v === null || v === undefined || v === '') return '-';
+      return String(v).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[c]);
+    }
+    function moneyVal(v) {
+      if (v === null || v === undefined || v === '') return '-';
+      return String(v);
+    }
 
+    /* ---------- Render de uma linha ---------- */
+    function renderRow(r) {
+      const id = (r && r.id != null) ? r.id : '';
+      return `<tr data-id="${id}" class="md-row">
+        <td class="whitespace-nowrap"><div class="clamp-2 md-date">${escapeHtml(r.data_quitacao)}</div></td>
+        <td class="font-medium whitespace-nowrap"><div class="clamp-2">${escapeHtml(r.numero_processo)}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.uf)}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.reu)}</div></td>
+        <td style="min-width:220px; max-width:340px;"><div class="clamp-2">${escapeHtml(r.autor)}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.tel)}</div></td>
+        <td class="md-number" style="min-width:260px; max-width:360px;"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.sentenca))}</div></td>
+        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.quitacao))}</div></td>
+        <td style="min-width:260px; max-width:360px;"><div class="clamp-2">${escapeHtml(r.status)}</div></td>
+        <td><div class="clamp-2 md-date">${escapeHtml(r.previsao)}</div></td>
+        <td class="whitespace-nowrap"><div class="clamp-2 md-date">${escapeHtml(r.data_pagamento)}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.local)}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.tipo)}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.tipo_reu)}</div></td>
+        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.porcentagem_honorarios))}</div></td>
+        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.deposito))}</div></td>
+        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.correcao))}</div></td>
+        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.honorarios))}</div></td>
+        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.audiencista))}</div></td>
+        <td class="md-number"><div class="clamp-2 md-money">-</div></td>
+        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.repasse))}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.chave_pix)}</div></td>
+        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.sucumbencia))}</div></td>
+        <td style="min-width:320px; max-width:520px;"><div class="clamp-2">${escapeHtml(r.observacoes)}</div></td>
+        <td class="whitespace-nowrap"><div class="clamp-2 md-date">${escapeHtml(r.created_at)}</div></td>
+        <td class="whitespace-nowrap"><div class="clamp-2 md-date">${escapeHtml(r.updated_at)}</div></td>
+        <td style="text-align:right; white-space:nowrap;">
+          <button class="md-btn md-edit-btn" type="button"
+            onclick="openEditModalFromRowMD(this.closest('tr'))">Editar</button>
+          <button class="md-btn" type="button" style="margin-left:8px;border-color:#fecaca;color:#dc2626;"
+            onclick="MD.deleteFromBtn(event, ${Number(id) || 0})">Excluir</button>
+        </td>
+      </tr>`;
+    }
+
+    function postProcess() {
+      window.MD_FMT?.refresh?.();
+      window.MD_COLORS?.refresh?.();
+      window.MD_CONFERENCIA?.refresh?.();
+      window.MD_XSCROLL?.refresh?.();
+    }
+
+    function encodeFiltersForServer() {
+      const out = {};
+      for (const [field, f] of Object.entries(state.filters)) {
+        out[field] = {
+          type: f.type,
+          values: Array.isArray(f.values) ? f.values : [],
+          include_blank: !!f.include_blank,
+        };
+      }
+      const json = JSON.stringify(out);
+      return btoa(unescape(encodeURIComponent(json)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    let _scrollHandlerBound = false;
+
+    function buildUrl(params) {
+      const qs = new URLSearchParams(params).toString();
+      return `/api/mandados?${qs}`;
+    }
+
+    function setRowsCount() {
+      if (!countEl) return;
+      const totalShown = state.filteredCount || state.totalCount || 0;
+      countEl.textContent = totalShown;
+    }
+
+    function setTotals(totals) {
+      const t = totals || {};
+      const sHon = Number(t.honorarios) || 0;
+      const sAud = Number(t.audiencista) || 0;
+      const sSuc = Number(t.sucumbencia) || 0;
+      const sCorr = Number(t.correcao) || 0;
+      const sDep = Number(t.deposito) || 0;
+      const sRep = Number(t.repasse) || 0;
+      if (sumEls.correcao) sumEls.correcao.textContent = formatBRL_MD(sCorr);
+      if (sumEls.honorarios) sumEls.honorarios.textContent = formatBRL_MD(sHon);
+      if (sumEls.audiencista) sumEls.audiencista.textContent = formatBRL_MD(sAud);
+      if (sumEls.sucumbencia) sumEls.sucumbencia.textContent = formatBRL_MD(sSuc);
+      if (sumEls.deposito) sumEls.deposito.textContent = formatBRL_MD(sDep);
+      if (sumEls.repasse) sumEls.repasse.textContent = formatBRL_MD(sRep);
+      // Total final = correção + honorários + audiencista + sucumbência (NÃO inclui repasse)
+      if (sumEls.total) sumEls.total.textContent = formatBRL_MD(sCorr + sHon + sAud + sSuc);
+    }
+
+    function updateBadgeAndHeaderDots() {
+      const hasFilters = Object.keys(state.filters).length > 0;
+      if (badge) badge.style.display = hasFilters ? 'inline-flex' : 'none';
+      Object.entries(COL_FIELDS).forEach(([colIdx, field]) => {
+        const th = thead.cells[Number(colIdx)];
+        if (!th) return;
+        th.classList.toggle('md-filtered', !!state.filters[field]);
+      });
+    }
+
+    async function fetchPage(replace) {
+      if (state.loading) return;
+      if (!replace && !state.hasMore) return;
+
+      state.loading = true;
+      const myReqId = ++state.reqId;
+
+      const sortCol = state.sort?.col || DEFAULT_SORT_COL;
+      const sortDir = state.sort?.dir || DEFAULT_SORT_DIR;
+      const nextPage = replace ? 1 : (state.page + 1);
+
+      const params = {
+        finalizado: FINALIZADO,
+        page: nextPage,
+        page_size: PAGE_SIZE,
+        sort_col: sortCol,
+        sort_dir: sortDir,
+        totals: replace ? '1' : '0',
+        filters: encodeFiltersForServer(),
+      };
+
+      try {
+        const resp = await fetch(buildUrl(params), { headers: { 'Accept': 'application/json' } });
+        if (!resp.ok) throw new Error('http ' + resp.status);
+        const data = await resp.json();
+        if (myReqId !== state.reqId) return;
+
+        const rows = data.rows || [];
+        if (replace) {
+          tbody.innerHTML = '';
+          if (loadingRow) loadingRow.style.display = 'none';
+          if (emptyRow) emptyRow.style.display = 'none';
+        }
+
+        if (rows.length) {
+          const html = rows.map(renderRow).join('');
+          tbody.insertAdjacentHTML('beforeend', html);
+        }
+
+        state.page = data.page || nextPage;
+        state.hasMore = !!data.has_more;
+        state.totalCount = Number(data.total_count) || 0;
+        state.filteredCount = (data.filtered_count != null)
+          ? Number(data.filtered_count)
+          : (replace ? state.totalCount : state.filteredCount);
+
+        if (replace) {
+          if (data.totals) setTotals(data.totals);
+          if (!tbody.querySelector('tr.md-row')) {
+            if (emptyRow) emptyRow.style.display = '';
+          }
+        }
+
+        setRowsCount();
+        updateBadgeAndHeaderDots();
+        postProcess();
+      } catch (err) {
+        console.error('Falha ao carregar mandados:', err);
+        if (replace) {
+          if (loadingRow) loadingRow.style.display = 'none';
+          if (emptyRow) {
+            emptyRow.style.display = '';
+            const td = emptyRow.querySelector('td');
+            if (td) td.textContent = 'Erro ao carregar registros. Recarregue a página.';
+          }
+        }
+      } finally {
+        state.loading = false;
+      }
+    }
+
+    function refetchFromScratch() {
+      state.page = 0;
+      state.hasMore = true;
+      fetchPage(true);
+    }
+
+    function bindScroll() {
+      if (_scrollHandlerBound) return;
+      _scrollHandlerBound = true;
+      const NEAR = 600;
+      wrap.addEventListener('scroll', () => {
+        if (state.loading || !state.hasMore) return;
+        const distFromBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight;
+        if (distFromBottom < NEAR) {
+          fetchPage(false);
+        }
+      }, { passive: true });
+    }
+
+    /* ---------- Painel de filtro ---------- */
     let panel = document.getElementById('mdGlobalFilterPanel');
     if (!panel) {
       panel = document.createElement('div');
       panel.id = 'mdGlobalFilterPanel';
       panel.className = 'md-panel';
       panel.innerHTML = `
-      <div class="md-panel-top">
-        <input type="search" placeholder="Pesquisar...">
-        <div class="md-mode" id="mdDateMode" role="group" aria-label="Modo de data">
-          <button type="button" data-mode="day" class="active">Dia</button>
-          <button type="button" data-mode="month">Mês</button>
+        <div class="md-panel-top">
+          <input type="search" placeholder="Pesquisar...">
+          <div class="md-mode" id="mdDateMode" role="group" aria-label="Modo de data">
+            <button type="button" data-mode="day" class="active">Dia</button>
+            <button type="button" data-mode="month">Mês</button>
+          </div>
         </div>
-      </div>
-      <div class="md-panel-list"></div>
-      <div class="md-panel-actions">
-        <button type="button" class="sort" data-sort="asc">A→Z</button>
-        <button type="button" class="sort" data-sort="desc">Z→A</button>
-        <button type="button" data-act="clear">Limpar</button>
-        <button type="button" class="primary" data-act="ok" style="grid-column: span 2;">OK</button>
-      </div>
-    `;
+        <div class="md-panel-list" style="min-height:120px;">
+          <div class="md-panel-loading" style="padding:10px; color:#6b7280;">Carregando...</div>
+        </div>
+        <div class="md-panel-actions">
+          <button type="button" class="sort" data-sort="asc">A→Z</button>
+          <button type="button" class="sort" data-sort="desc">Z→A</button>
+          <button type="button" data-act="clear">Limpar</button>
+          <button type="button" class="primary" data-act="ok" style="grid-column: span 2;">OK</button>
+        </div>
+      `;
       document.body.appendChild(panel);
     }
 
-    const allRows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector('.md-edit-btn'));
+    panel.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
+    panel.addEventListener('mousedown', (e) => e.stopPropagation());
+    panel.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+    panel.addEventListener('click', (e) => e.stopPropagation());
 
-    const FILTERABLE_COLS = [];
-    Array.from(thead.cells).forEach((th, idx) => {
-      const title = (th.innerText || '').trim().toLowerCase();
-      if (title === 'ações' || th.classList.contains('no-filter')) return;
-      FILTERABLE_COLS.push(idx);
-    });
+    let openField = null;
+    let openThEl = null;
+    let panelDateMode = 'day';
+    let panelFacetReq = 0;
 
-    let filters = {};
-    let sort = null;
-    let openCol = null;
-
-    const MD_STATE_KEY = "MD_FILTER_STATE_v3_auto_layout_like_acordos";
-
-    function serializeState() {
-      const f = {};
-      for (const [k, obj] of Object.entries(filters)) {
-        if (!obj?.set) continue;
-        f[k] = { type: obj.type, mode: obj.mode || null, set: Array.from(obj.set) };
-      }
-      return { filters: f, sort };
-    }
-    function loadState() {
-      try {
-        const raw = localStorage.getItem(MD_STATE_KEY);
-        if (!raw) return;
-        const st = JSON.parse(raw);
-
-        if (st?.filters) {
-          const f2 = {};
-          for (const [k, obj] of Object.entries(st.filters)) {
-            if (!obj?.set) continue;
-            f2[k] = {
-              type: obj.type || "set",
-              mode: obj.mode || (obj.type === "date" ? "day" : null),
-              set: new Set(obj.set || []),
-            };
-          }
-          filters = f2;
-        }
-        if (st?.sort) sort = st.sort;
-      } catch (e) { }
-    }
-    function saveState() {
-      try { localStorage.setItem(MD_STATE_KEY, JSON.stringify(serializeState())); } catch (e) { }
-    }
-
-    window.MD = window.MD || {};
-    window.MD.persistStateNow = saveState;
-
-    function textOfCell(row, col) {
-      const cell = row.cells[col];
-      if (!cell) return '-';
-      const t = (cell.innerText || '').trim();
-      return t === '' ? '-' : t;
-    }
-
-    function isDateCol(col) {
-      const headerText = (thead.cells[col]?.innerText || '').toLowerCase();
-      if (headerText.includes('data')) return true;
-      if (headerText.includes('criado')) return true;
-      if (headerText.includes('atualizado')) return true;
-      if (headerText.includes('previsão') || headerText.includes('previsao')) return true;
-      return false;
-    }
-
-    function cellValueForFilter(row, col, fObj) {
-      const raw = textOfCell(row, col);
-      if (fObj?.type === 'date') {
-        return fObj.mode === 'month' ? toMonthKey(raw) : toDayKey(raw);
-      }
-      return raw;
-    }
-
-    function matchesFilters(row, f = filters) {
-      for (const [colStr, fObj] of Object.entries(f)) {
-        const col = Number(colStr);
-        const v = cellValueForFilter(row, col, fObj);
-        if (!fObj?.set || !fObj.set.has(v)) return false;
-      }
-      return true;
-    }
-
-    function getVisibleRows() {
-      return allRows.filter(r => matchesFilters(r));
-    }
-
-    const COL_DEPOSITO = 15;
-    const COL_CORRECAO = 16;
-    const COL_HONORARIOS = 17;
-    const COL_AUDIENCISTA = 18;
-    const COL_REPASSE = 20; /* repasse real */
-    const COL_SUCUMBENCIA = 22;
-
-    function updateSums() {
-      const vis = getVisibleRows();
-
-      let sDep = 0, sCor = 0, sHon = 0, sAud = 0, sRep = 0, sSuc = 0;
-
-      vis.forEach(r => {
-        sDep += (MD.parseSmartNumber(textOfCell(r, COL_DEPOSITO)) || 0);
-        sCor += (MD.parseSmartNumber(textOfCell(r, COL_CORRECAO)) || 0);
-        sHon += (MD.parseSmartNumber(textOfCell(r, COL_HONORARIOS)) || 0);
-        sAud += (MD.parseSmartNumber(textOfCell(r, COL_AUDIENCISTA)) || 0);
-        sRep += (MD.parseSmartNumber(textOfCell(r, COL_REPASSE)) || 0);
-        sSuc += (MD.parseSmartNumber(textOfCell(r, COL_SUCUMBENCIA)) || 0);
-      });
-
-      /* (1) total final NÃO inclui repasse */
-      const total = sCor + sHon + sAud + sSuc;
-
-      if (sumEls.correcao) sumEls.correcao.textContent = formatBRL_MD(sCor);
-      if (sumEls.honorarios) sumEls.honorarios.textContent = formatBRL_MD(sHon);
-      if (sumEls.audiencista) sumEls.audiencista.textContent = formatBRL_MD(sAud);
-      if (sumEls.repasse) sumEls.repasse.textContent = formatBRL_MD(sRep);
-      if (sumEls.sucumbencia) sumEls.sucumbencia.textContent = formatBRL_MD(sSuc);
-      if (sumEls.total) sumEls.total.textContent = formatBRL_MD(total);
-      if (sumEls.deposito) sumEls.deposito.textContent = formatBRL_MD(sDep);
-    }
-
-    function apply() {
-      allRows.forEach(r => r.style.display = matchesFilters(r) ? '' : 'none');
-
-      if (sort) {
-        const vis = getVisibleRows();
-        const col = sort.col;
-        const dir = sort.dir;
-
-        vis.sort((a, b) => {
-          const A = textOfCell(a, col);
-          const B = textOfCell(b, col);
-
-          if (isDateCol(col)) {
-            const aBr = toBRDateText(A);
-            const bBr = toBRDateText(B);
-            const aIso = (aBr === '-' ? '' : aBr.split('/').reverse().join('-'));
-            const bIso = (bBr === '-' ? '' : bBr.split('/').reverse().join('-'));
-            const cmp = aIso.localeCompare(bIso);
-            return dir === 'asc' ? cmp : -cmp;
-          }
-
-          if (/\d/.test(A) && /\d/.test(B)) {
-            const aNum = MD.parseSmartNumber(A);
-            const bNum = MD.parseSmartNumber(B);
-            if (Number.isFinite(aNum) && Number.isFinite(bNum)) {
-              const cmp = aNum - bNum;
-              return dir === 'asc' ? cmp : -cmp;
-            }
-          }
-
-          const cmp = A.localeCompare(B, 'pt-BR');
-          return dir === 'asc' ? cmp : -cmp;
-        });
-
-        vis.forEach(r => tbody.appendChild(r));
-      }
-
-      const visCount = getVisibleRows().length;
-      if (countEl) countEl.textContent = visCount;
-
-      const hasFilters = Object.keys(filters).length > 0;
-      if (badge) badge.style.display = hasFilters ? 'inline-flex' : 'none';
-
-      FILTERABLE_COLS.forEach(i => {
-        const th = thead.cells[i];
-        if (!th) return;
-        th.classList.toggle('md-filtered', !!filters[i]);
-      });
-
-      window.MD_XSCROLL?.refresh?.();
-      updateSums();
-      saveState();
-    }
-
-    function valuesForColumn(col, forcedDateMode = null) {
-      const temp = { ...filters };
-      delete temp[col];
-
-      const candidates = allRows.filter(r => matchesFilters(r, temp));
-      const vals = new Set();
-      const existing = filters[col] || null;
-
-      if (isDateCol(col)) {
-        const mode = forcedDateMode || (existing?.type === 'date' ? existing.mode : 'day');
-        candidates.forEach(r => {
-          const raw = textOfCell(r, col);
-          vals.add(mode === 'month' ? toMonthKey(raw) : toDayKey(raw));
-        });
-
-        return Array.from(vals).sort((a, b) => {
-          if (mode === 'month') {
-            const [am, ay] = (a || '').split('/');
-            const [bm, by] = (b || '').split('/');
-            return `${ay || ''}-${am || ''}`.localeCompare(`${by || ''}-${bm || ''}`, 'pt-BR');
-          }
-          const aKey = a === '-' ? '' : a.split('/').reverse().join('-');
-          const bKey = b === '-' ? '' : b.split('/').reverse().join('-');
-          return aKey.localeCompare(bKey, 'pt-BR');
-        });
-      }
-
-      candidates.forEach(r => vals.add(textOfCell(r, col)));
-      return Array.from(vals).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    function isDateField(field) {
+      return DATE_FIELDS.has(field);
     }
 
     function closePanel() {
       panel.style.display = 'none';
-      openCol = null;
+      openField = null;
+      openThEl = null;
+      destroyDatePicker();
     }
 
     function positionPanelNear(th) {
       const rect = th.getBoundingClientRect();
       const panelW = 380;
       const margin = 8;
-
       let left = rect.right - panelW;
       if (left < margin) left = margin;
-
       let top = rect.bottom + 8;
       const panelH = 680;
       const maxTop = window.innerHeight - panelH - margin;
       if (top > maxTop) top = Math.max(margin, maxTop);
-
       panel.style.left = left + 'px';
       panel.style.top = top + 'px';
     }
 
     function setDateModeUI(show, activeMode) {
-      const wrap = document.getElementById('mdDateMode');
-      if (!wrap) return;
-      wrap.style.display = show ? 'inline-flex' : 'none';
-      wrap.querySelectorAll('button').forEach(b => {
+      const w = document.getElementById('mdDateMode');
+      if (!w) return;
+      w.style.display = show ? 'inline-flex' : 'none';
+      w.querySelectorAll('button').forEach(b => {
         b.classList.toggle('active', b.dataset.mode === activeMode);
       });
-      panel.dataset.dateMode = show ? activeMode : "";
     }
 
-    function populatePanel(col, forcedDateMode = null) {
-      const list = panel.querySelector('.md-panel-list');
-      list.innerHTML = '';
+    async function fetchFacets(field, mode) {
+      const params = new URLSearchParams({
+        col: field,
+        finalizado: FINALIZADO,
+        date_mode: mode || 'day',
+        filters: encodeFiltersForServer(),
+      });
+      const resp = await fetch(`/api/mandados/facets?${params.toString()}`, {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (!resp.ok) throw new Error('http ' + resp.status);
+      const data = await resp.json();
+      return data.values || [];
+    }
 
-      const isDate = isDateCol(col);
-      let dateMode = 'day';
-      const existing = filters[col];
+    /* Picker de intervalo de datas — instanciado por painel quando coluna for data */
+    let mdDatePicker = null;
+    function destroyDatePicker() {
+      if (mdDatePicker && mdDatePicker.destroy) {
+        try { mdDatePicker.destroy(); } catch (_) {}
+      }
+      mdDatePicker = null;
+    }
+
+    async function populatePanel(field, forcedDateMode = null) {
+      const list = panel.querySelector('.md-panel-list');
+      const searchEl = panel.querySelector('input[type="search"]');
+      const isDate = isDateField(field);
+      const existing = state.filters[field];
+
+      panel.dataset.field = field;
+      panel.dataset.isDateCol = isDate ? '1' : '0';
 
       if (isDate) {
-        if (forcedDateMode) dateMode = forcedDateMode;
-        else if (existing?.type === 'date') dateMode = existing.mode;
-        setDateModeUI(true, dateMode);
-      } else {
+        if (searchEl) searchEl.style.display = 'none';
         setDateModeUI(false, 'day');
+        panel.dataset.dateMode = 'range';
+
+        let startISO = null, endISO = null;
+        if (existing && existing.type === 'date_range' && Array.isArray(existing.values)) {
+          startISO = existing.values[0] || null;
+          endISO   = existing.values[1] || null;
+        }
+
+        list.style.minHeight = 'auto';
+        list.style.maxHeight = 'none';
+        list.style.padding = '0';
+        list.style.border = '0';
+        list.innerHTML = `<div data-act="drp-mount"></div>`;
+
+        destroyDatePicker();
+        if (window.DateRangePicker) {
+          mdDatePicker = window.DateRangePicker.create(
+            list.querySelector('[data-act="drp-mount"]'),
+            { start: startISO, end: endISO }
+          );
+        } else {
+          list.innerHTML = `<div style="padding:10px; color:#dc2626;">Erro: DateRangePicker não carregado.</div>`;
+        }
+        return;
       }
 
-      const vals = valuesForColumn(col, isDate ? dateMode : null);
+      // Coluna não-data: comportamento original
+      destroyDatePicker();
+      if (searchEl) searchEl.style.display = '';
+      setDateModeUI(false, 'day');
+      panel.dataset.dateMode = '';
+      list.style.minHeight = '520px';
+      list.style.maxHeight = '520px';
+      list.style.padding = '8px';
+      list.style.border = '1px solid #e5e7eb';
 
-      let currentSet = null;
-      if (existing?.type === 'date' && isDate) currentSet = existing.set;
-      else if (existing?.type === 'set') currentSet = existing.set;
+      list.innerHTML = `<div class="md-panel-loading" style="padding:10px; color:#6b7280;">Carregando...</div>`;
 
-      vals.forEach(v => {
-        const lab = document.createElement('label');
-        lab.className = 'md-panel-item';
-        lab.dataset.val = v;
-        const checked = currentSet ? currentSet.has(v) : false;
+      panelDateMode = 'day';
 
-        lab.innerHTML = `
-        <input type="checkbox" ${checked ? 'checked' : ''}>
-        <span>${v}</span>
-      `;
-        list.appendChild(lab);
-      });
+      const myReq = ++panelFacetReq;
+      let values = [];
+      try {
+        values = await fetchFacets(field, null);
+      } catch (e) {
+        console.error('Falha ao carregar facets:', e);
+      }
+      if (myReq !== panelFacetReq) return;
+
+      const currentSet = new Set(existing && Array.isArray(existing.values) ? existing.values : []);
+      if (existing && existing.include_blank) currentSet.add('-');
+
+      const html = values.map(v => {
+        const checked = currentSet.has(v) ? 'checked' : '';
+        const safe = escapeHtml(v);
+        return `<label class="md-panel-item" data-val="${safe.replace(/"/g, '&quot;')}">
+          <input type="checkbox" ${checked}>
+          <span>${safe}</span>
+        </label>`;
+      }).join('');
+
+      list.innerHTML = html || `<div style="padding:10px; color:#6b7280;">Nenhum valor disponível.</div>`;
 
       const s = panel.querySelector('input[type="search"]');
       if (s) s.value = '';
-
-      panel.dataset.isDateCol = isDate ? '1' : '0';
-      panel.dataset.dateMode = isDate ? dateMode : '';
     }
 
-    function openPanelFor(col, th) {
-      openCol = col;
-      populatePanel(col);
+    function openPanelFor(field, th) {
+      openField = field;
+      openThEl = th;
       positionPanelNear(th);
       panel.style.display = 'block';
       panel.querySelector('input[type="search"]')?.focus();
+      populatePanel(field);
     }
 
     function buildHeaderUI() {
-      const FILTERABLE_COLS = [];
-      Array.from(thead.cells).forEach((th, idx) => {
-        const title = (th.innerText || '').trim().toLowerCase();
-        if (title === 'ações' || th.classList.contains('no-filter')) return;
-        FILTERABLE_COLS.push(idx);
-      });
-
-      FILTERABLE_COLS.forEach((col) => {
+      Object.entries(COL_FIELDS).forEach(([colIdx, field]) => {
+        const col = Number(colIdx);
         const th = thead.cells[col];
         if (!th) return;
         if (th.dataset.mdInited === '1') return;
         th.dataset.mdInited = '1';
+        th.dataset.field = field;
 
         const label = (th.innerText || '').trim();
         th.innerHTML = `
-        <span class="md-th-inner">
-          <span>${label}</span>
-          <span class="md-th-tools">
-            <span class="md-dot"></span>
-            <span class="md-th-btn" data-act="open" title="Filtrar/Ordenar">▾</span>
+          <span class="md-th-inner">
+            <span>${label}</span>
+            <span class="md-th-tools">
+              <span class="md-dot"></span>
+              <span class="md-th-btn" data-act="open" title="Filtrar/Ordenar">▾</span>
+            </span>
           </span>
-        </span>
-      `;
+        `;
 
         th.querySelector('[data-act="open"]').addEventListener('click', (e) => {
           e.stopPropagation();
-          const isOpen = (panel.style.display === 'block' && openCol === col);
+          const isOpen = (panel.style.display === 'block' && openField === field);
           if (isOpen) { closePanel(); return; }
-          openPanelFor(col, th);
+          openPanelFor(field, th);
         });
       });
     }
@@ -1843,56 +1899,82 @@
     if (dateModeWrap) {
       dateModeWrap.querySelectorAll('button').forEach(btn => {
         btn.addEventListener('click', () => {
-          if (openCol === null) return;
+          if (!openField) return;
           if (panel.dataset.isDateCol !== '1') return;
           const mode = btn.dataset.mode;
           setDateModeUI(true, mode);
-          populatePanel(openCol, mode);
+          populatePanel(openField, mode);
         });
       });
     }
 
     panel.querySelectorAll('[data-sort]').forEach(btn => {
       btn.addEventListener('click', () => {
-        if (openCol === null) return;
-        sort = { col: openCol, dir: btn.dataset.sort };
+        if (!openField) return;
+        state.sort = { col: openField, dir: btn.dataset.sort };
         closePanel();
-        apply();
+        saveState();
+        refetchFromScratch();
       });
     });
 
     panel.querySelector('[data-act="clear"]').addEventListener('click', () => {
-      if (openCol === null) return;
-      delete filters[openCol];
+      if (!openField) return;
+      if (mdDatePicker && mdDatePicker.clear) {
+        try { mdDatePicker.clear(); } catch (_) {}
+      }
+      delete state.filters[openField];
+      destroyDatePicker();
       closePanel();
-      apply();
+      saveState();
+      refetchFromScratch();
     });
 
     panel.querySelector('[data-act="ok"]').addEventListener('click', () => {
-      if (openCol === null) return;
+      if (!openField) return;
 
-      const set = new Set();
-      panel.querySelectorAll('.md-panel-item').forEach(it => {
-        const cb = it.querySelector('input[type="checkbox"]');
-        if (cb && cb.checked) set.add(it.dataset.val);
-      });
+      const isDate = panel.dataset.isDateCol === '1';
 
-      if (!set.size) {
-        delete filters[openCol];
+      // ----- Coluna de DATA: lê o intervalo do picker -----
+      if (isDate) {
+        const range = mdDatePicker && mdDatePicker.getRange ? mdDatePicker.getRange() : { start: null, end: null };
+        const hasAny = !!(range.start || range.end);
+        if (!hasAny) {
+          delete state.filters[openField];
+        } else {
+          state.filters[openField] = {
+            type: 'date_range',
+            values: [range.start, range.end],
+            include_blank: false,
+          };
+        }
+        destroyDatePicker();
         closePanel();
-        apply();
+        saveState();
+        refetchFromScratch();
         return;
       }
 
-      const isDate = panel.dataset.isDateCol === '1';
-      const dateMode = panel.dataset.dateMode || 'day';
+      // ----- Coluna não-data: checkboxes -----
+      const selected = [];
+      let includeBlank = false;
+      panel.querySelectorAll('.md-panel-item').forEach(it => {
+        const cb = it.querySelector('input[type="checkbox"]');
+        if (!cb || !cb.checked) return;
+        const v = it.dataset.val || '';
+        if (v === '-') { includeBlank = true; return; }
+        selected.push(v);
+      });
 
-      filters[openCol] = isDate
-        ? { type: 'date', mode: dateMode, set }
-        : { type: 'set', set };
+      if (!selected.length && !includeBlank) {
+        delete state.filters[openField];
+      } else {
+        state.filters[openField] = { type: 'set', values: selected, include_blank: includeBlank };
+      }
 
       closePanel();
-      apply();
+      saveState();
+      refetchFromScratch();
     });
 
     document.addEventListener('click', (e) => {
@@ -1904,27 +1986,51 @@
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === "Escape" && panel.style.display === "block") closePanel();
+      if (e.key === 'Escape' && panel.style.display === 'block') closePanel();
     });
 
-    window.addEventListener('resize', () => { if (openCol !== null) { closePanel(); } });
+    window.addEventListener('resize', () => { if (openField) closePanel(); });
 
+    /* ---------- API pública ---------- */
+    window.MD = window.MD || {};
     window.MD.clearAll = function () {
-      filters = {};
-      sort = null;
+      state.filters = {};
+      state.sort = null;
       closePanel();
-      try { localStorage.removeItem(MD_STATE_KEY); } catch (e) { }
-      apply();
+      saveState();
+      refetchFromScratch();
     };
     window.MD.deleteFromBtn = function (ev, id) {
       ev.preventDefault();
       ev.stopPropagation();
       deleteMandado(id);
     };
+    window.MD.refresh = refetchFromScratch;
+    window.MD.persistStateNow = function () { saveState(); };
 
+    /* ---------- Persistência ---------- */
+    const KEY = 'mandados.filters.v2';
+    function saveState() {
+      try {
+        localStorage.setItem(KEY, JSON.stringify({ filters: state.filters, sort: state.sort }));
+      } catch (_) { }
+    }
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(KEY);
+        if (!raw) return;
+        const st = JSON.parse(raw);
+        if (st && st.filters && typeof st.filters === 'object') state.filters = st.filters;
+        if (st && st.sort && typeof st.sort === 'object') state.sort = st.sort;
+      } catch (_) { }
+    }
+
+    /* ---------- Boot ---------- */
     buildHeaderUI();
     loadState();
-    apply();
+    updateBadgeAndHeaderDots();
+    bindScroll();
+    refetchFromScratch();
   })();
 </script>
 
@@ -1938,7 +2044,7 @@
       const tr = e.target.closest("tr");
       if (!tr) return;
       if (e.target.closest("button, a, input, select, textarea")) return;
-      if (!tr.querySelector(".md-edit-btn")) return;
+      if (!tr.dataset || !tr.dataset.id) return;
       openEditModalFromRowMD(tr);
     });
   })();
@@ -2532,9 +2638,21 @@
 
     window.openEditModalFromRowMD = async function (tr) {
       await loadOptionsOnce();
+      const id = tr?.dataset?.id;
+      if (!id) {
+        _showError("ID do mandado não encontrado.");
+        return;
+      }
       try {
-        const raw = tr?.dataset?.row || "{}";
-        const row = JSON.parse(raw);
+        const resp = await fetch(`/api/mandados/${encodeURIComponent(id)}`, {
+          headers: { "Accept": "application/json" }
+        });
+        if (!resp.ok) {
+          _showError("Não foi possível carregar os dados do mandado.");
+          return;
+        }
+        const data = await resp.json();
+        const row = data && data.row ? data.row : {};
         openModal("edit");
         _fillForm(row);
 
@@ -2544,7 +2662,7 @@
         }
       } catch (err) {
         console.error("Erro openEditModalFromRowMD:", err);
-        _showError("Não foi possível abrir edição (dados inválidos).");
+        _showError("Não foi possível abrir edição (falha de rede).");
       }
     };
 

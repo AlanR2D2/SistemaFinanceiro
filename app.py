@@ -615,29 +615,17 @@ def dashboard():
 
 # ===================== ACORDOS (LIST PAGES) =====================
 
-def acordos_list(finalizado_value: int):
-    return sb_select(
-        TABLE_ACORDOS,
-        columns="*",
-        limit=5000,
-        order_col="data_acordo",
-        desc=True,
-        filters=[("finalizado", "eq", int(finalizado_value))]
-    )
-
-
 @app.get("/acordos/ativos")
 @login_required
 def acordos_ativos_page():
-    rows = acordos_list(finalizado_value=0)
-    return render_template("acordos_ativos.html", rows=rows)
+    # As linhas são carregadas via /api/acordos (paginação + scroll infinito).
+    return render_template("acordos_ativos.html", rows=[], finalizado_value=0)
 
 
 @app.get("/acordos/finalizados")
 @login_required
 def acordos_finalizados_page():
-    rows = acordos_list(finalizado_value=1)
-    return render_template("acordos_finalizados.html", rows=rows)
+    return render_template("acordos_finalizados.html", rows=[], finalizado_value=1)
 
 
 @app.get("/acordos")
@@ -750,29 +738,17 @@ def acordos_delete(acordo_id: int):
 
 # ===================== MANDADOS (LIST PAGES) =====================
 
-def mandados_list(finalizado_value: int):
-    return sb_select(
-        TABLE_MANDADOS,
-        columns="*",
-        limit=5000,
-        order_col="data_quitacao",
-        desc=True,
-        filters=[("finalizado", "eq", int(finalizado_value))]
-    )
-
-
 @app.get("/mandados/ativos")
 @login_required
 def mandados_ativos_page():
-    rows = mandados_list(finalizado_value=0)
-    return render_template("mandados_ativos.html", rows=rows)
+    # As linhas são carregadas via /api/mandados (paginação + scroll infinito).
+    return render_template("mandados_ativos.html", rows=[], finalizado_value=0)
 
 
 @app.get("/mandados/finalizados")
 @login_required
 def mandados_finalizados_page():
-    rows = mandados_list(finalizado_value=1)
-    return render_template("mandados_finalizados.html", rows=rows)
+    return render_template("mandados_finalizados.html", rows=[], finalizado_value=1)
 
 
 @app.get("/mandados")
@@ -886,6 +862,461 @@ def mandados_delete(mandado_id: int):
     if getattr(res, "data", None) is None:
         return jsonify({"ok": False, "error": "Falha ao excluir"}), 400
     return jsonify({"ok": True})
+
+# ===================== API PAGINADA (ACORDOS / MANDADOS) =====================
+# Endpoints usados pela listagem com scroll infinito.
+# Princípios:
+#   - Linhas: paginadas (limit/offset) — não carrega tudo no DOM.
+#   - Totais: sempre somam TODOS os registros que casam com os filtros (independe da página).
+#   - Facets: valores distintos por coluna respeitando os outros filtros ativos.
+
+import base64
+import json as _json
+
+ACORDOS_LIST_COLUMNS = (
+    "id,data_acordo,numero_processo,uf,reu,autor,tel,escritorio_reu,"
+    "valor_acordo,status,prazo_estimado,prazo_real,data_pagamento,local,"
+    "tipo,tipo_reu,porcentagem_honorarios,deposito,correcao,honorarios,"
+    "audiencista,repasse,chave_pix,sucumbencia,observacoes,mes_pg,finalizado"
+)
+
+MANDADOS_LIST_COLUMNS = (
+    "id,data_quitacao,numero_processo,uf,reu,autor,tel,sentenca,quitacao,"
+    "status,previsao,data_pagamento,local,tipo,tipo_reu,"
+    "porcentagem_honorarios,deposito,correcao,honorarios,audiencista,"
+    "repasse,chave_pix,sucumbencia,observacoes,mes_pg,finalizado,"
+    "created_at,updated_at"
+)
+
+ACORDOS_DATE_COLS = {"data_acordo", "prazo_real", "data_pagamento"}
+MANDADOS_DATE_COLS = {"data_quitacao", "previsao", "data_pagamento", "created_at", "updated_at"}
+
+ACORDOS_TOTAL_FIELDS = ("honorarios", "audiencista", "sucumbencia", "correcao")
+MANDADOS_TOTAL_FIELDS = ("honorarios", "audiencista", "sucumbencia", "correcao", "deposito", "repasse")
+
+# Whitelist de colunas válidas para ordenar/filtrar (evita injection no nome de coluna).
+ACORDOS_VALID_COLS = {
+    "data_acordo", "numero_processo", "uf", "reu", "autor", "tel", "escritorio_reu",
+    "valor_acordo", "status", "prazo_estimado", "prazo_real", "data_pagamento",
+    "local", "tipo", "tipo_reu", "porcentagem_honorarios", "deposito", "correcao",
+    "honorarios", "audiencista", "repasse", "chave_pix", "sucumbencia",
+    "observacoes", "mes_pg", "finalizado",
+}
+MANDADOS_VALID_COLS = {
+    "data_quitacao", "numero_processo", "uf", "reu", "autor", "tel", "sentenca",
+    "quitacao", "status", "previsao", "data_pagamento", "local", "tipo", "tipo_reu",
+    "porcentagem_honorarios", "deposito", "correcao", "honorarios", "audiencista",
+    "repasse", "chave_pix", "sucumbencia", "observacoes", "mes_pg", "finalizado",
+    "created_at", "updated_at",
+}
+
+
+def _decode_filters_param(raw: str | None) -> dict:
+    """
+    O parâmetro `filters` chega como JSON base64-url-safe (mais simples que serializar
+    todos os filtros como query string com listas).
+    Forma esperada:
+      {
+        "<coluna>": {"type": "set", "values": [...], "include_blank": false},
+        "<coluna>": {"type": "date_day"|"date_month", "values": [...], "include_blank": false},
+      }
+    """
+    if not raw:
+        return {}
+    try:
+        # base64 url-safe
+        padded = raw + ("=" * (-len(raw) % 4))
+        data = base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
+        obj = _json.loads(data)
+        return obj if isinstance(obj, dict) else {}
+    except Exception:
+        # fallback: pode vir como JSON cru (URL-encoded)
+        try:
+            return _json.loads(raw)
+        except Exception:
+            return {}
+
+
+def _quote_for_in(values):
+    """
+    PostgREST aceita listas em IN no formato: in.("v1","v2"). Caracteres especiais
+    precisam ser envoltos em aspas duplas; aspas internas escapadas duplicando.
+    """
+    out = []
+    for v in values:
+        s = "" if v is None else str(v)
+        s = s.replace("\\", "\\\\").replace('"', '""')
+        out.append(f'"{s}"')
+    return ",".join(out)
+
+
+def _br_to_iso(s: str) -> str | None:
+    """Converte dd/mm/yyyy → yyyy-mm-dd. Retorna None se inválido."""
+    s = (s or "").strip()
+    if not s or s == "-":
+        return None
+    try:
+        if len(s) >= 10 and s[2] == "/" and s[5] == "/":
+            return datetime.strptime(s[:10], "%d/%m/%Y").date().isoformat()
+    except Exception:
+        pass
+    return None
+
+
+def _month_range(mm_yyyy: str) -> tuple[str, str] | None:
+    """Converte 'mm/yyyy' em par (inicio_iso, prox_mes_iso)."""
+    try:
+        mm, yyyy = (mm_yyyy or "").strip().split("/")
+        mm_i = int(mm)
+        yyyy_i = int(yyyy)
+        if mm_i < 1 or mm_i > 12:
+            return None
+        nm = mm_i + 1
+        ny = yyyy_i
+        if nm > 12:
+            nm = 1
+            ny += 1
+        return f"{yyyy_i:04d}-{mm_i:02d}-01", f"{ny:04d}-{nm:02d}-01"
+    except Exception:
+        return None
+
+
+def _apply_list_filters(query, filters: dict, valid_cols: set, date_cols: set, skip_col: str | None = None):
+    """
+    Constrói WHERE no query do supabase a partir do dict de filtros.
+    skip_col: ignora o filtro daquela coluna (usado em facets).
+    """
+    for col, f in (filters or {}).items():
+        if not isinstance(f, dict):
+            continue
+        if col == skip_col:
+            continue
+        if col not in valid_cols:
+            continue
+
+        ftype = (f.get("type") or "").strip()
+        values = f.get("values") or []
+        include_blank = bool(f.get("include_blank"))
+
+        if not values and not include_blank:
+            continue
+
+        if ftype == "set":
+            if include_blank and not values:
+                query = query.is_(col, "null")
+            elif include_blank and values:
+                escaped = _quote_for_in(values)
+                query = query.or_(f"{col}.is.null,{col}.in.({escaped})")
+            else:
+                query = query.in_(col, values)
+
+        elif ftype == "date_day" and col in date_cols:
+            iso_vals = [_br_to_iso(v) for v in values]
+            iso_vals = [v for v in iso_vals if v]
+            if include_blank and not iso_vals:
+                query = query.is_(col, "null")
+            elif include_blank and iso_vals:
+                escaped = _quote_for_in(iso_vals)
+                query = query.or_(f"{col}.is.null,{col}.in.({escaped})")
+            elif iso_vals:
+                query = query.in_(col, iso_vals)
+
+        elif ftype == "date_month" and col in date_cols:
+            ranges = [_month_range(v) for v in values]
+            ranges = [r for r in ranges if r]
+            if include_blank and not ranges:
+                query = query.is_(col, "null")
+            elif ranges:
+                or_parts = [f"and({col}.gte.{a},{col}.lt.{b})" for a, b in ranges]
+                if include_blank:
+                    or_parts.append(f"{col}.is.null")
+                query = query.or_(",".join(or_parts))
+
+        elif ftype == "date_range" and col in date_cols:
+            # values = [start_iso | null, end_iso | null] — qualquer um pode ser omitido.
+            start_v = values[0] if len(values) >= 1 else None
+            end_v   = values[1] if len(values) >= 2 else None
+            if not start_v and not end_v:
+                continue
+            if start_v:
+                query = query.gte(col, start_v)
+            if end_v:
+                # Inclui o dia final: usamos col < (end + 1 dia) para funcionar
+                # tanto em colunas DATE quanto em TIMESTAMP (created_at/updated_at).
+                try:
+                    from datetime import timedelta
+                    d = datetime.strptime(str(end_v), "%Y-%m-%d").date()
+                    query = query.lt(col, (d + timedelta(days=1)).isoformat())
+                except Exception:
+                    query = query.lte(col, end_v)
+
+    return query
+
+
+def _compute_totals(table_name: str, valid_cols: set, date_cols: set,
+                    filters: dict, finalizado_value: int | None,
+                    total_fields: tuple[str, ...]) -> dict:
+    """
+    Soma os campos numéricos para TODOS os registros que casam com os filtros.
+    Estratégia: puxa apenas as colunas numéricas necessárias (payload mínimo) e soma em Python.
+    Funciona em qualquer versão do PostgREST/Supabase.
+    """
+    cols = "id," + ",".join(total_fields)
+    q = supabase.table(table_name).select(cols)
+    q = q.eq("tenant", _get_tenant())
+    if finalizado_value is not None:
+        q = q.eq("finalizado", int(finalizado_value))
+    q = _apply_list_filters(q, filters, valid_cols, date_cols)
+    # Limite alto: cobre cenários reais. Se passar de 50k, idealmente RPC SQL.
+    q = q.limit(50000)
+    res = q.execute()
+    rows = getattr(res, "data", None) or []
+
+    sums = {f: 0.0 for f in total_fields}
+    for r in rows:
+        for f in total_fields:
+            v = r.get(f)
+            if v is None:
+                continue
+            try:
+                sums[f] += float(v)
+            except (TypeError, ValueError):
+                pass
+    return {"count": len(rows), "sums": sums}
+
+
+def _normalize_sort(sort_col: str, sort_dir: str, valid_cols: set, default_col: str, default_dir: str = "desc"):
+    col = (sort_col or "").strip()
+    direction = (sort_dir or "").strip().lower()
+    if col not in valid_cols:
+        col = default_col
+    if direction not in ("asc", "desc"):
+        direction = default_dir
+    return col, direction
+
+
+def _page_args():
+    try:
+        page = max(1, int(request.args.get("page", "1")))
+    except Exception:
+        page = 1
+    try:
+        page_size = int(request.args.get("page_size", "100"))
+    except Exception:
+        page_size = 100
+    page_size = max(20, min(500, page_size))
+    return page, page_size
+
+
+def _fetch_facets(table_name: str, col: str, valid_cols: set, date_cols: set,
+                  filters: dict, finalizado_value: int | None,
+                  date_mode: str | None = None) -> list[str]:
+    """
+    Retorna valores distintos de `col` respeitando os demais filtros.
+    Para colunas de data, aplica formatação BR (dia ou mês) antes do distinct.
+    """
+    if col not in valid_cols:
+        return []
+
+    q = supabase.table(table_name).select(col)
+    q = q.eq("tenant", _get_tenant())
+    if finalizado_value is not None:
+        q = q.eq("finalizado", int(finalizado_value))
+    q = _apply_list_filters(q, filters, valid_cols, date_cols, skip_col=col)
+    q = q.limit(50000)
+    res = q.execute()
+    rows = getattr(res, "data", None) or []
+
+    seen = set()
+    out = []
+    is_date = col in date_cols
+
+    for r in rows:
+        v = r.get(col)
+        if v is None or v == "":
+            label = "-"
+        elif is_date:
+            iso = str(v)[:10]
+            try:
+                d = datetime.strptime(iso, "%Y-%m-%d").date()
+            except Exception:
+                d = None
+            if d is None:
+                label = "-"
+            elif (date_mode or "day") == "month":
+                label = f"{d.month:02d}/{d.year:04d}"
+            else:
+                label = f"{d.day:02d}/{d.month:02d}/{d.year:04d}"
+        else:
+            label = str(v)
+
+        if label not in seen:
+            seen.add(label)
+            out.append(label)
+
+    # Ordena: data por ordem cronológica, demais alfabética
+    if is_date:
+        def _date_key(lbl):
+            if lbl == "-":
+                return ""
+            if (date_mode or "day") == "month":
+                mm, yyyy = lbl.split("/")
+                return f"{yyyy}-{mm}"
+            dd, mm, yyyy = lbl.split("/")
+            return f"{yyyy}-{mm}-{dd}"
+        out.sort(key=_date_key)
+    else:
+        out.sort(key=lambda s: (s == "-", s.lower()))
+
+    return out
+
+
+def _list_paginated(table_name: str, list_columns: str, valid_cols: set, date_cols: set,
+                    default_sort_col: str, total_fields: tuple[str, ...],
+                    finalizado_value: int | None):
+    """Lógica comum dos endpoints /api/acordos e /api/mandados."""
+    filters = _decode_filters_param(request.args.get("filters"))
+    sort_col, sort_dir = _normalize_sort(
+        request.args.get("sort_col"), request.args.get("sort_dir"),
+        valid_cols, default_sort_col, "desc"
+    )
+    page, page_size = _page_args()
+    want_totals = (request.args.get("totals", "1") != "0")
+
+    # Query principal: paginada
+    q = supabase.table(table_name).select(list_columns, count="exact")
+    q = q.eq("tenant", _get_tenant())
+    if finalizado_value is not None:
+        q = q.eq("finalizado", int(finalizado_value))
+    q = _apply_list_filters(q, filters, valid_cols, date_cols)
+    q = q.order(sort_col, desc=(sort_dir == "desc"))
+
+    start = (page - 1) * page_size
+    end = start + page_size - 1
+    q = q.range(start, end)
+
+    res = q.execute()
+    rows = getattr(res, "data", None) or []
+    total_count = getattr(res, "count", None)
+    if total_count is None:
+        total_count = len(rows) + start  # fallback aproximado
+
+    payload = {
+        "ok": True,
+        "rows": rows,
+        "page": page,
+        "page_size": page_size,
+        "total_count": total_count,
+        "has_more": (start + len(rows)) < total_count,
+        "sort_col": sort_col,
+        "sort_dir": sort_dir,
+    }
+
+    if want_totals:
+        totals = _compute_totals(
+            table_name, valid_cols, date_cols, filters, finalizado_value, total_fields
+        )
+        payload["totals"] = totals["sums"]
+        payload["filtered_count"] = totals["count"]
+
+    return jsonify(payload)
+
+
+# ----- ACORDOS API -----
+
+@app.get("/api/acordos")
+@login_required
+def api_acordos_list():
+    try:
+        finalizado_value = int(request.args.get("finalizado", "0"))
+    except Exception:
+        finalizado_value = 0
+    if finalizado_value not in (0, 1):
+        finalizado_value = 0
+    return _list_paginated(
+        TABLE_ACORDOS, ACORDOS_LIST_COLUMNS,
+        ACORDOS_VALID_COLS, ACORDOS_DATE_COLS,
+        default_sort_col="data_acordo",
+        total_fields=ACORDOS_TOTAL_FIELDS,
+        finalizado_value=finalizado_value,
+    )
+
+
+@app.get("/api/acordos/<int:acordo_id>")
+@login_required
+def api_acordos_one(acordo_id: int):
+    q = supabase.table(TABLE_ACORDOS).select("*").eq("id", acordo_id).eq("tenant", _get_tenant()).limit(1)
+    res = q.execute()
+    rows = getattr(res, "data", None) or []
+    if not rows:
+        return jsonify({"ok": False, "error": "Não encontrado"}), 404
+    return jsonify({"ok": True, "row": rows[0]})
+
+
+@app.get("/api/acordos/facets")
+@login_required
+def api_acordos_facets():
+    col = (request.args.get("col") or "").strip()
+    date_mode = (request.args.get("date_mode") or "day").strip()
+    try:
+        finalizado_value = int(request.args.get("finalizado", "0"))
+    except Exception:
+        finalizado_value = 0
+    filters = _decode_filters_param(request.args.get("filters"))
+    values = _fetch_facets(
+        TABLE_ACORDOS, col, ACORDOS_VALID_COLS, ACORDOS_DATE_COLS,
+        filters, finalizado_value, date_mode=date_mode,
+    )
+    return jsonify({"ok": True, "values": values})
+
+
+# ----- MANDADOS API -----
+
+@app.get("/api/mandados")
+@login_required
+def api_mandados_list():
+    try:
+        finalizado_value = int(request.args.get("finalizado", "0"))
+    except Exception:
+        finalizado_value = 0
+    if finalizado_value not in (0, 1):
+        finalizado_value = 0
+    return _list_paginated(
+        TABLE_MANDADOS, MANDADOS_LIST_COLUMNS,
+        MANDADOS_VALID_COLS, MANDADOS_DATE_COLS,
+        default_sort_col="data_quitacao",
+        total_fields=MANDADOS_TOTAL_FIELDS,
+        finalizado_value=finalizado_value,
+    )
+
+
+@app.get("/api/mandados/<int:mandado_id>")
+@login_required
+def api_mandados_one(mandado_id: int):
+    q = supabase.table(TABLE_MANDADOS).select("*").eq("id", mandado_id).eq("tenant", _get_tenant()).limit(1)
+    res = q.execute()
+    rows = getattr(res, "data", None) or []
+    if not rows:
+        return jsonify({"ok": False, "error": "Não encontrado"}), 404
+    return jsonify({"ok": True, "row": rows[0]})
+
+
+@app.get("/api/mandados/facets")
+@login_required
+def api_mandados_facets():
+    col = (request.args.get("col") or "").strip()
+    date_mode = (request.args.get("date_mode") or "day").strip()
+    try:
+        finalizado_value = int(request.args.get("finalizado", "0"))
+    except Exception:
+        finalizado_value = 0
+    filters = _decode_filters_param(request.args.get("filters"))
+    values = _fetch_facets(
+        TABLE_MANDADOS, col, MANDADOS_VALID_COLS, MANDADOS_DATE_COLS,
+        filters, finalizado_value, date_mode=date_mode,
+    )
+    return jsonify({"ok": True, "values": values})
+
 
 # ===================== CADASTROS (ADMIN) =====================
 

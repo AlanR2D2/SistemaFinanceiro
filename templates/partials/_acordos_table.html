@@ -752,25 +752,25 @@
     <div class="ac-total-box">
       <div class="ac-total-label">Honorários</div>
       <div class="ac-total-value" id="acSumHonorarios">R$ 0,00</div>
-      <div class="ac-total-sub">Somatório dos visíveis</div>
+      <div class="ac-total-sub">Total dos filtrados</div>
     </div>
 
     <div class="ac-total-box">
       <div class="ac-total-label">Audiencista</div>
       <div class="ac-total-value" id="acSumAudiencista">R$ 0,00</div>
-      <div class="ac-total-sub">Somatório dos visíveis</div>
+      <div class="ac-total-sub">Total dos filtrados</div>
     </div>
 
     <div class="ac-total-box">
       <div class="ac-total-label">Sucumbência</div>
       <div class="ac-total-value" id="acSumSucumbencia">R$ 0,00</div>
-      <div class="ac-total-sub">Somatório dos visíveis</div>
+      <div class="ac-total-sub">Total dos filtrados</div>
     </div>
 
     <div class="ac-total-box">
       <div class="ac-total-label">Correção</div>
       <div class="ac-total-value" id="acSumCorrecao">R$ 0,00</div>
-      <div class="ac-total-sub">Somatório dos visíveis</div>
+      <div class="ac-total-sub">Total dos filtrados</div>
     </div>
 
     <div class="ac-total-box total">
@@ -781,8 +781,11 @@
   </div>
   {% endif %}
 
-  <div class="ac-table-wrap">
-    <table class="ac-table" id="acTable">
+  <div class="ac-table-wrap" id="acTableWrap">
+    <table class="ac-table" id="acTable"
+           data-finalizado="{{ finalizado_value if finalizado_value is defined else 0 }}"
+           data-default-sort-col="data_acordo"
+           data-default-sort-dir="desc">
       <thead>
         <tr>
           <th>DATA ACORDO</th>
@@ -822,106 +825,12 @@
       </thead>
 
       <tbody id="acTbody">
-        {% for r in rows %}
-        <tr data-row='{{ r|tojson|safe }}' data-id="{{ r.id }}" class="ac-row">
-          <td class="whitespace-nowrap">
-            <div class="clamp-2 ac-date">{{ r.data_acordo or "-" }}</div>
-          </td>
-          <td class="font-medium whitespace-nowrap">
-            <div class="clamp-2">{{ r.numero_processo or "-" }}</div>
-          </td>
-          <td>
-            <div class="clamp-2">{{ r.uf or "-" }}</div>
-          </td>
-          <td>
-            <div class="clamp-2">{{ r.reu or "-" }}</div>
-          </td>
-          <td style="min-width:220px; max-width:340px;">
-            <div class="clamp-2">{{ r.autor or "-" }}</div>
-          </td>
-          <td>
-            <div class="clamp-2">{{ r.tel or "-" }}</div>
-          </td>
-          <td>
-            <div class="clamp-2">{{ r.escritorio_reu or "-" }}</div>
-          </td>
-
-          <td class="ac-number">
-            <div class="clamp-2 ac-money">{{ r.valor_acordo or "-" }}</div>
-          </td>
-
-          <td style="min-width:260px; max-width:360px;">
-            <div class="clamp-2">{{ r.status or "-" }}</div>
-          </td>
-
-          <td>
-            <div class="clamp-2">{{ r.prazo_estimado or "-" }}</div>
-          </td>
-          <td class="whitespace-nowrap">
-            <div class="clamp-2 ac-date">{{ r.prazo_real or "-" }}</div>
-          </td>
-          <td class="whitespace-nowrap">
-            <div class="clamp-2 ac-date">{{ r.data_pagamento or "-" }}</div>
-          </td>
-          <td>
-            <div class="clamp-2">{{ r.local or "-" }}</div>
-          </td>
-
-          {# (13) tipo precisa conseguir “limpar” e salvar vazio -> já garantido no JS _collectForm + backend,
-          e aqui mostramos r.tipo normalmente. #}
-          <td>
-            <div class="clamp-2">{{ r.tipo if (r.tipo is not none) else "-" }}</div>
-          </td>
-
-          <td class="ac-number">
-            <div class="clamp-2 ac-money">{{ r.porcentagem_honorarios or "-" }}</div>
-          </td>
-          <td class="ac-number">
-            <div class="clamp-2 ac-money">{{ r.deposito or "-" }}</div>
-          </td>
-          <td class="ac-number">
-            <div class="clamp-2 ac-money">{{ r.correcao or "-" }}</div>
-          </td>
-          <td class="ac-number">
-            <div class="clamp-2 ac-money">{{ r.honorarios or "-" }}</div>
-          </td>
-          <td class="ac-number">
-            <div class="clamp-2 ac-money">{{ r.audiencista or "-" }}</div>
-          </td>
-
-          <!-- Conferência calculada via JS -->
-          <td class="ac-number">
-            <div class="clamp-2 ac-money ac-conferencia">-</div>
-          </td>
-
-          <td class="ac-number">
-            <div class="clamp-2 ac-money">{{ r.repasse or "-" }}</div>
-          </td>
-          <td>
-            <div class="clamp-2">{{ r.chave_pix or "-" }}</div>
-          </td>
-          <td class="ac-number">
-            <div class="clamp-2 ac-money">{{ r.sucumbencia or "-" }}</div>
-          </td>
-          <td style="min-width:320px; max-width:520px;">
-            <div class="clamp-2">{{ r.observacoes or "-" }}</div>
-          </td>
-
-          <td style="text-align:right; white-space:nowrap;">
-            <button class="ac-btn ac-edit-btn" type="button"
-              onclick="openEditModalFromRow(this.closest('tr'))">Editar</button>
-
-            <button class="ac-btn" type="button" style="margin-left:8px;border-color:#fecaca;color:#dc2626;"
-              onclick="AC.deleteFromBtn(event, {{ r.id }})">Excluir</button>
-          </td>
+        <tr id="acLoadingRow">
+          <td colspan="21" style="padding:18px; color:#6b7280;">Carregando registros...</td>
         </tr>
-        {% endfor %}
-
-        {% if rows|length == 0 %}
-        <tr>
+        <tr id="acEmptyRow" style="display:none;">
           <td colspan="21" style="padding:18px; color:#6b7280;">Nenhum registro encontrado.</td>
         </tr>
-        {% endif %}
       </tbody>
     </table>
   </div>
@@ -1187,19 +1096,45 @@
 </script>
 
 <script>
-  /* ===================== FORMATA NÚMEROS DA TABELA (APENAS EXIBIÇÃO) ===================== */
+  /* ===================== FORMATA NÚMEROS/DATAS (re-executável) ===================== */
   (function () {
     const tbody = document.getElementById("acTbody");
     if (!tbody) return;
 
-    tbody.querySelectorAll(".ac-money").forEach(div => {
-      div.textContent = acFormatBR(div.textContent.trim());
-    });
+    function toBRDate(raw) {
+      if (raw === null || raw === undefined) return '-';
+      let s = String(raw).trim();
+      if (!s || s === '-') return '-';
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+      return s;
+    }
+
+    function formatRow(tr) {
+      if (!tr || tr.dataset.acFmt === "1") return;
+      tr.querySelectorAll(".ac-money").forEach(div => {
+        div.textContent = acFormatBR(div.textContent.trim());
+      });
+      tr.querySelectorAll(".ac-date").forEach(div => {
+        div.textContent = toBRDate(div.textContent.trim());
+      });
+      tr.dataset.acFmt = "1";
+    }
+
+    function refresh() {
+      Array.from(tbody.rows).forEach(tr => {
+        if (tr.classList.contains("ac-row")) formatRow(tr);
+      });
+    }
+
+    window.AC_FMT = { refresh, formatRow, toBRDate };
+    refresh();
   })();
 </script>
 
 <script>
-  /* ===================== (4) OCULTAR COLUNAS NO FRONT (sem quebrar índices/scripts) ===================== */
+  /* ===================== (4) OCULTAR COLUNAS NO FRONT (re-executável) ===================== */
   (function () {
     const table = document.getElementById("acTable");
     const tbody = document.getElementById("acTbody");
@@ -1208,10 +1143,8 @@
 
     const HIDE = new Set(["MES PG", "MÊS PG", "FINALIZADO", "ID"]);
 
-    const ths = Array.from(thead.cells);
     const hideIdx = [];
-
-    ths.forEach((th, idx) => {
+    Array.from(thead.cells).forEach((th, idx) => {
       const t = (th.innerText || "").trim().toUpperCase();
       if (HIDE.has(t)) {
         hideIdx.push(idx);
@@ -1219,13 +1152,19 @@
       }
     });
 
-    if (!hideIdx.length) return;
-
-    Array.from(tbody.rows).forEach(tr => {
-      hideIdx.forEach(i => {
-        if (tr.cells[i]) tr.cells[i].classList.add("ac-hide-col");
+    function apply() {
+      if (!hideIdx.length) return;
+      Array.from(tbody.rows).forEach(tr => {
+        hideIdx.forEach(i => {
+          if (tr.cells[i] && !tr.cells[i].classList.contains("ac-hide-col")) {
+            tr.cells[i].classList.add("ac-hide-col");
+          }
+        });
       });
-    });
+    }
+
+    window.AC_HIDE_COLS = { refresh: apply };
+    apply();
   })();
 </script>
 
@@ -1263,12 +1202,9 @@
     function applyRule(tr) {
       clearRowColor(tr);
 
-      let rowObj = {};
-      try { rowObj = JSON.parse(tr.dataset.row || "{}"); } catch (_) { rowObj = {}; }
-
-      const tipo   = norm(rowObj.tipo   ?? tr.cells[13]?.innerText);
-      const status = norm(rowObj.status ?? tr.cells[8]?.innerText);
-      const local  = norm(rowObj.local  ?? tr.cells[12]?.innerText);
+      const tipo   = norm(tr.cells[13]?.innerText);
+      const status = norm(tr.cells[8]?.innerText);
+      const local  = norm(tr.cells[12]?.innerText);
 
       // tipo = CNPJ — prioridade máxima (hardcoded)
       if (tipo === "CNPJ") {
@@ -1316,13 +1252,19 @@
 
 
 <script>
-  /* ===================== TABELA + FILTROS + DATAS BR + TOTAIS (HON/AUD/SUC + TOTAL) ===================== */
+  /* ===================== TABELA PAGINADA + FILTROS SERVER-SIDE + TOTAIS GLOBAIS ===================== */
+  /* Carrega linhas via /api/acordos em páginas (scroll infinito).
+     Totais (honorários/audiencista/sucumbência/correção/total) somam SEMPRE todos
+     os registros que casam com os filtros atuais — independente da página visível. */
   (function () {
     const table = document.getElementById('acTable');
+    const wrap = document.getElementById('acTableWrap');
     const thead = table?.tHead?.rows?.[0];
     const tbody = document.getElementById('acTbody');
     const badge = document.getElementById('acFilteredBadge');
     const countEl = document.getElementById('acRowsCount');
+    const loadingRow = document.getElementById('acLoadingRow');
+    const emptyRow = document.getElementById('acEmptyRow');
 
     const sumEls = {
       honorarios: document.getElementById("acSumHonorarios"),
@@ -1332,348 +1274,488 @@
       total: document.getElementById("acSumTotalGeral"),
     };
 
-    if (!thead || !tbody) return;
+    if (!table || !thead || !tbody || !wrap) return;
 
+    /* ---------- Configuração: índice da coluna → campo no banco ---------- */
+    const COL_FIELDS = {
+      0: 'data_acordo',
+      1: 'numero_processo',
+      2: 'uf',
+      3: 'reu',
+      4: 'autor',
+      5: 'tel',
+      6: 'escritorio_reu',
+      7: 'valor_acordo',
+      8: 'status',
+      9: 'prazo_estimado',
+      10: 'prazo_real',
+      11: 'data_pagamento',
+      12: 'local',
+      13: 'tipo',
+      14: 'porcentagem_honorarios',
+      15: 'deposito',
+      16: 'correcao',
+      17: 'honorarios',
+      18: 'audiencista',
+      // 19 é Conferência (calculada) — não filtrável/ordenável
+      20: 'repasse',
+      21: 'chave_pix',
+      22: 'sucumbencia',
+      23: 'observacoes',
+      // 24 é Ações
+    };
+    const FIELD_TO_COL = {};
+    Object.entries(COL_FIELDS).forEach(([k, v]) => { FIELD_TO_COL[v] = Number(k); });
+
+    const DATE_FIELDS = new Set(['data_acordo', 'prazo_real', 'data_pagamento']);
+
+    const FINALIZADO = parseInt(table.dataset.finalizado || '0', 10);
+    const DEFAULT_SORT_COL = table.dataset.defaultSortCol || 'data_acordo';
+    const DEFAULT_SORT_DIR = table.dataset.defaultSortDir || 'desc';
+    const PAGE_SIZE = 100;
+
+    /* ---------- Estado ---------- */
+    const state = {
+      filters: {},         // { dbField: { type, values, include_blank, mode? } }
+      sort: null,          // { col: dbField, dir: 'asc'|'desc' }
+      page: 0,
+      hasMore: true,
+      loading: false,
+      totalCount: 0,
+      filteredCount: 0,
+      reqId: 0,            // contador para descartar respostas obsoletas
+    };
+
+    /* ---------- Helpers de formatação ---------- */
     function toBRDateText(raw) {
-      if (!raw) return '-';
-      raw = String(raw).trim();
-      if (raw === '-' || raw === '') return '-';
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
+      if (raw === null || raw === undefined) return '-';
+      let s = String(raw).trim();
+      if (!s || s === '-') return '-';
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+      return s;
+    }
 
-      const m1 = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (m1) {
-        const yyyy = m1[1], mm = m1[2], dd = m1[3];
-        return `${dd}/${mm}/${yyyy}`;
+    function escapeHtml(v) {
+      if (v === null || v === undefined || v === '') return '-';
+      return String(v).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[c]);
+    }
+
+    function moneyVal(v) {
+      if (v === null || v === undefined || v === '') return '-';
+      return String(v);
+    }
+
+    /* ---------- Render de uma linha ---------- */
+    function renderRow(r) {
+      const id = (r && r.id != null) ? r.id : '';
+      return `<tr data-id="${id}" class="ac-row">
+        <td class="whitespace-nowrap"><div class="clamp-2 ac-date">${escapeHtml(r.data_acordo)}</div></td>
+        <td class="font-medium whitespace-nowrap"><div class="clamp-2">${escapeHtml(r.numero_processo)}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.uf)}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.reu)}</div></td>
+        <td style="min-width:220px; max-width:340px;"><div class="clamp-2">${escapeHtml(r.autor)}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.tel)}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.escritorio_reu)}</div></td>
+        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.valor_acordo))}</div></td>
+        <td style="min-width:260px; max-width:360px;"><div class="clamp-2">${escapeHtml(r.status)}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.prazo_estimado)}</div></td>
+        <td class="whitespace-nowrap"><div class="clamp-2 ac-date">${escapeHtml(r.prazo_real)}</div></td>
+        <td class="whitespace-nowrap"><div class="clamp-2 ac-date">${escapeHtml(r.data_pagamento)}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.local)}</div></td>
+        <td><div class="clamp-2">${(r.tipo === null || r.tipo === undefined) ? '-' : escapeHtml(r.tipo)}</div></td>
+        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.porcentagem_honorarios))}</div></td>
+        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.deposito))}</div></td>
+        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.correcao))}</div></td>
+        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.honorarios))}</div></td>
+        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.audiencista))}</div></td>
+        <td class="ac-number"><div class="clamp-2 ac-money ac-conferencia">-</div></td>
+        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.repasse))}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.chave_pix)}</div></td>
+        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.sucumbencia))}</div></td>
+        <td style="min-width:320px; max-width:520px;"><div class="clamp-2">${escapeHtml(r.observacoes)}</div></td>
+        <td style="text-align:right; white-space:nowrap;">
+          <button class="ac-btn ac-edit-btn" type="button"
+            onclick="openEditModalFromRow(this.closest('tr'))">Editar</button>
+          <button class="ac-btn" type="button" style="margin-left:8px;border-color:#fecaca;color:#dc2626;"
+            onclick="AC.deleteFromBtn(event, ${Number(id) || 0})">Excluir</button>
+        </td>
+      </tr>`;
+    }
+
+    /* ---------- Pós-processamento após render ---------- */
+    function postProcess() {
+      window.AC_FMT?.refresh?.();
+      window.AC_HIDE_COLS?.refresh?.();
+      window.AC_COLORS?.refresh?.();
+      window.AC_CONFERENCIA?.refresh?.();
+      window.AC_XSCROLL?.refresh?.();
+    }
+
+    /* ---------- Encoding dos filtros (base64-url-safe JSON) ---------- */
+    function encodeFiltersForServer() {
+      const out = {};
+      for (const [field, f] of Object.entries(state.filters)) {
+        out[field] = {
+          type: f.type,
+          values: Array.isArray(f.values) ? f.values : [],
+          include_blank: !!f.include_blank,
+        };
       }
-      return raw;
+      const json = JSON.stringify(out);
+      // base64url
+      return btoa(unescape(encodeURIComponent(json)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     }
 
-    function toDayKey(raw) {
-      const br = toBRDateText(raw);
-      return br === '-' ? '-' : br;
-    }
-    function toMonthKey(raw) {
-      const br = toBRDateText(raw);
-      if (br === '-' || !/^\d{2}\/\d{2}\/\d{4}$/.test(br)) return br;
-      const [dd, mm, yyyy] = br.split('/');
-      return `${mm}/${yyyy}`;
+    /* ---------- Fetch / paginação ---------- */
+    let _scrollHandlerBound = false;
+
+    function buildUrl(params) {
+      const qs = new URLSearchParams(params).toString();
+      return `/api/acordos?${qs}`;
     }
 
-    tbody.querySelectorAll('.ac-date').forEach(el => {
-      el.textContent = toBRDateText(el.textContent);
-    });
+    function setRowsCount() {
+      if (!countEl) return;
+      const totalShown = state.filteredCount || state.totalCount || 0;
+      countEl.textContent = totalShown;
+    }
 
+    function setTotals(totals) {
+      const t = totals || {};
+      const sHon = Number(t.honorarios) || 0;
+      const sAud = Number(t.audiencista) || 0;
+      const sSuc = Number(t.sucumbencia) || 0;
+      const sCorr = Number(t.correcao) || 0;
+      if (sumEls.honorarios) sumEls.honorarios.textContent = acMoneyBRL(sHon);
+      if (sumEls.audiencista) sumEls.audiencista.textContent = acMoneyBRL(sAud);
+      if (sumEls.sucumbencia) sumEls.sucumbencia.textContent = acMoneyBRL(sSuc);
+      if (sumEls.correcao) sumEls.correcao.textContent = acMoneyBRL(sCorr);
+      if (sumEls.total) sumEls.total.textContent = acMoneyBRL(sHon + sAud + sSuc + sCorr);
+    }
+
+    function updateBadgeAndHeaderDots() {
+      const hasFilters = Object.keys(state.filters).length > 0;
+      if (badge) badge.style.display = hasFilters ? 'inline-block' : 'none';
+      Object.entries(COL_FIELDS).forEach(([colIdx, field]) => {
+        const th = thead.cells[Number(colIdx)];
+        if (!th) return;
+        th.classList.toggle('ac-filtered', !!state.filters[field]);
+      });
+    }
+
+    async function fetchPage(replace) {
+      if (state.loading) return;
+      if (!replace && !state.hasMore) return;
+
+      state.loading = true;
+      const myReqId = ++state.reqId;
+
+      const sortCol = state.sort?.col || DEFAULT_SORT_COL;
+      const sortDir = state.sort?.dir || DEFAULT_SORT_DIR;
+      const nextPage = replace ? 1 : (state.page + 1);
+
+      const params = {
+        finalizado: FINALIZADO,
+        page: nextPage,
+        page_size: PAGE_SIZE,
+        sort_col: sortCol,
+        sort_dir: sortDir,
+        totals: replace ? '1' : '0',
+        filters: encodeFiltersForServer(),
+      };
+
+      try {
+        const resp = await fetch(buildUrl(params), { headers: { 'Accept': 'application/json' } });
+        if (!resp.ok) throw new Error('http ' + resp.status);
+        const data = await resp.json();
+        if (myReqId !== state.reqId) return; // resposta obsoleta — descarta
+
+        const rows = data.rows || [];
+        if (replace) {
+          tbody.innerHTML = '';
+          if (loadingRow) loadingRow.style.display = 'none';
+          if (emptyRow) emptyRow.style.display = 'none';
+        }
+
+        if (rows.length) {
+          const html = rows.map(renderRow).join('');
+          tbody.insertAdjacentHTML('beforeend', html);
+        }
+
+        state.page = data.page || nextPage;
+        state.hasMore = !!data.has_more;
+        state.totalCount = Number(data.total_count) || 0;
+        state.filteredCount = (data.filtered_count != null)
+          ? Number(data.filtered_count)
+          : (replace ? state.totalCount : state.filteredCount);
+
+        if (replace) {
+          if (data.totals) setTotals(data.totals);
+          // Se não veio nenhuma linha e não há mais páginas
+          if (!tbody.querySelector('tr.ac-row')) {
+            if (emptyRow) emptyRow.style.display = '';
+          }
+        }
+
+        setRowsCount();
+        updateBadgeAndHeaderDots();
+        postProcess();
+      } catch (err) {
+        console.error('Falha ao carregar acordos:', err);
+        if (replace) {
+          if (loadingRow) loadingRow.style.display = 'none';
+          if (emptyRow) {
+            emptyRow.style.display = '';
+            const td = emptyRow.querySelector('td');
+            if (td) td.textContent = 'Erro ao carregar registros. Recarregue a página.';
+          }
+        }
+      } finally {
+        state.loading = false;
+      }
+    }
+
+    function refetchFromScratch() {
+      state.page = 0;
+      state.hasMore = true;
+      fetchPage(true);
+    }
+
+    /* ---------- Infinite scroll ---------- */
+    function bindScroll() {
+      if (_scrollHandlerBound) return;
+      _scrollHandlerBound = true;
+      const NEAR = 600; // px do fim do scroll vertical
+      wrap.addEventListener('scroll', () => {
+        if (state.loading || !state.hasMore) return;
+        const distFromBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight;
+        if (distFromBottom < NEAR) {
+          fetchPage(false);
+        }
+      }, { passive: true });
+    }
+
+    /* ---------- Painel de filtro ---------- */
     let panel = document.getElementById('acGlobalFilterPanel');
     if (!panel) {
       panel = document.createElement('div');
       panel.id = 'acGlobalFilterPanel';
       panel.className = 'ac-panel';
       panel.innerHTML = `
-      <div class="ac-panel-top">
-        <input type="search" placeholder="Pesquisar...">
-        <div class="ac-mode" id="acDateMode" role="group" aria-label="Modo de data">
-          <button type="button" data-mode="day" class="active">Dia</button>
-          <button type="button" data-mode="month">Mês</button>
+        <div class="ac-panel-top">
+          <input type="search" placeholder="Pesquisar...">
+          <div class="ac-mode" id="acDateMode" role="group" aria-label="Modo de data">
+            <button type="button" data-mode="day" class="active">Dia</button>
+            <button type="button" data-mode="month">Mês</button>
+          </div>
         </div>
-      </div>
-      <div class="ac-panel-list"></div>
-      <div class="ac-panel-actions">
-        <button type="button" class="sort" data-sort="asc">A→Z</button>
-        <button type="button" class="sort" data-sort="desc">Z→A</button>
-        <button type="button" data-act="clear">Limpar</button>
-        <button type="button" class="primary" data-act="ok" style="grid-column: span 2;">OK</button>
-      </div>
-    `;
+        <div class="ac-panel-list" style="min-height:120px;">
+          <div class="ac-panel-loading" style="padding:10px; color:#6b7280;">Carregando...</div>
+        </div>
+        <div class="ac-panel-actions">
+          <button type="button" class="sort" data-sort="asc">A→Z</button>
+          <button type="button" class="sort" data-sort="desc">Z→A</button>
+          <button type="button" data-act="clear">Limpar</button>
+          <button type="button" class="primary" data-act="ok" style="grid-column: span 2;">OK</button>
+        </div>
+      `;
       document.body.appendChild(panel);
     }
 
     panel.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
     panel.addEventListener('mousedown', (e) => e.stopPropagation());
     panel.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+    // Clicks dentro do painel não devem fechar o painel pelo handler do document.
+    // (O picker de datas re-renderiza ao clicar num dia, então o target sai do DOM
+    //  antes do bubble chegar no document e o `closest('#acGlobalFilterPanel')`
+    //  retornaria null indevidamente.)
+    panel.addEventListener('click', (e) => e.stopPropagation());
 
-    const allRows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector('.ac-edit-btn'));
+    let openField = null;     // db field name atualmente aberto no painel
+    let openThEl = null;
+    let panelDateMode = 'day';
+    let panelFacetReq = 0;
 
-    const FILTERABLE_COLS = [];
-    Array.from(thead.cells).forEach((th, idx) => {
-      const title = (th.innerText || '').trim().toLowerCase();
-      if (title === 'ações' || th.classList.contains('no-filter')) return;
-      FILTERABLE_COLS.push(idx);
-    });
-
-    let filters = {};
-    let sort = null;
-    let openCol = null;
-
-    function textOfCell(row, col) {
-      const cell = row.cells[col];
-      if (!cell) return '-';
-      const t = (cell.innerText || '').trim();
-      return t === '' ? '-' : t;
-    }
-
-    function isDateCol(col) {
-      const headerText = (thead.cells[col]?.innerText || '').toLowerCase();
-      return headerText.includes('data') || headerText.includes('prazo real');
-    }
-
-    function cellValueForFilter(row, col, fObj) {
-      const raw = textOfCell(row, col);
-      if (fObj?.type === 'date') {
-        return fObj.mode === 'month' ? toMonthKey(raw) : toDayKey(raw);
-      }
-      return raw;
-    }
-
-    function matchesFilters(row, f = filters) {
-      for (const [colStr, fObj] of Object.entries(f)) {
-        const col = Number(colStr);
-        const v = cellValueForFilter(row, col, fObj);
-        if (!fObj?.set || !fObj.set.has(v)) return false;
-      }
-      return true;
-    }
-
-    function getVisibleRows() {
-      return allRows.filter(r => matchesFilters(r));
-    }
-
-    function readRowObj(tr) {
-      try { return JSON.parse(tr.dataset.row || "{}"); }
-      catch (_) { return {}; }
-    }
-
-    function numFromAny(v) {
-      const n = acParseAnyNumber(v);
-      return n === null ? 0 : n;
-    }
-
-    function computeTotalsFromVisibleRows(visibleRows) {
-      let sHon = 0, sAud = 0, sSuc = 0, sCorr = 0;
-
-      for (const tr of visibleRows) {
-        const obj = readRowObj(tr);
-
-        // Indices updated to match new column order
-        // Correção = 16, Honorários = 17, Audiencista = 18, Sucumbência = 22
-        const vHon = (obj.honorarios ?? textOfCell(tr, 17));
-        const vAud = (obj.audiencista ?? textOfCell(tr, 18));
-        const vSuc = (obj.sucumbencia ?? textOfCell(tr, 22));
-        const vCorr = (obj.correcao ?? textOfCell(tr, 16));
-
-        sHon += numFromAny(vHon);
-        sAud += numFromAny(vAud);
-        sSuc += numFromAny(vSuc);
-        sCorr += numFromAny(vCorr);
-      }
-
-      const total = sHon + sAud + sSuc + sCorr;
-      return { sHon, sAud, sSuc, sCorr, total };
-    }
-
-    function renderTotals() {
-      const vis = getVisibleRows();
-      const t = computeTotalsFromVisibleRows(vis);
-
-      if (sumEls.honorarios) sumEls.honorarios.textContent = acMoneyBRL(t.sHon);
-      if (sumEls.audiencista) sumEls.audiencista.textContent = acMoneyBRL(t.sAud);
-      if (sumEls.sucumbencia) sumEls.sucumbencia.textContent = acMoneyBRL(t.sSuc);
-      if (sumEls.correcao) sumEls.correcao.textContent = acMoneyBRL(t.sCorr);
-      if (sumEls.total) sumEls.total.textContent = acMoneyBRL(t.total);
-    }
-
-    function apply() {
-      allRows.forEach(r => r.style.display = matchesFilters(r) ? '' : 'none');
-
-      if (sort) {
-        const vis = getVisibleRows();
-        const col = sort.col;
-        const dir = sort.dir;
-
-        vis.sort((a, b) => {
-          const A = textOfCell(a, col);
-          const B = textOfCell(b, col);
-
-          if (isDateCol(col)) {
-            const aBr = toBRDateText(A);
-            const bBr = toBRDateText(B);
-            const aIso = (aBr === '-' ? '' : aBr.split('/').reverse().join('-'));
-            const bIso = (bBr === '-' ? '' : bBr.split('/').reverse().join('-'));
-            const cmp = aIso.localeCompare(bIso);
-            return dir === 'asc' ? cmp : -cmp;
-          }
-
-          const aNum = acParseAnyNumber(A);
-          const bNum = acParseAnyNumber(B);
-          if (aNum !== null && bNum !== null) {
-            const cmp = aNum - bNum;
-            return dir === 'asc' ? cmp : -cmp;
-          }
-
-          const cmp = A.localeCompare(B, 'pt-BR');
-          return dir === 'asc' ? cmp : -cmp;
-        });
-
-        vis.forEach(r => tbody.appendChild(r));
-      }
-
-      const visCount = getVisibleRows().length;
-      if (countEl) countEl.textContent = visCount;
-
-      const hasFilters = Object.keys(filters).length > 0;
-      if (badge) badge.style.display = hasFilters ? 'inline-block' : 'none';
-
-      FILTERABLE_COLS.forEach(i => {
-        const th = thead.cells[i];
-        if (!th) return;
-        th.classList.toggle('ac-filtered', !!filters[i]);
-      });
-
-      window.AC_XSCROLL?.refresh?.();
-      window.AC_COLORS?.refresh?.();
-      window.AC_CONFERENCIA?.refresh?.();
-
-      renderTotals();
-    }
-
-    function valuesForColumn(col, forcedDateMode = null) {
-      const temp = { ...filters };
-      delete temp[col];
-
-      const candidates = allRows.filter(r => matchesFilters(r, temp));
-      const vals = new Set();
-      const existing = filters[col] || null;
-
-      if (isDateCol(col)) {
-        const mode = forcedDateMode || (existing?.type === 'date' ? existing.mode : 'day');
-        candidates.forEach(r => {
-          const raw = textOfCell(r, col);
-          vals.add(mode === 'month' ? toMonthKey(raw) : toDayKey(raw));
-        });
-
-        return Array.from(vals).sort((a, b) => {
-          if (mode === 'month') {
-            const [am, ay] = (a || '').split('/');
-            const [bm, by] = (b || '').split('/');
-            return `${ay || ''}-${am || ''}`.localeCompare(`${by || ''}-${bm || ''}`, 'pt-BR');
-          }
-          const aKey = a === '-' ? '' : a.split('/').reverse().join('-');
-          const bKey = b === '-' ? '' : b.split('/').reverse().join('-');
-          return aKey.localeCompare(bKey, 'pt-BR');
-        });
-      }
-
-      candidates.forEach(r => vals.add(textOfCell(r, col)));
-      return Array.from(vals).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    function isDateField(field) {
+      return DATE_FIELDS.has(field);
     }
 
     function closePanel() {
       panel.style.display = 'none';
-      openCol = null;
+      openField = null;
+      openThEl = null;
+      destroyDatePicker();
     }
 
     function positionPanelNear(th) {
       const rect = th.getBoundingClientRect();
       const panelW = 380;
       const margin = 8;
-
       let left = rect.right - panelW;
       if (left < margin) left = margin;
-
       let top = rect.bottom + 8;
       const panelH = 680;
       const maxTop = window.innerHeight - panelH - margin;
       if (top > maxTop) top = Math.max(margin, maxTop);
-
       panel.style.left = left + 'px';
       panel.style.top = top + 'px';
     }
 
     function setDateModeUI(show, activeMode) {
-      const wrap = document.getElementById('acDateMode');
-      if (!wrap) return;
-      wrap.style.display = show ? 'inline-flex' : 'none';
-      wrap.querySelectorAll('button').forEach(b => {
+      const w = document.getElementById('acDateMode');
+      if (!w) return;
+      w.style.display = show ? 'inline-flex' : 'none';
+      w.querySelectorAll('button').forEach(b => {
         b.classList.toggle('active', b.dataset.mode === activeMode);
       });
     }
 
-    function populatePanel(col, forcedDateMode = null) {
-      const list = panel.querySelector('.ac-panel-list');
-      list.innerHTML = '';
-
-      const isDate = isDateCol(col);
-      let dateMode = 'day';
-      const existing = filters[col];
-
-      if (isDate) {
-        if (forcedDateMode) dateMode = forcedDateMode;
-        else if (existing?.type === 'date') dateMode = existing.mode;
-        setDateModeUI(true, dateMode);
-      } else {
-        setDateModeUI(false, 'day');
-      }
-
-      const vals = valuesForColumn(col, isDate ? dateMode : null);
-
-      let currentSet = null;
-      if (existing?.type === 'date' && isDate) currentSet = existing.set;
-      else if (existing?.type === 'set') currentSet = existing.set;
-
-      vals.forEach(v => {
-        const lab = document.createElement('label');
-        lab.className = 'ac-panel-item';
-        lab.dataset.val = v;
-        const checked = currentSet ? currentSet.has(v) : false;
-
-        lab.innerHTML = `
-        <input type="checkbox" ${checked ? 'checked' : ''}>
-        <span>${v}</span>
-      `;
-        list.appendChild(lab);
+    async function fetchFacets(field, mode) {
+      const params = new URLSearchParams({
+        col: field,
+        finalizado: FINALIZADO,
+        date_mode: mode || 'day',
+        filters: encodeFiltersForServer(),
       });
-
-      const s = panel.querySelector('input[type="search"]');
-      if (s) s.value = '';
-
-      panel.dataset.isDateCol = isDate ? '1' : '0';
-      panel.dataset.dateMode = isDate ? dateMode : '';
+      const resp = await fetch(`/api/acordos/facets?${params.toString()}`, {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (!resp.ok) throw new Error('http ' + resp.status);
+      const data = await resp.json();
+      return data.values || [];
     }
 
-    function openPanelFor(col, th) {
-      openCol = col;
-      populatePanel(col);
+    /* Picker de intervalo de datas — instanciado por painel quando coluna for data */
+    let acDatePicker = null;
+    function destroyDatePicker() {
+      if (acDatePicker && acDatePicker.destroy) {
+        try { acDatePicker.destroy(); } catch (_) {}
+      }
+      acDatePicker = null;
+    }
+
+    async function populatePanel(field, forcedDateMode = null) {
+      const list = panel.querySelector('.ac-panel-list');
+      const searchEl = panel.querySelector('input[type="search"]');
+      const isDate = isDateField(field);
+      const existing = state.filters[field];
+
+      panel.dataset.field = field;
+      panel.dataset.isDateCol = isDate ? '1' : '0';
+
+      if (isDate) {
+        // UI exclusiva pra data: oculta busca e Dia/Mês, monta o calendário no lugar da lista.
+        if (searchEl) searchEl.style.display = 'none';
+        setDateModeUI(false, 'day');
+        panel.dataset.dateMode = 'range';
+
+        // Reaproveita start/end se já houver filtro do tipo range; caso contrário começa em branco.
+        let startISO = null, endISO = null;
+        if (existing && existing.type === 'date_range' && Array.isArray(existing.values)) {
+          startISO = existing.values[0] || null;
+          endISO   = existing.values[1] || null;
+        }
+
+        list.style.minHeight = 'auto';
+        list.style.maxHeight = 'none';
+        list.style.padding = '0';
+        list.style.border = '0';
+        list.innerHTML = `<div data-act="drp-mount"></div>`;
+
+        destroyDatePicker();
+        if (window.DateRangePicker) {
+          acDatePicker = window.DateRangePicker.create(
+            list.querySelector('[data-act="drp-mount"]'),
+            { start: startISO, end: endISO }
+          );
+        } else {
+          list.innerHTML = `<div style="padding:10px; color:#dc2626;">Erro: DateRangePicker não carregado.</div>`;
+        }
+        return;
+      }
+
+      // Coluna não-data: lista de checkboxes via facets (comportamento original).
+      destroyDatePicker();
+      if (searchEl) searchEl.style.display = '';
+      setDateModeUI(false, 'day');
+      panel.dataset.dateMode = '';
+      list.style.minHeight = '520px';
+      list.style.maxHeight = '520px';
+      list.style.padding = '8px';
+      list.style.border = '1px solid #e5e7eb';
+
+      list.innerHTML = `<div class="ac-panel-loading" style="padding:10px; color:#6b7280;">Carregando...</div>`;
+
+      const myReq = ++panelFacetReq;
+      let values = [];
+      try {
+        values = await fetchFacets(field, null);
+      } catch (e) {
+        console.error('Falha ao carregar facets:', e);
+      }
+      if (myReq !== panelFacetReq) return;
+
+      const currentSet = new Set(existing && Array.isArray(existing.values) ? existing.values : []);
+      if (existing && existing.include_blank) currentSet.add('-');
+
+      const html = values.map(v => {
+        const checked = currentSet.has(v) ? 'checked' : '';
+        const safe = escapeHtml(v);
+        return `<label class="ac-panel-item" data-val="${safe.replace(/"/g, '&quot;')}">
+          <input type="checkbox" ${checked}>
+          <span>${safe}</span>
+        </label>`;
+      }).join('');
+
+      list.innerHTML = html || `<div style="padding:10px; color:#6b7280;">Nenhum valor disponível.</div>`;
+
+      if (searchEl) searchEl.value = '';
+    }
+
+    function openPanelFor(field, th) {
+      openField = field;
+      openThEl = th;
       positionPanelNear(th);
       panel.style.display = 'block';
       panel.querySelector('input[type="search"]')?.focus();
+      populatePanel(field);
     }
 
     function buildHeaderUI() {
-      FILTERABLE_COLS.forEach((col) => {
+      Object.entries(COL_FIELDS).forEach(([colIdx, field]) => {
+        const col = Number(colIdx);
         const th = thead.cells[col];
         if (!th) return;
         if (th.dataset.acInited === '1') return;
         th.dataset.acInited = '1';
+        th.dataset.field = field;
 
         const label = (th.innerText || '').trim();
         th.innerHTML = `
-        <span class="ac-th-inner">
-          <span>${label}</span>
-          <span class="ac-th-tools">
-            <span class="ac-dot"></span>
-            <span class="ac-th-btn" data-act="open" title="Filtrar/Ordenar">▾</span>
+          <span class="ac-th-inner">
+            <span>${label}</span>
+            <span class="ac-th-tools">
+              <span class="ac-dot"></span>
+              <span class="ac-th-btn" data-act="open" title="Filtrar/Ordenar">▾</span>
+            </span>
           </span>
-        </span>
-      `;
+        `;
 
         th.querySelector('[data-act="open"]').addEventListener('click', (e) => {
           e.stopPropagation();
-          const isOpen = (panel.style.display === 'block' && openCol === col);
+          const isOpen = (panel.style.display === 'block' && openField === field);
           if (isOpen) { closePanel(); return; }
-          openPanelFor(col, th);
+          openPanelFor(field, th);
         });
       });
     }
 
+    /* ---------- Eventos do painel ---------- */
     panel.querySelector('input[type="search"]').addEventListener('input', (e) => {
       const q = (e.target.value || '').trim().toLowerCase();
       panel.querySelectorAll('.ac-panel-item').forEach(it => {
@@ -1686,56 +1768,83 @@
     if (dateModeWrap) {
       dateModeWrap.querySelectorAll('button').forEach(btn => {
         btn.addEventListener('click', () => {
-          if (openCol === null) return;
+          if (!openField) return;
           if (panel.dataset.isDateCol !== '1') return;
           const mode = btn.dataset.mode;
           setDateModeUI(true, mode);
-          populatePanel(openCol, mode);
+          populatePanel(openField, mode);
         });
       });
     }
 
     panel.querySelectorAll('[data-sort]').forEach(btn => {
       btn.addEventListener('click', () => {
-        if (openCol === null) return;
-        sort = { col: openCol, dir: btn.dataset.sort };
+        if (!openField) return;
+        state.sort = { col: openField, dir: btn.dataset.sort };
         closePanel();
-        apply();
+        saveState();
+        refetchFromScratch();
       });
     });
 
     panel.querySelector('[data-act="clear"]').addEventListener('click', () => {
-      if (openCol === null) return;
-      delete filters[openCol];
+      if (!openField) return;
+      // Se for picker de data, deixa o campo limpo na UI antes de fechar.
+      if (acDatePicker && acDatePicker.clear) {
+        try { acDatePicker.clear(); } catch (_) {}
+      }
+      delete state.filters[openField];
+      destroyDatePicker();
       closePanel();
-      apply();
+      saveState();
+      refetchFromScratch();
     });
 
     panel.querySelector('[data-act="ok"]').addEventListener('click', () => {
-      if (openCol === null) return;
+      if (!openField) return;
 
-      const set = new Set();
-      panel.querySelectorAll('.ac-panel-item').forEach(it => {
-        const cb = it.querySelector('input[type="checkbox"]');
-        if (cb && cb.checked) set.add(it.dataset.val);
-      });
+      const isDate = panel.dataset.isDateCol === '1';
 
-      if (!set.size) {
-        delete filters[openCol];
+      // ----- Coluna de DATA: lê o intervalo do picker -----
+      if (isDate) {
+        const range = acDatePicker && acDatePicker.getRange ? acDatePicker.getRange() : { start: null, end: null };
+        const hasAny = !!(range.start || range.end);
+        if (!hasAny) {
+          delete state.filters[openField];
+        } else {
+          state.filters[openField] = {
+            type: 'date_range',
+            values: [range.start, range.end],
+            include_blank: false,
+          };
+        }
+        destroyDatePicker();
         closePanel();
-        apply();
+        saveState();
+        refetchFromScratch();
         return;
       }
 
-      const isDate = panel.dataset.isDateCol === '1';
-      const dateMode = panel.dataset.dateMode || 'day';
+      // ----- Coluna não-data: comportamento original (checkboxes) -----
+      const selected = [];
+      let includeBlank = false;
+      panel.querySelectorAll('.ac-panel-item').forEach(it => {
+        const cb = it.querySelector('input[type="checkbox"]');
+        if (!cb || !cb.checked) return;
+        const v = it.dataset.val || '';
+        if (v === '-') { includeBlank = true; return; }
+        selected.push(v);
+      });
 
-      filters[openCol] = isDate
-        ? { type: 'date', mode: dateMode, set }
-        : { type: 'set', set };
+      if (!selected.length && !includeBlank) {
+        delete state.filters[openField];
+      } else {
+        state.filters[openField] = { type: 'set', values: selected, include_blank: includeBlank };
+      }
 
       closePanel();
-      apply();
+      saveState();
+      refetchFromScratch();
     });
 
     document.addEventListener('click', (e) => {
@@ -1747,32 +1856,32 @@
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === "Escape" && panel.style.display === "block") closePanel();
+      if (e.key === 'Escape' && panel.style.display === 'block') closePanel();
     });
 
-    window.addEventListener('resize', () => { if (openCol !== null) { closePanel(); } });
+    window.addEventListener('resize', () => { if (openField) closePanel(); });
 
+    /* ---------- API pública (botões da UI) ---------- */
     window.AC = window.AC || {};
     window.AC.clearAll = function () {
-      filters = {};
-      sort = null;
+      state.filters = {};
+      state.sort = null;
       closePanel();
-      apply();
+      saveState();
+      refetchFromScratch();
     };
     window.AC.deleteFromBtn = function (ev, id) {
       ev.preventDefault();
       ev.stopPropagation();
       deleteAcordo(id);
     };
+    window.AC.refresh = refetchFromScratch;
 
-    const KEY = "acordos.filters.v1";
+    /* ---------- Persistência ---------- */
+    const KEY = 'acordos.filters.v2';
     function saveState() {
-      const safeFilters = {};
-      for (const [k, v] of Object.entries(filters)) {
-        safeFilters[k] = { ...v, set: Array.from(v.set || []) };
-      }
       try {
-        localStorage.setItem(KEY, JSON.stringify({ filters: safeFilters, sort }));
+        localStorage.setItem(KEY, JSON.stringify({ filters: state.filters, sort: state.sort }));
       } catch (_) { }
     }
     function loadState() {
@@ -1780,27 +1889,17 @@
         const raw = localStorage.getItem(KEY);
         if (!raw) return;
         const st = JSON.parse(raw);
-        if (st?.filters) {
-          const rebuilt = {};
-          for (const [k, v] of Object.entries(st.filters)) {
-            rebuilt[k] = { ...v, set: new Set(v.set || []) };
-          }
-          filters = rebuilt;
-        }
-        if (st?.sort) sort = st.sort;
+        if (st && st.filters && typeof st.filters === 'object') state.filters = st.filters;
+        if (st && st.sort && typeof st.sort === 'object') state.sort = st.sort;
       } catch (_) { }
     }
 
-    const _applyOrig = apply;
-    function applyWithPersist() {
-      saveState();
-      _applyOrig();
-    }
-    apply = applyWithPersist;
-
+    /* ---------- Boot ---------- */
     buildHeaderUI();
     loadState();
-    apply();
+    updateBadgeAndHeaderDots();
+    bindScroll();
+    refetchFromScratch();
   })();
 </script>
 
@@ -2460,15 +2559,27 @@
 
     window.openEditModalFromRow = async function (tr) {
       await loadOptionsOnce();
+      const id = tr?.dataset?.id;
+      if (!id) {
+        _showError("ID do acordo não encontrado.");
+        return;
+      }
       try {
-        const raw = tr?.dataset?.row || "{}";
-        const row = JSON.parse(raw);
+        const resp = await fetch(`/api/acordos/${encodeURIComponent(id)}`, {
+          headers: { "Accept": "application/json" }
+        });
+        if (!resp.ok) {
+          _showError("Não foi possível carregar os dados do acordo.");
+          return;
+        }
+        const data = await resp.json();
+        const row = data && data.row ? data.row : {};
         openModal("edit");
         _fillForm(row);
         window.AC_AUTOCALC?.initForEdit?.(row?.honorarios, row?.repasse);
       } catch (err) {
         console.error("Erro openEditModalFromRow:", err);
-        _showError("Não foi possível abrir edição (dados inválidos).");
+        _showError("Não foi possível abrir edição (falha de rede).");
       }
     };
 
@@ -2559,7 +2670,7 @@
       const interactive = e.target.closest('button, a, input, select, textarea, label, .ac-th-btn, #acGlobalFilterPanel');
       if (interactive) return;
 
-      if (!tr.dataset.row) return;
+      if (!tr.dataset.id) return;
 
       if (typeof window.openEditModalFromRow === "function") {
         window.openEditModalFromRow(tr);
