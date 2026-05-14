@@ -170,6 +170,11 @@
   </style>
 
   <script src="{{ url_for('static', filename='js/date_range_picker.js') }}"></script>
+
+  <!-- Driver.js: tour guiado (onboarding) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css">
+  <script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
+  <script src="{{ url_for('static', filename='js/onboarding_tour.js') }}"></script>
 </head>
 
 <body class="bg-gray-50">
@@ -324,6 +329,14 @@
           <div class="flex items-center gap-3">
             <div class="text-sm text-gray-500 hidden sm:block">{{ current_user.email }}</div>
 
+            <!-- Atalho Ajuda / Refazer tour -->
+            <button id="onboardingHelpBtn"
+                    type="button"
+                    title="Ajuda / Refazer tour"
+                    class="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 text-gray-700">
+              <i data-feather="help-circle" class="w-5 h-5"></i>
+            </button>
+
             <!-- Atalho Config (todos) -->
             <a href="{{ url_for('config_page') }}"
                class="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 text-gray-700"
@@ -342,6 +355,17 @@
 
   <script>
     feather.replace();
+
+    /* Contexto pro onboarding tour (lido pelo onboarding_tour.js). */
+    window.SF_ONBOARDING = {
+      visto: {{ 'true' if onboarding_visto else 'false' }},
+      pagina_atual: "{{ request.path }}",
+      hierarquia: "{{ (current_user.hierarquia or '')|lower }}",
+      autenticado: {{ 'true' if current_user.is_authenticated else 'false' }},
+    };
+    if (window.SistemaTour && window.SistemaTour.init) {
+      window.SistemaTour.init();
+    }
 
     const sidebar = document.getElementById("sidebar");
     const collapseBtn = document.getElementById("collapseBtn");

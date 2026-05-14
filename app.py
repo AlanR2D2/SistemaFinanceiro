@@ -129,10 +129,11 @@ def inject_user_flags():
                 "is_admin": bool(getattr(current_user, "is_admin", False)),
                 "user_role": getattr(current_user, "role", ""),
                 "tenant": session.get("tenant", ""),
+                "onboarding_visto": bool(current_user.data.get("onboarding_visto_em")),
             }
     except Exception:
         pass
-    return {"is_admin": False, "user_role": "", "tenant": ""}
+    return {"is_admin": False, "user_role": "", "tenant": "", "onboarding_visto": False}
 
 
 def _get_tenant() -> str:
@@ -1316,6 +1317,24 @@ def api_mandados_facets():
         filters, finalizado_value, date_mode=date_mode,
     )
     return jsonify({"ok": True, "values": values})
+
+
+# ----- ONBOARDING -----
+
+@app.post("/api/onboarding/marcar-visto")
+@login_required
+def api_onboarding_marcar_visto():
+    """Marca o tour de boas-vindas como visto pelo usuário atual."""
+    from datetime import timezone
+    try:
+        supabase.table(TABLE_USERS).update(
+            {"onboarding_visto_em": datetime.now(timezone.utc).isoformat()}
+        ).eq("login", current_user.login).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        # Se a coluna ainda não foi criada (migration 03 não rodou), respondemos
+        # ok=False mas sem 500 — o tour já rodou na sessão, só não persiste.
+        return jsonify({"ok": False, "error": str(e)}), 200
 
 
 # ===================== CADASTROS (ADMIN) =====================
