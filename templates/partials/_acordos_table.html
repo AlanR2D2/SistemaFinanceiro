@@ -788,37 +788,40 @@
            data-default-sort-dir="desc">
       <thead>
         <tr>
-          <th>DATA ACORDO</th>
-          <th>NÚMERO PROCESSO</th>
-          <th>UF</th>
-          <th>RÉU</th>
-          <th>AUTOR</th>
-          <th>TEL.</th>
-          <th>ESCRITÓRIO DO RÉU</th>
-          <th>VALOR ACORDO</th>
-          <th>STATUS</th>
+          <th data-field="data_acordo">DATA ACORDO</th>
+          <th data-field="numero_processo">NÚMERO PROCESSO</th>
+          <th data-field="uf">UF</th>
+          <th data-field="reu">RÉU</th>
+          <th data-field="autor">AUTOR</th>
+          <th data-field="tel">TEL.</th>
+          <th data-field="escritorio_reu">ESCRITÓRIO DO RÉU</th>
+          <th data-field="valor_acordo">VALOR ACORDO</th>
+          <th data-field="status">STATUS</th>
 
-          <th>PRAZO ESTIMADO</th>
-          <th>PRAZO REAL</th>
-          <th>DATA PAGAMENTO</th>
-          <th>LOCAL</th>
-          <th>TIPO</th>
-          <th>% HONORÁRIOS</th>
-          <th>DEPÓSITO</th>
-          <th>CORREÇÃO
+          <th data-field="prazo_estimado">PRAZO ESTIMADO</th>
+          <th data-field="prazo_real">PRAZO REAL</th>
+          <th data-field="data_pagamento">DATA PAGAMENTO</th>
+          <th data-field="local">LOCAL</th>
+          <th data-field="tipo">TIPO</th>
+          <th data-field="porcentagem_honorarios">% HONORÁRIOS</th>
+          <th data-field="deposito">DEPÓSITO</th>
+          <th data-field="correcao">CORREÇÃO
             <span class="ac-info" title="Automático: Depósito - Valor Acordo - Sucumbência">i</span>
           </th>
-          <th>HONORÁRIOS</th>
-          <th>AUDIENCISTA</th>
+          <th data-field="honorarios">HONORÁRIOS</th>
+          <th data-field="audiencista">AUDIENCISTA</th>
           <!-- Conferência calculada no front: Correção + Honorários + Audiencista + Sucumbência + Repasse -->
           <th>
             CONFERÊNCIA
             <span class="ac-info" title="Soma: Correção + Honorários + Audiencista + Sucumbência + Repasse">i</span>
           </th>
-          <th>REPASSE</th>
-          <th>CHAVE PIX</th>
-          <th>SUCUMBÊNCIA</th>
-          <th style="min-width:320px;">OBSERVAÇÕES</th>
+          <th data-field="repasse">REPASSE</th>
+          <th data-field="chave_pix">CHAVE PIX</th>
+          <th data-field="sucumbencia">SUCUMBÊNCIA</th>
+          <th data-field="observacoes" style="min-width:320px;">OBSERVAÇÕES</th>
+
+          <th class="no-filter" data-field="extra_1">EXTRA 1</th>
+          <th class="no-filter" data-field="extra_2">EXTRA 2</th>
 
           <th class="no-filter">Ações</th>
         </tr>
@@ -1010,6 +1013,16 @@
         <div class="ac-field col-12">
           <label>Observações</label>
           <textarea class="ac-textarea" id="acObservacoes" placeholder="Escreva aqui..."></textarea>
+        </div>
+
+        <!-- Campos extras (texto livre, item 3) — visibilidade controlada por JS -->
+        <div class="ac-field col-6 ac-extra-field" data-extra="extra_1" style="display:none;">
+          <label data-extra-label>Extra 1</label>
+          <input class="ac-input" id="acExtra1" placeholder="">
+        </div>
+        <div class="ac-field col-6 ac-extra-field" data-extra="extra_2" style="display:none;">
+          <label data-extra-label>Extra 2</label>
+          <input class="ac-input" id="acExtra2" placeholder="">
         </div>
 
       </div>
@@ -1377,6 +1390,8 @@
         <td><div class="clamp-2">${escapeHtml(r.chave_pix)}</div></td>
         <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.sucumbencia))}</div></td>
         <td style="min-width:320px; max-width:520px;"><div class="clamp-2">${escapeHtml(r.observacoes)}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.extra_1)}</div></td>
+        <td><div class="clamp-2">${escapeHtml(r.extra_2)}</div></td>
         <td style="text-align:right; white-space:nowrap;">
           <button class="ac-btn ac-edit-btn" type="button"
             onclick="openEditModalFromRow(this.closest('tr'))">Editar</button>
@@ -2047,12 +2062,13 @@
       fieldEl.classList.toggle("is-auto", !!isAuto);
     }
 
-    /* ✅ sinaliza que tipo_reu deve ser preenchido primeiro */
+    /* Tipo Réu é opcional. Mantém só o indicativo de cálculo automático
+       (sem badge de "obrigatório"). */
     function updateTipoReuSignal() {
       const hasTipo = !!String(elTipoReu.value || "").trim();
       if (!tipoField) return;
 
-      tipoField.classList.toggle("first-required", !hasTipo);
+      tipoField.classList.remove("first-required");
       tipoField.classList.toggle("first-ok", hasTipo);
 
       if (!hasTipo) {
@@ -2496,6 +2512,8 @@
       document.getElementById("acChavePix").value = row?.chave_pix ?? "";
       document.getElementById("acSucumbencia").value = (row?.sucumbencia ?? "") !== "" ? acFormatBR(row?.sucumbencia) : "";
       document.getElementById("acObservacoes").value = row?.observacoes ?? "";
+      document.getElementById("acExtra1").value = row?.extra_1 ?? "";
+      document.getElementById("acExtra2").value = row?.extra_2 ?? "";
 
       const tr = document.getElementById("acTipoReu");
       if (tr) {
@@ -2542,6 +2560,8 @@
         chave_pix: document.getElementById("acChavePix").value.trim(),
         sucumbencia: toDotDecimal(document.getElementById("acSucumbencia").value),
         observacoes: document.getElementById("acObservacoes").value.trim(),
+        extra_1: document.getElementById("acExtra1").value.trim(),
+        extra_2: document.getElementById("acExtra2").value.trim(),
       };
     }
 
@@ -2596,12 +2616,7 @@
         return;
       }
 
-      if (!payload.tipo_reu) {
-        _showError("Preencha primeiro o Tipo Réu (Aéreo/Ônibus).");
-        document.getElementById("acTipoReu")?.focus();
-        window.AC_AUTOCALC?.refreshTipoReuSignal?.();
-        return;
-      }
+      // Tipo Réu não é mais obrigatório — segue direto para o save.
 
       try {
         const resp = await fetch(`/acordos/${payload.id}`, {
@@ -2627,12 +2642,7 @@
       const payload = _collectForm();
       payload.id = null;
 
-      if (!payload.tipo_reu) {
-        _showError("Preencha primeiro o Tipo Réu (Aéreo/Ônibus).");
-        document.getElementById("acTipoReu")?.focus();
-        window.AC_AUTOCALC?.refreshTipoReuSignal?.();
-        return;
-      }
+      // Tipo Réu não é mais obrigatório — segue direto para o save.
 
       try {
         const resp = await fetch(`/acordos`, {
@@ -2723,17 +2733,12 @@
     }
 
     function refresh() {
-      const hint = ensureHint();
-      if (!hint) return;
-      hint.style.display = hasValue() ? "none" : "flex";
-
-      if (!hasValue()) {
-        tipoEl.style.borderColor = "#f59e0b";
-        tipoEl.style.boxShadow = "0 0 0 4px rgba(245,158,11,.15)";
-      } else {
-        tipoEl.style.borderColor = "";
-        tipoEl.style.boxShadow = "";
-      }
+      // Tipo réu agora é opcional: nunca exibe o aviso de "preencha primeiro"
+      // nem destaca o campo em laranja.
+      const hint = getHint();
+      if (hint) hint.style.display = "none";
+      tipoEl.style.borderColor = "";
+      tipoEl.style.boxShadow = "";
     }
 
     tipoEl.addEventListener("input", refresh);
@@ -2806,5 +2811,100 @@
 
     calcConferencia();
     window.AC_CONFERENCIA = { refresh: calcConferencia };
+  })();
+</script>
+
+<!-- ===================== Configuração de campos por tenant (itens 3 + 5) ===================== -->
+<script type="application/json" id="acCamposConfig">
+{{ (campos_config or {'visiveis': {}, 'labels': {}}) | tojson }}
+</script>
+<script type="application/json" id="acHonorariosDefault">
+{{ (honorarios_default or '') | tojson }}
+</script>
+<script>
+  (function () {
+    function readJSON(id, fb) {
+      const el = document.getElementById(id);
+      if (!el) return fb;
+      try { return JSON.parse(el.textContent || "null") ?? fb; } catch (e) { return fb; }
+    }
+    const cfg = readJSON("acCamposConfig", { visiveis: {}, labels: {} });
+    const PORC_DEF = String(readJSON("acHonorariosDefault", "") || "").trim();
+
+    const table = document.querySelector("#acTable, table.ac-table") || document.querySelector("table");
+    if (!table) return;
+
+    // ----- 1) Rótulos dos extras (item 3) -----
+    document.querySelectorAll(".ac-extra-field").forEach(el => {
+      const key = el.getAttribute("data-extra");
+      const lbl = (cfg.labels && cfg.labels[key]) || (key === "extra_1" ? "Extra 1" : "Extra 2");
+      const lblEl = el.querySelector("[data-extra-label]");
+      if (lblEl) lblEl.textContent = lbl;
+    });
+    // Header das colunas extras na tabela
+    ["extra_1","extra_2"].forEach(k => {
+      const th = table.querySelector(`thead th[data-field="${k}"]`);
+      if (th) th.textContent = (cfg.labels && cfg.labels[k]) || (k === "extra_1" ? "Extra 1" : "Extra 2");
+    });
+
+    // ----- 2) Visibilidade de colunas (item 3) -----
+    // Calcula nth-child a partir da posição do <th data-field=...>.
+    const ths = Array.from(table.querySelectorAll("thead th"));
+    const hideRules = [];
+    const visiveis = cfg.visiveis || {};
+    const tableSel = "#" + (table.id || "acTable");
+    ths.forEach((th, idx) => {
+      const f = th.getAttribute("data-field");
+      if (!f) return;
+      const visivel = visiveis[f];
+      // Colunas normais: padrão visível (1). Extras: padrão oculto (0).
+      const defaultVis = (f === "extra_1" || f === "extra_2") ? 0 : 1;
+      const isVisible = (visivel === undefined || visivel === null) ? defaultVis : Number(visivel);
+      if (!isVisible) {
+        const n = idx + 1; // nth-child é 1-based
+        hideRules.push(
+          `${tableSel} thead th:nth-child(${n}), ${tableSel} tbody td:nth-child(${n}) { display: none !important; }`
+        );
+      }
+    });
+    if (hideRules.length) {
+      const st = document.createElement("style");
+      st.id = "acColVisibilityStyle";
+      st.textContent = hideRules.join("\n");
+      document.head.appendChild(st);
+    }
+
+    // Mostra/oculta os campos extras no modal conforme visibilidade.
+    function applyExtraFieldsModalVis() {
+      ["extra_1","extra_2"].forEach(k => {
+        const defaultVis = 0;
+        const v = (visiveis[k] === undefined) ? defaultVis : Number(visiveis[k]);
+        const el = document.querySelector(`.ac-extra-field[data-extra="${k}"]`);
+        if (el) el.style.display = v ? "" : "none";
+      });
+    }
+    applyExtraFieldsModalVis();
+
+    // ----- 3) % Honorários padrão (item 5) — prefill no modal de criação -----
+    function prefillPorcDefault() {
+      if (!PORC_DEF) return;
+      const el = document.getElementById("acPorcentagemHonorarios");
+      const idEl = document.getElementById("acId");
+      const isCreate = !idEl || !(idEl.value || "").trim();
+      if (!isCreate) return;             // Só prefill em criação.
+      if (el && !(el.value || "").trim()) {
+        el.value = PORC_DEF;
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    }
+    // Envelopa openCreateModal para aplicar o prefill após o modal abrir.
+    const _openCreate = window.openCreateModal;
+    if (typeof _openCreate === "function") {
+      window.openCreateModal = async function (...args) {
+        const r = await _openCreate.apply(this, args);
+        setTimeout(prefillPorcDefault, 0);
+        return r;
+      };
+    }
   })();
 </script>

@@ -319,7 +319,7 @@
           <select class="tm-select" name="table" onchange="this.form.submit()">
             {% for tname, tc in cadastro_tables.items() %}
               <option value="{{ tname }}" {% if tname == table %}selected{% endif %}>
-                {{ tc.label }}
+                {{ cadastro_labels.get(tname, tc.label) }}
               </option>
             {% endfor %}
           </select>
@@ -327,6 +327,7 @@
       </form>
 
       <div class="tm-actions">
+        <a class="btn" href="{{ url_for('cadastros_config') }}" style="text-decoration:none; display:inline-flex; align-items:center;">Configurações</a>
         <button class="btn" type="button" onclick="openAddModal()">Adicionar</button>
       </div>
     </div>
@@ -335,7 +336,7 @@
       <table class="tm">
         <thead>
           <tr>
-            <th style="width:{% if cor_col %}35{% else %}55{% endif %}%;">{{ cfg.label }}</th>
+            <th style="width:{% if cor_col %}35{% else %}55{% endif %}%;">{{ label_atual }}</th>
             {% if cor_col %}
               <th style="width:8%;">Cor</th>
             {% endif %}
@@ -437,7 +438,7 @@
 <div id="addBackdrop" class="modal-backdrop">
   <div class="modal">
     <div class="modal-h">
-      <div style="font-weight:800;">Adicionar — {{ cfg.label }}</div>
+      <div style="font-weight:800;">Adicionar — {{ label_atual }}</div>
       <button class="modal-close" onclick="closeAddModal()">×</button>
     </div>
     <div class="modal-b">

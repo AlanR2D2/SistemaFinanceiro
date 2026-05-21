@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Configurações de Campos{% endblock %}
+{% block header %}Configurações de Campos{% endblock %}
+
+{% block content %}
+<style>
+  :root{
+    --mw-blue:#1b2aa6; --mw-blue-2:#15208a;
+    --mw-border:#e5e7eb; --mw-bg:#f5f7fb;
+  }
+  .cfg-page{ background: var(--mw-bg); padding: 18px; border-radius: 16px; }
+  .cfg-card{
+    background:#fff; border:1px solid var(--mw-border);
+    border-radius: 14px; margin-bottom: 16px;
+  }
+  .cfg-card-h{
+    padding: 14px 18px; border-bottom: 1px solid var(--mw-border);
+    display:flex; justify-content:space-between; align-items:center; gap: 12px;
+  }
+  .cfg-title{ font-size: 18px; font-weight: 800; color:#0f172a; }
+  .cfg-sub{ font-size: 12px; color:#64748b; margin-top: 2px; }
+  .cfg-body{ padding: 14px 18px; }
+
+  .cfg-grid-2{
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px;
+  }
+  @media (max-width: 800px){ .cfg-grid-2{ grid-template-columns: 1fr; } }
+
+  .cfg-field label{ display:block; font-size:12px; color:#475569; margin-bottom:4px; }
+  .cfg-input{
+    width: 100%; height: 38px; padding: 0 10px;
+    border:1px solid var(--mw-border); border-radius: 10px; background:#fff;
+    color:#0f172a; outline:none;
+  }
+  .cfg-input:focus{ border-color: rgba(27,42,166,.55); box-shadow: 0 0 0 3px rgba(27,42,166,.12); }
+
+  .cfg-col-grid{
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 16px;
+  }
+  @media (max-width: 900px){ .cfg-col-grid{ grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 600px){ .cfg-col-grid{ grid-template-columns: 1fr; } }
+
+  .cfg-toggle{
+    display:flex; align-items:center; gap:10px; padding: 8px 12px;
+    border: 1px solid var(--mw-border); border-radius: 10px; background:#fafbff;
+    font-size: 13px; color:#0f172a; font-weight: 600; cursor: pointer;
+  }
+  .cfg-toggle input{ transform: scale(1.15); }
+
+  .cfg-extras{
+    display: grid; grid-template-columns: 36px 1fr; gap: 10px 12px;
+    align-items: center; margin-top: 8px;
+    padding: 10px; background:#fef9c3; border:1px solid #fde68a; border-radius: 10px;
+  }
+  .cfg-extras input[type="text"]{
+    height: 36px; padding: 0 10px; border:1px solid var(--mw-border);
+    border-radius: 8px; background:#fff; width: 100%;
+  }
+
+  .cfg-actions{ display:flex; justify-content:flex-end; padding: 14px 18px; gap: 10px; }
+  .btn{
+    height:40px; padding: 0 16px; border-radius:10px;
+    border:1px solid var(--mw-border); background:#f8fafc; color:#0f172a;
+    font-weight:700; cursor:pointer; text-decoration:none;
+    display:inline-flex; align-items:center;
+  }
+  .btn-blue{ background: var(--mw-blue); color:#fff; border-color: var(--mw-blue-2); }
+  .btn-green{ background:#16a34a; color:#fff; border-color:#15803d; }
+
+  .alert{
+    margin: 12px 18px 0; padding: 12px 14px; border-radius: 12px;
+    border: 1px solid rgba(239,68,68,.25); background: rgba(239,68,68,.08);
+    color:#7f1d1d; font-weight:700;
+  }
+  .alert-ok{
+    margin: 12px 18px 0; padding: 12px 14px; border-radius: 12px;
+    border: 1px solid rgba(22,163,74,.25); background: rgba(22,163,74,.08);
+    color:#14532d; font-weight:700;
+  }
+</style>
+
+<div class="cfg-page">
+
+  {% if error %}<div class="alert">Atenção: {{ error }}</div>{% endif %}
+  {% if ok %}<div class="alert-ok">{{ ok }}</div>{% endif %}
+
+  <form method="post" action="{{ url_for('cadastros_config_save') }}">
+
+    <!-- ========== 1) Renomear categorias de cadastro ========== -->
+    <div class="cfg-card">
+      <div class="cfg-card-h">
+        <div>
+          <div class="cfg-title">Renomear categorias</div>
+          <div class="cfg-sub">Personalize o rótulo de cada categoria nesta tela de Cadastros. Deixe em branco para usar o padrão.</div>
+        </div>
+        <a class="btn" href="{{ url_for('cadastros') }}">← Voltar para Cadastros</a>
+      </div>
+      <div class="cfg-body">
+        <div class="cfg-grid-2">
+          {% for tname, tc in cadastro_tables.items() %}
+            <div class="cfg-field">
+              <label>{{ tc.label }} <span style="color:#94a3b8;">(padrão)</span></label>
+              <input class="cfg-input" type="text" name="label_cadastro__{{ tname }}"
+                     value="{{ cadastro_labels.get(tname, '') if cadastro_labels.get(tname) != tc.label else '' }}"
+                     placeholder="Padrão: {{ tc.label }}">
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 2) % de honorários padrão ========== -->
+    <div class="cfg-card">
+      <div class="cfg-card-h">
+        <div>
+          <div class="cfg-title">% de honorários padrão</div>
+          <div class="cfg-sub">Pré-preenche o campo "% Honorários" ao criar um novo Acordo ou Mandado. O usuário pode alterar no modal.</div>
+        </div>
+      </div>
+      <div class="cfg-body">
+        <div style="max-width: 220px;">
+          <label class="cfg-field" style="display:block;">% Honorários (ex.: 30)</label>
+          <input class="cfg-input" type="text" name="porc_honorarios_default"
+                 value="{{ porc_default }}" placeholder="Ex: 30">
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 3) Colunas das tabelas ========== -->
+    {% for escopo, colunas, cfg_tab in [
+        ('acordos',  colunas_acordos,  cfg_acordos),
+        ('mandados', colunas_mandados, cfg_mandados)
+    ] %}
+    <div class="cfg-card">
+      <div class="cfg-card-h">
+        <div>
+          <div class="cfg-title">Colunas — {{ 'Acordos' if escopo == 'acordos' else 'Mandados' }}</div>
+          <div class="cfg-sub">Marque quais colunas aparecem na tabela. Desmarcadas ficam ocultas (os dados continuam no banco).</div>
+        </div>
+      </div>
+      <div class="cfg-body">
+        <div class="cfg-col-grid">
+          {% for campo, label_pad in colunas %}
+            {% set vis = cfg_tab.visiveis.get(campo, 1) == 1 %}
+            <label class="cfg-toggle">
+              <input type="checkbox" name="visivel__{{ escopo }}__{{ campo }}"
+                     value="1" {% if vis %}checked{% endif %}>
+              {{ label_pad }}
+            </label>
+          {% endfor %}
+        </div>
+
+        <div style="margin-top: 14px; font-weight: 800; font-size: 13px; color:#7c2d12;">
+          Campos extras (texto livre)
+        </div>
+        {% for campo, label_pad in campos_extras %}
+          {% set vis = cfg_tab.visiveis.get(campo, 0) == 1 %}
+          {% set lbl = cfg_tab.labels.get(campo, label_pad) %}
+          <div class="cfg-extras">
+            <label class="cfg-toggle" style="background:#fff;">
+              <input type="checkbox" name="visivel__{{ escopo }}__{{ campo }}"
+                     value="1" {% if vis %}checked{% endif %}>
+              Ativo
+            </label>
+            <input type="text" name="label__{{ escopo }}__{{ campo }}"
+                   value="{{ lbl if lbl != label_pad else '' }}"
+                   placeholder="Nome do campo (padrão: {{ label_pad }})">
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="cfg-actions">
+      <a class="btn" href="{{ url_for('cadastros') }}">Cancelar</a>
+      <button class="btn btn-green" type="submit">Salvar configurações</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

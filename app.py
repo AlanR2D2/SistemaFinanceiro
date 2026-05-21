@@ -6,7 +6,7 @@ from datetime import date, datetime
 from collections import Counter
 
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, redirect, url_for, jsonify, abort, send_from_directory, session
+from flask import Flask, render_template, render_template_string, request, redirect, url_for, jsonify, abort, send_from_directory, session
 from flask_login import (
     LoginManager, UserMixin, login_user, login_required,
     logout_user, current_user
@@ -24,6 +24,12 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-change-me")
+
+# Garante que tracebacks de erros 500 apareçam no stdout/stderr (docker logs),
+# inclusive quando rodando sob gunicorn.
+import logging
+logging.basicConfig(level=logging.INFO)
+app.logger.setLevel(logging.INFO)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -345,6 +351,33 @@ def clean_payload(payload: dict, numeric_fields: set[str]):
     return out
 
 
+def _insert_or_update_safe(builder_factory, payload: dict):
+    """
+    Executa o builder do supabase-py (insert/update). Se o erro for de coluna
+    inexistente (migration ainda não aplicada), retira a coluna problemática
+    do payload e tenta novamente. Retorna o `res` final ou levanta a exceção.
+    """
+    from postgrest.exceptions import APIError
+    p = dict(payload)
+    for _ in range(5):  # no máximo 5 retentativas (uma por coluna ausente)
+        try:
+            return builder_factory(p).execute()
+        except APIError as e:
+            msg = (getattr(e, "message", None) or str(e)) or ""
+            # Ex.: "Could not find the 'extra_1' column of 'fin_acordos' in the schema cache"
+            import re as _re
+            m = _re.search(r"Could not find the '([^']+)' column", msg)
+            if not m or m.group(1) not in p:
+                raise
+            removed = m.group(1)
+            app.logger.warning(
+                "Removendo coluna ausente '%s' do payload (migration provavelmente não aplicada).",
+                removed,
+            )
+            p.pop(removed, None)
+    raise RuntimeError("Falha persistente em insert/update após múltiplas retentativas.")
+
+
 # ========= REGRA: finalizado = 1 somente quando status for "FINALIZADO..." =========
 
 def _status_text_from_payload(data: dict) -> str:
@@ -616,17 +649,28 @@ def dashboard():
 
 # ===================== ACORDOS (LIST PAGES) =====================
 
+def _ctx_tabela(escopo: str) -> dict:
+    """Contexto comum para as páginas de Acordos/Mandados (config por tenant)."""
+    tenant = _get_tenant()
+    return {
+        "campos_config": _config_campos_tabela(tenant, escopo),
+        "honorarios_default": _honorarios_default(tenant),
+    }
+
+
 @app.get("/acordos/ativos")
 @login_required
 def acordos_ativos_page():
     # As linhas são carregadas via /api/acordos (paginação + scroll infinito).
-    return render_template("acordos_ativos.html", rows=[], finalizado_value=0)
+    return render_template("acordos_ativos.html", rows=[], finalizado_value=0,
+                           **_ctx_tabela("acordos"))
 
 
 @app.get("/acordos/finalizados")
 @login_required
 def acordos_finalizados_page():
-    return render_template("acordos_finalizados.html", rows=[], finalizado_value=1)
+    return render_template("acordos_finalizados.html", rows=[], finalizado_value=1,
+                           **_ctx_tabela("acordos"))
 
 
 @app.get("/acordos")
@@ -673,11 +717,17 @@ def acordos_create():
         "mes_pg": data.get("mes_pg"),
         "finalizado": _derive_finalizado_from_status(status_txt),
         "tenant": _get_tenant(),
+
+        # Campos extras (texto livre, item 3)
+        "extra_1": data.get("extra_1"),
+        "extra_2": data.get("extra_2"),
     }
 
     payload = clean_payload(payload, NUMERIC_FIELDS_ACORDOS)
 
-    res = supabase.table(TABLE_ACORDOS).insert(payload).execute()
+    res = _insert_or_update_safe(
+        lambda p: supabase.table(TABLE_ACORDOS).insert(p), payload
+    )
     if getattr(res, "data", None) is None:
         return jsonify({"ok": False, "error": "Falha ao inserir"}), 400
     return jsonify({"ok": True})
@@ -719,11 +769,18 @@ def acordos_update(acordo_id: int):
         "observacoes": data.get("observacoes"),
         "mes_pg": data.get("mes_pg"),
         "finalizado": _derive_finalizado_from_status(status_txt),
+
+        # Campos extras (texto livre, item 3)
+        "extra_1": data.get("extra_1"),
+        "extra_2": data.get("extra_2"),
     }
 
     payload = clean_payload(payload, NUMERIC_FIELDS_ACORDOS)
 
-    res = supabase.table(TABLE_ACORDOS).update(payload).eq("id", acordo_id).execute()
+    res = _insert_or_update_safe(
+        lambda p: supabase.table(TABLE_ACORDOS).update(p).eq("id", acordo_id),
+        payload,
+    )
     if getattr(res, "data", None) is None:
         return jsonify({"ok": False, "error": "Falha ao atualizar"}), 400
     return jsonify({"ok": True})
@@ -743,13 +800,15 @@ def acordos_delete(acordo_id: int):
 @login_required
 def mandados_ativos_page():
     # As linhas são carregadas via /api/mandados (paginação + scroll infinito).
-    return render_template("mandados_ativos.html", rows=[], finalizado_value=0)
+    return render_template("mandados_ativos.html", rows=[], finalizado_value=0,
+                           **_ctx_tabela("mandados"))
 
 
 @app.get("/mandados/finalizados")
 @login_required
 def mandados_finalizados_page():
-    return render_template("mandados_finalizados.html", rows=[], finalizado_value=1)
+    return render_template("mandados_finalizados.html", rows=[], finalizado_value=1,
+                           **_ctx_tabela("mandados"))
 
 
 @app.get("/mandados")
@@ -798,11 +857,17 @@ def mandados_create():
 
         "finalizado": _derive_finalizado_from_status(status_txt),
         "tenant": _get_tenant(),
+
+        # Campos extras (texto livre, item 3)
+        "extra_1": data.get("extra_1"),
+        "extra_2": data.get("extra_2"),
     }
 
     payload = clean_payload(payload, NUMERIC_FIELDS_MANDADOS)
 
-    res = supabase.table(TABLE_MANDADOS).insert(payload).execute()
+    res = _insert_or_update_safe(
+        lambda p: supabase.table(TABLE_MANDADOS).insert(p), payload
+    )
     if getattr(res, "data", None) is None:
         return jsonify({"ok": False, "error": "Falha ao inserir"}), 400
     return jsonify({"ok": True})
@@ -846,11 +911,18 @@ def mandados_update(mandado_id: int):
         "mes_pg": data.get("mes_pg"),
 
         "finalizado": _derive_finalizado_from_status(status_txt),
+
+        # Campos extras (texto livre, item 3)
+        "extra_1": data.get("extra_1"),
+        "extra_2": data.get("extra_2"),
     }
 
     payload = clean_payload(payload, NUMERIC_FIELDS_MANDADOS)
 
-    res = supabase.table(TABLE_MANDADOS).update(payload).eq("id", mandado_id).execute()
+    res = _insert_or_update_safe(
+        lambda p: supabase.table(TABLE_MANDADOS).update(p).eq("id", mandado_id),
+        payload,
+    )
     if getattr(res, "data", None) is None:
         return jsonify({"ok": False, "error": "Falha ao atualizar"}), 400
     return jsonify({"ok": True})
@@ -878,7 +950,8 @@ ACORDOS_LIST_COLUMNS = (
     "id,data_acordo,numero_processo,uf,reu,autor,tel,escritorio_reu,"
     "valor_acordo,status,prazo_estimado,prazo_real,data_pagamento,local,"
     "tipo,tipo_reu,porcentagem_honorarios,deposito,correcao,honorarios,"
-    "audiencista,repasse,chave_pix,sucumbencia,observacoes,mes_pg,finalizado"
+    "audiencista,repasse,chave_pix,sucumbencia,observacoes,mes_pg,finalizado,"
+    "extra_1,extra_2"
 )
 
 MANDADOS_LIST_COLUMNS = (
@@ -886,7 +959,8 @@ MANDADOS_LIST_COLUMNS = (
     "status,previsao,data_pagamento,local,tipo,tipo_reu,"
     "porcentagem_honorarios,deposito,correcao,honorarios,audiencista,"
     "repasse,chave_pix,sucumbencia,observacoes,mes_pg,finalizado,"
-    "created_at,updated_at"
+    "created_at,updated_at,"
+    "extra_1,extra_2"
 )
 
 ACORDOS_DATE_COLS = {"data_acordo", "prazo_real", "data_pagamento"}
@@ -901,14 +975,14 @@ ACORDOS_VALID_COLS = {
     "valor_acordo", "status", "prazo_estimado", "prazo_real", "data_pagamento",
     "local", "tipo", "tipo_reu", "porcentagem_honorarios", "deposito", "correcao",
     "honorarios", "audiencista", "repasse", "chave_pix", "sucumbencia",
-    "observacoes", "mes_pg", "finalizado",
+    "observacoes", "mes_pg", "finalizado", "extra_1", "extra_2",
 }
 MANDADOS_VALID_COLS = {
     "data_quitacao", "numero_processo", "uf", "reu", "autor", "tel", "sentenca",
     "quitacao", "status", "previsao", "data_pagamento", "local", "tipo", "tipo_reu",
     "porcentagem_honorarios", "deposito", "correcao", "honorarios", "audiencista",
     "repasse", "chave_pix", "sucumbencia", "observacoes", "mes_pg", "finalizado",
-    "created_at", "updated_at",
+    "created_at", "updated_at", "extra_1", "extra_2",
 }
 
 
@@ -1184,8 +1258,16 @@ def _list_paginated(table_name: str, list_columns: str, valid_cols: set, date_co
     page, page_size = _page_args()
     want_totals = (request.args.get("totals", "1") != "0")
 
+    # Fallback defensivo: se as colunas extras ainda não existem (migration 04
+    # pendente), monta o SELECT sem elas. Resultado é cacheado por tabela.
+    cols_attempt = list_columns
+    if not _extras_columns_exist(table_name):
+        cols_attempt = ",".join(
+            c for c in list_columns.split(",") if c.strip() not in ("extra_1", "extra_2")
+        )
+
     # Query principal: paginada
-    q = supabase.table(table_name).select(list_columns, count="exact")
+    q = supabase.table(table_name).select(cols_attempt, count="exact")
     q = q.eq("tenant", _get_tenant())
     if finalizado_value is not None:
         q = q.eq("finalizado", int(finalizado_value))
@@ -1400,6 +1482,151 @@ def _cad_value_in_use(table_key: str, value: str) -> bool:
     return False
 
 
+# ===================== CONFIGURAÇÃO DE CAMPOS POR TENANT =====================
+# Tabela genérica fin_campos_config (ver migrations/04_campos_config.sql).
+# Todo acesso é defensivo: se a tabela/coluna ainda não existir, o app cai nos
+# padrões abaixo sem quebrar.
+
+TABLE_CAMPOS_CONFIG = "fin_campos_config"
+
+# Chave da configuração do % de honorários padrão (escopo='setting').
+SETTING_PORC_HON_DEFAULT = "porcentagem_honorarios_default"
+
+# Campos extras (texto livre) — desligados por padrão.
+CAMPOS_EXTRAS = [("extra_1", "Extra 1"), ("extra_2", "Extra 2")]
+
+# Colunas das tabelas (ordem = ordem dos <th>), com rótulo padrão. Usado pela
+# tela de configuração e para validar quais campos podem ser ligados/desligados.
+COLUNAS_ACORDOS = [
+    ("data_acordo", "DATA ACORDO"), ("numero_processo", "NÚMERO PROCESSO"),
+    ("uf", "UF"), ("reu", "RÉU"), ("autor", "AUTOR"), ("tel", "TEL."),
+    ("escritorio_reu", "ESCRITÓRIO DO RÉU"), ("valor_acordo", "VALOR ACORDO"),
+    ("status", "STATUS"), ("prazo_estimado", "PRAZO ESTIMADO"),
+    ("prazo_real", "PRAZO REAL"), ("data_pagamento", "DATA PAGAMENTO"),
+    ("local", "LOCAL"), ("tipo", "TIPO"),
+    ("porcentagem_honorarios", "% HONORÁRIOS"), ("deposito", "DEPÓSITO"),
+    ("correcao", "CORREÇÃO"), ("honorarios", "HONORÁRIOS"),
+    ("audiencista", "AUDIENCISTA"), ("repasse", "REPASSE"),
+    ("chave_pix", "CHAVE PIX"), ("sucumbencia", "SUCUMBÊNCIA"),
+    ("observacoes", "OBSERVAÇÕES"),
+]
+COLUNAS_MANDADOS = [
+    ("data_quitacao", "DATA QUITAÇÃO"), ("numero_processo", "NÚMERO PROCESSO"),
+    ("uf", "UF"), ("reu", "RÉU"), ("autor", "AUTOR"), ("tel", "TEL."),
+    ("sentenca", "SENTENÇA"), ("quitacao", "QUITAÇÃO"), ("status", "STATUS"),
+    ("previsao", "PREVISÃO"), ("data_pagamento", "DATA PAGAMENTO"),
+    ("local", "LOCAL"), ("tipo", "TIPO"), ("tipo_reu", "TIPO RÉU"),
+    ("porcentagem_honorarios", "% HONORÁRIOS"), ("deposito", "DEPÓSITO"),
+    ("correcao", "CORREÇÃO"), ("honorarios", "HONORÁRIOS"),
+    ("audiencista", "AUDIENCISTA"), ("repasse", "REPASSE"),
+    ("chave_pix", "CHAVE PIX"), ("sucumbencia", "SUCUMBÊNCIA"),
+    ("observacoes", "OBSERVAÇÕES"),
+]
+COLUNAS_POR_ESCOPO = {"acordos": COLUNAS_ACORDOS, "mandados": COLUNAS_MANDADOS}
+
+
+# Cache simples: as colunas extra_1/extra_2 existem na tabela? Probado lazy
+# uma vez por tabela; muda só quando a migration roda (não precisa expirar).
+_EXTRAS_EXISTS_CACHE: dict[str, bool] = {}
+
+
+def _extras_columns_exist(table_name: str) -> bool:
+    """Detecta (e cacheia) se as colunas extras já foram criadas pela migration."""
+    cached = _EXTRAS_EXISTS_CACHE.get(table_name)
+    if cached is not None:
+        return cached
+    try:
+        supabase.table(table_name).select("extra_1").limit(1).execute()
+        _EXTRAS_EXISTS_CACHE[table_name] = True
+    except Exception:
+        _EXTRAS_EXISTS_CACHE[table_name] = False
+    return _EXTRAS_EXISTS_CACHE[table_name]
+
+
+def _campos_config_rows(tenant: str, escopo: str) -> list[dict]:
+    """Lê as linhas de fin_campos_config para um tenant/escopo. Defensivo."""
+    try:
+        res = (
+            supabase.table(TABLE_CAMPOS_CONFIG)
+            .select("chave,label,valor,visivel")
+            .eq("tenant", tenant)
+            .eq("escopo", escopo)
+            .limit(5000)
+            .execute()
+        )
+        return getattr(res, "data", None) or []
+    except Exception:
+        # Tabela ainda não existe (migration 04 não rodou) — usa padrões.
+        return []
+
+
+def _labels_cadastro(tenant: str) -> dict:
+    """{table_key: label} com rótulo custom do tenant ou o padrão de CADASTRO_TABLES."""
+    labels = {k: cfg["label"] for k, cfg in CADASTRO_TABLES.items()}
+    for r in _campos_config_rows(tenant, "cadastro"):
+        chave = r.get("chave")
+        lbl = (r.get("label") or "").strip()
+        if chave in labels and lbl:
+            labels[chave] = lbl
+    return labels
+
+
+def _honorarios_default(tenant: str) -> str:
+    """% de honorários padrão do tenant (string), ou '' se não configurado."""
+    for r in _campos_config_rows(tenant, "setting"):
+        if r.get("chave") == SETTING_PORC_HON_DEFAULT:
+            return (r.get("valor") or "").strip()
+    return ""
+
+
+def _config_campos_tabela(tenant: str, escopo: str) -> dict:
+    """
+    Retorna { 'visiveis': {campo: 0/1}, 'labels': {campo: label} } para os
+    campos extras de uma tabela (acordos/mandados). Colunas normais começam
+    visíveis; extras começam ocultos.
+    """
+    base_cols = COLUNAS_POR_ESCOPO.get(escopo, [])
+    visiveis = {campo: 1 for campo, _ in base_cols}
+    for campo, _ in CAMPOS_EXTRAS:
+        visiveis[campo] = 0
+    labels = {campo: lbl for campo, lbl in CAMPOS_EXTRAS}
+
+    for r in _campos_config_rows(tenant, escopo):
+        chave = r.get("chave")
+        if chave in visiveis:
+            visiveis[chave] = 1 if int(r.get("visivel") or 0) == 1 else 0
+        lbl = (r.get("label") or "").strip()
+        if lbl and chave in labels:
+            labels[chave] = lbl
+    return {"visiveis": visiveis, "labels": labels}
+
+
+def _upsert_campo_config(tenant: str, escopo: str, chave: str,
+                         label=None, valor=None, visivel=None):
+    """Insere/atualiza uma linha de configuração. Lança em caso de erro."""
+    existing = (
+        supabase.table(TABLE_CAMPOS_CONFIG)
+        .select("id")
+        .eq("tenant", tenant).eq("escopo", escopo).eq("chave", chave)
+        .limit(1).execute()
+    )
+    payload = {"updated_at": datetime.now().isoformat()}
+    if label is not None:
+        payload["label"] = label
+    if valor is not None:
+        payload["valor"] = valor
+    if visivel is not None:
+        payload["visivel"] = 1 if visivel else 0
+
+    if getattr(existing, "data", None):
+        (supabase.table(TABLE_CAMPOS_CONFIG).update(payload)
+         .eq("tenant", tenant).eq("escopo", escopo).eq("chave", chave).execute())
+    else:
+        payload.update({"tenant": tenant, "escopo": escopo, "chave": chave})
+        payload.setdefault("visivel", 1)
+        supabase.table(TABLE_CAMPOS_CONFIG).insert(payload).execute()
+
+
 @app.get("/api/cadastro-options")
 @login_required
 def api_cadastro_options():
@@ -1476,9 +1703,15 @@ def cadastros():
         desc=False
     )
 
+    # Labels custom por tenant (item 1) — sobrescrevem cfg.label / dropdown.
+    labels_por_tenant = _labels_cadastro(_get_tenant())
+    label_atual = labels_por_tenant.get(table, cfg["label"])
+
     return render_template(
         "cadastros.html",
         cadastro_tables=CADASTRO_TABLES,
+        cadastro_labels=labels_por_tenant,
+        label_atual=label_atual,
         table=table,
         cfg=cfg,
         value_col=value_col,
@@ -1618,6 +1851,80 @@ def cadastros_delete(table):
         q_del = q_del.eq("tenant", _get_tenant())
     q_del.execute()
     return redirect(url_for("cadastros", table=table, ok="Registro excluído."))
+
+
+# ===================== CADASTROS — CONFIGURAÇÕES POR TENANT =====================
+# Página única que cobre:
+#   - item 1: renomear o rótulo das categorias na página de Cadastros
+#   - item 5: % de honorários padrão para Acordos/Mandados
+#   - item 3: ligar/desligar colunas das tabelas Acordos/Mandados + nome dos 2 extras
+
+@app.get("/cadastros/configuracoes")
+@login_required
+def cadastros_config():
+    require_admin()
+    tenant = _get_tenant()
+
+    labels_cadastro = _labels_cadastro(tenant)
+    cfg_acordos = _config_campos_tabela(tenant, "acordos")
+    cfg_mandados = _config_campos_tabela(tenant, "mandados")
+    porc_default = _honorarios_default(tenant)
+
+    return render_template(
+        "cadastros_config.html",
+        cadastro_tables=CADASTRO_TABLES,
+        cadastro_labels=labels_cadastro,
+        colunas_acordos=COLUNAS_ACORDOS,
+        colunas_mandados=COLUNAS_MANDADOS,
+        campos_extras=CAMPOS_EXTRAS,
+        cfg_acordos=cfg_acordos,
+        cfg_mandados=cfg_mandados,
+        porc_default=porc_default,
+        error=request.args.get("error"),
+        ok=request.args.get("ok"),
+    )
+
+
+@app.post("/cadastros/configuracoes")
+@login_required
+def cadastros_config_save():
+    require_admin()
+    tenant = _get_tenant()
+    form = request.form
+
+    try:
+        # 1) Labels das categorias de cadastro.
+        for tname in CADASTRO_TABLES.keys():
+            valor = (form.get(f"label_cadastro__{tname}") or "").strip()
+            # NULL/string vazia = volta para o padrão.
+            _upsert_campo_config(tenant, "cadastro", tname,
+                                 label=(valor or None))
+
+        # 2) % honorários padrão.
+        porc = (form.get("porc_honorarios_default") or "").strip()
+        # Normaliza vírgula para ponto.
+        porc_norm = porc.replace(",", ".") if porc else ""
+        _upsert_campo_config(tenant, "setting", SETTING_PORC_HON_DEFAULT,
+                             valor=(porc_norm or None))
+
+        # 3) Visibilidade de colunas + nomes dos extras por escopo.
+        for escopo, cols in (("acordos", COLUNAS_ACORDOS),
+                              ("mandados", COLUNAS_MANDADOS)):
+            for campo, _ in cols:
+                vis = 1 if form.get(f"visivel__{escopo}__{campo}") else 0
+                _upsert_campo_config(tenant, escopo, campo, visivel=vis)
+            for campo, _ in CAMPOS_EXTRAS:
+                vis = 1 if form.get(f"visivel__{escopo}__{campo}") else 0
+                nome = (form.get(f"label__{escopo}__{campo}") or "").strip()
+                _upsert_campo_config(tenant, escopo, campo,
+                                     visivel=vis,
+                                     label=(nome or None))
+    except Exception:
+        app.logger.exception("Falha ao salvar configurações de campos")
+        return redirect(url_for("cadastros_config",
+                                error="Falha ao salvar — a migration 04 já foi aplicada?"))
+
+    return redirect(url_for("cadastros_config", ok="Configurações salvas."))
 
 # ===================== CONFIG (TODOS OS USUÁRIOS) =====================
 
@@ -2437,6 +2744,52 @@ def staff_account_post():
         return redirect(url_for("staff_account", error="Falha ao atualizar."))
 
     return redirect(url_for("staff_account", ok="Dados atualizados."))
+
+
+# ===================== TRATAMENTO DE ERROS =====================
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(e):
+    """
+    Captura qualquer exceção não tratada, registra o traceback completo no log
+    (visível em `docker logs site-financeiro-web`) e tenta enviar e-mail de erro.
+    Sem isso, um 500 só exibia a página genérica e a causa real se perdia.
+    """
+    from werkzeug.exceptions import HTTPException
+
+    # Erros HTTP "normais" (404, 403, etc.) seguem o fluxo padrão do Flask.
+    if isinstance(e, HTTPException):
+        return e
+
+    import traceback
+    tb = traceback.format_exc()
+
+    try:
+        usuario = getattr(current_user, "login", None) if current_user else None
+    except Exception:
+        usuario = None
+    tenant = session.get("tenant") if session else None
+
+    app.logger.exception(
+        "ERRO 500 nao tratado | rota=%s metodo=%s usuario=%s tenant=%s",
+        request.path, request.method, usuario, tenant,
+    )
+
+    # E-mail de erro (best-effort — nunca deixa o handler quebrar).
+    try:
+        from send_email import send_email_error
+        corpo = (
+            f"Rota: {request.method} {request.path}\n"
+            f"Usuário: {usuario}\nTenant: {tenant}\n\n{tb}"
+        )
+        send_email_error(corpo, subject="Erro 500 — Sistema Financeiro")
+    except Exception:
+        pass
+
+    return render_template_string(
+        "<h1>Internal Server Error</h1>"
+        "<p>Ocorreu um erro interno. A equipe foi notificada.</p>"
+    ), 500
 
 
 # ===================== RUN =====================
