@@ -67,3 +67,9 @@ Thumbs.db
 # Arquivos gerados em runtime
 instance/
 .site/
+
+# Backups locais (dumps JSON pré-migration)
+backups/
+
+# Credenciais dos testes E2E
+.env.test

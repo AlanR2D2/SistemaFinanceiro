@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% block title %}Ordem das colunas{% endblock %}
+{% block header %}Ordem das colunas{% endblock %}
+
+{% block content %}
+<style>
+  :root{
+    --mw-blue:#1b2aa6; --mw-blue-2:#15208a;
+    --mw-border:#e5e7eb; --mw-bg:#f5f7fb;
+  }
+
+  .oc-page{ background: var(--mw-bg); padding:18px; border-radius:16px; }
+
+  .oc-card{
+    background:#fff; border:1px solid var(--mw-border);
+    border-radius:14px; margin-bottom:16px;
+  }
+  .oc-card-h{
+    padding: 14px 18px; border-bottom: 1px solid var(--mw-border);
+    display:flex; justify-content:space-between; align-items:center;
+    gap: 12px; flex-wrap:wrap;
+  }
+  .oc-title{ font-size:18px; font-weight:800; color:#0f172a; }
+  .oc-sub{ font-size:12px; color:#64748b; margin-top:2px; }
+  .oc-body{ padding: 14px 18px; }
+
+  .btn{
+    height:40px; padding: 0 14px; border-radius:10px;
+    border:1px solid var(--mw-border); background:#f8fafc;
+    color:#0f172a; font-weight:700; cursor:pointer;
+    text-decoration:none; display:inline-flex; align-items:center; gap:8px;
+  }
+  .btn-blue{ background: var(--mw-blue); color:#fff; border-color: var(--mw-blue-2); }
+  .btn-green{ background:#16a34a; color:#fff; border-color:#15803d; }
+
+  /* Drag-drop list */
+  .ordem-list{ display:flex; flex-direction:column; gap:6px; }
+  .ordem-item{
+    display:flex; align-items:center; gap:10px;
+    padding: 10px 12px; border-radius: 10px;
+    background:#fbfcff; border:1px solid #e2e8f0;
+    cursor: grab; user-select: none;
+    font-size: 13px; color:#0f172a; font-weight:700;
+  }
+  .ordem-item:hover{ background:#f1f5fb; border-color:#cbd5e1; }
+  .ordem-item.dragging{ opacity:.5; cursor: grabbing; }
+  .ordem-item.over{ border-color: var(--mw-blue); background: #eff3ff; }
+  .ordem-item .drag-handle{
+    color:#94a3b8; font-size:16px; font-weight:900; cursor:grab;
+  }
+  .ordem-item .origem-chip{
+    margin-left:auto;
+    font-size:10px; font-weight:800;
+    padding: 2px 8px; border-radius:999px;
+    background:#eef2f7; border:1px solid #e2e8f0; color:#334155;
+  }
+  .ordem-item .origem-chip.custom{ background:#dbeafe; border-color:#bfdbfe; color:#1d4ed8; }
+  .ordem-item .origem-chip.sistema{ background:#fef3c7; border-color:#fde68a; color:#7c2d12; }
+  .ordem-item .pos{
+    display:inline-block; min-width: 28px; text-align:center;
+    background:#fff; border:1px solid #e2e8f0; border-radius:6px;
+    padding: 2px 6px; font-size: 11px; color:#64748b; font-weight:800;
+  }
+
+  .inp{
+    width:100%; height:40px; padding:0 12px;
+    border:1px solid var(--mw-border); border-radius:10px;
+    outline:none; background:#fff;
+  }
+  .inp:focus{ border-color: rgba(27,42,166,.55); box-shadow: 0 0 0 3px rgba(27,42,166,.12); }
+</style>
+
+<div class="oc-page">
+
+  <!-- ========== % Honorários padrão ========== -->
+  <div class="oc-card">
+    <div class="oc-card-h">
+      <div>
+        <div class="oc-title">% de honorários padrão</div>
+        <div class="oc-sub">Pré-preenche o campo "% Honorários" ao criar um novo Acordo ou Mandado. O usuário pode alterar no modal.</div>
+      </div>
+      <button id="hpSave" class="btn btn-blue" type="button">Salvar</button>
+    </div>
+    <div class="oc-body" style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+      <div style="max-width:220px;">
+        <label style="display:block; font-size:12px; color:#475569; margin-bottom:6px; font-weight:800;">% Honorários (ex.: 30)</label>
+        <input id="hpInput" class="inp" type="text" value="{{ porc_default }}" placeholder="Ex: 30">
+      </div>
+      <div id="hpMsg" style="font-size:12px;"></div>
+    </div>
+  </div>
+
+  <!-- ========== Ordem das colunas — Acordos / Mandados ========== -->
+  {% for escopo, titulo in [('acordos', 'Acordos'), ('mandados', 'Mandados')] %}
+  <div class="oc-card">
+    <div class="oc-card-h">
+      <div>
+        <div class="oc-title">Ordem das colunas — {{ titulo }}</div>
+        <div class="oc-sub">
+          Arraste para reordenar as colunas da tabela de {{ titulo }}. Inclui colunas fixas (Data, Valor, Autor…)
+          e personalizadas. A ordem é por tenant — não afeta outras empresas.
+        </div>
+      </div>
+      <button type="button" class="btn btn-blue" data-save-ordem="{{ escopo }}">Salvar ordem</button>
+    </div>
+    <div class="oc-body">
+      <div id="ordem-list-{{ escopo }}" class="ordem-list" data-escopo="{{ escopo }}">
+        <div style="padding:14px; color:#64748b;">Carregando…</div>
+      </div>
+      <div id="ordem-msg-{{ escopo }}" style="margin-top:10px; font-size:12px;"></div>
+    </div>
+  </div>
+  {% endfor %}
+
+</div>
+
+
+<script>
+/* ===================== % honorários padrão ===================== */
+(function(){
+  const inp = document.getElementById("hpInput");
+  const btn = document.getElementById("hpSave");
+  const msg = document.getElementById("hpMsg");
+
+  btn.addEventListener("click", async () => {
+    const valor = (inp.value || "").trim();
+    msg.style.color = "#64748b";
+    msg.textContent = "Salvando…";
+    const resp = await fetch("/api/config/honorarios-default", {
+      method: "PUT",
+      headers: {"Content-Type":"application/json"},
+      credentials: "same-origin",
+      body: JSON.stringify({ valor }),
+    });
+    let data = null;
+    try { data = await resp.json(); } catch(_){}
+    if (!resp.ok || !data?.ok){
+      msg.style.color = "#7f1d1d";
+      msg.textContent = data?.error || "Falha ao salvar.";
+      return;
+    }
+    msg.style.color = "#14532d";
+    msg.textContent = "% padrão salvo.";
+    setTimeout(() => { msg.textContent = ""; }, 3000);
+  });
+})();
+
+
+/* ===================== Reordenação de colunas (drag-drop nativo) ===================== */
+(function(){
+  "use strict";
+  const escopos = ["acordos", "mandados"];
+
+  async function loadOrdem(escopo){
+    const wrap = document.getElementById(`ordem-list-${escopo}`);
+    const resp = await fetch(`/api/ordem-colunas/${escopo}`, { credentials:"same-origin" });
+    let data = null;
+    try { data = await resp.json(); } catch(_){}
+    if (!resp.ok || !data?.ok){
+      wrap.innerHTML = `<div style="padding:14px; color:#7f1d1d;">${data?.error || "Falha ao carregar ordem."}</div>`;
+      return;
+    }
+    renderOrdem(wrap, data.colunas || []);
+  }
+
+  function originLabel(origem){
+    if (origem === "custom")  return "personalizado";
+    if (origem === "sistema") return "sistema (renomeado)";
+    return "padrão";
+  }
+
+  function escapeHtml(s){
+    return String(s ?? "").replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[c]));
+  }
+
+  function renderOrdem(wrap, colunas){
+    if (!colunas.length){
+      wrap.innerHTML = `<div style="padding:14px; color:#64748b;">Nenhuma coluna disponível.</div>`;
+      return;
+    }
+    wrap.innerHTML = colunas.map((c, i) => `
+      <div class="ordem-item" draggable="true" data-chave="${escapeHtml(c.chave)}">
+        <span class="drag-handle">⋮⋮</span>
+        <span class="pos">${i + 1}</span>
+        <span>${escapeHtml(c.label)}</span>
+        <span class="origem-chip ${c.origem}">${originLabel(c.origem)}</span>
+      </div>
+    `).join("");
+    bindDragDrop(wrap);
+  }
+
+  function bindDragDrop(wrap){
+    let dragEl = null;
+    wrap.querySelectorAll(".ordem-item").forEach(item => {
+      item.addEventListener("dragstart", (e) => {
+        dragEl = item;
+        item.classList.add("dragging");
+        e.dataTransfer.effectAllowed = "move";
+        try { e.dataTransfer.setData("text/plain", item.dataset.chave); } catch(_){}
+      });
+      item.addEventListener("dragend", () => {
+        item.classList.remove("dragging");
+        wrap.querySelectorAll(".ordem-item.over").forEach(el => el.classList.remove("over"));
+        renumber(wrap);
+      });
+      item.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if (!dragEl || dragEl === item) return;
+        item.classList.add("over");
+        const rect = item.getBoundingClientRect();
+        const before = (e.clientY - rect.top) < rect.height / 2;
+        wrap.insertBefore(dragEl, before ? item : item.nextSibling);
+      });
+      item.addEventListener("dragleave", () => item.classList.remove("over"));
+    });
+  }
+
+  function renumber(wrap){
+    wrap.querySelectorAll(".ordem-item").forEach((it, idx) => {
+      const pos = it.querySelector(".pos");
+      if (pos) pos.textContent = String(idx + 1);
+    });
+  }
+
+  async function saveOrdem(escopo){
+    const wrap = document.getElementById(`ordem-list-${escopo}`);
+    const msg = document.getElementById(`ordem-msg-${escopo}`);
+    const ordem = Array.from(wrap.querySelectorAll(".ordem-item"))
+      .map(it => ({ chave: it.dataset.chave }));
+
+    msg.style.color = "#64748b";
+    msg.textContent = "Salvando…";
+    const resp = await fetch(`/api/ordem-colunas/${escopo}`, {
+      method: "PUT",
+      headers: {"Content-Type":"application/json"},
+      credentials: "same-origin",
+      body: JSON.stringify({ ordem }),
+    });
+    let data = null;
+    try { data = await resp.json(); } catch(_){}
+    if (!resp.ok || !data?.ok){
+      msg.style.color = "#7f1d1d";
+      msg.textContent = data?.error || "Falha ao salvar.";
+      return;
+    }
+    msg.style.color = "#14532d";
+    msg.textContent = "Ordem salva.";
+    setTimeout(() => { msg.textContent = ""; }, 3000);
+  }
+
+  document.querySelectorAll("[data-save-ordem]").forEach(btn => {
+    btn.addEventListener("click", () => saveOrdem(btn.dataset.saveOrdem));
+  });
+
+  escopos.forEach(loadOrdem);
+})();
+</script>
+{% endblock %}

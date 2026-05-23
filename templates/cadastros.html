@@ -1,533 +1,891 @@
 {% extends "base.html" %}
-{% block title %}Table Management{% endblock %}
-{% block header %}Table Management{% endblock %}
+{% block title %}Cadastros{% endblock %}
+{% block header %}Cadastros{% endblock %}
 
 {% block content %}
 <style>
-  /* Paleta igual ao print */
   :root{
-    --mw-blue:#1b2aa6;        /* azul principal */
-    --mw-blue-2:#15208a;      /* azul mais escuro */
-    --mw-border:#e5e7eb;      /* cinza borda */
-    --mw-bg:#f5f7fb;          /* fundo claro */
+    --mw-blue:#1b2aa6; --mw-blue-2:#15208a;
+    --mw-border:#e5e7eb; --mw-bg:#f5f7fb;
   }
 
-  .tm-page{ background: var(--mw-bg); padding: 18px; border-radius: 16px; }
-  .tm-card{
-    background:#fff;
-    border:1px solid var(--mw-border);
-    border-radius: 14px;
-    overflow:visible;
+  .cd-page{ background: var(--mw-bg); padding:18px; border-radius:16px; }
+
+  .cd-card{
+    background:#fff; border:1px solid var(--mw-border);
+    border-radius:14px; overflow:hidden;
   }
-  .tm-card-h{
+  .cd-card-h{
     padding: 16px 18px;
-    border-bottom:1px solid var(--mw-border);
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-    flex-wrap:wrap;
+    border-bottom: 1px solid var(--mw-border);
+    display:flex; justify-content:space-between; align-items:center;
+    flex-wrap:wrap; gap: 12px;
   }
-  .tm-title{ font-size: 20px; font-weight: 700; color:#0f172a; }
-  .tm-sub{ font-size: 12px; color:#64748b; margin-top:2px; }
-
-  .tm-toolbar{
-    padding: 14px 18px;
-    display:flex;
-    align-items:end;
-    justify-content:space-between;
-    gap:12px;
-    flex-wrap:wrap;
+  .cd-title{ font-size:20px; font-weight:800; color:#0f172a; }
+  .cd-sub{ font-size:12px; color:#64748b; margin-top:2px; }
+  .cd-counter{
+    font-size: 13px; font-weight: 800;
+    padding: 6px 12px; border-radius: 999px;
+    background: rgba(27,42,166,.08); color: var(--mw-blue);
+    border: 1px solid rgba(27,42,166,.18);
   }
+  .cd-counter.warn{ background: rgba(239,68,68,.08); color:#b91c1c; border-color: rgba(239,68,68,.25); }
 
-  .tm-field label{ display:block; font-size:12px; color:#475569; margin-bottom:6px; }
-  .tm-select, .tm-search{
-    height: 40px;
-    padding: 0 12px;
-    border:1px solid var(--mw-border);
-    border-radius: 10px;
-    background:#fff;
-    color:#0f172a;
-    outline:none;
-    min-width: 320px;
-  }
-  .tm-search{ min-width: 260px; }
-
-  .tm-actions{ display:flex; gap:10px; flex-wrap:wrap; }
   .btn{
-    height:40px;
-    padding: 0 14px;
-    border-radius: 10px;
-    border:1px solid var(--mw-border);
-    background:#f8fafc;
-    color:#0f172a;
-    font-weight:600;
-    cursor:pointer;
+    height: 40px; padding: 0 14px; border-radius:10px;
+    border:1px solid var(--mw-border); background:#f8fafc;
+    color:#0f172a; font-weight:700; cursor:pointer;
+    display:inline-flex; align-items:center; gap:8px;
+    text-decoration:none;
   }
-  .btn:hover{ filter:brightness(1.02); }
-  .btn-green{
-    background:#16a34a;
-    color:#fff;
-    border-color:#15803d;
-  }
-  .btn-blue{
-    background: var(--mw-blue);
-    color:#fff;
-    border-color: var(--mw-blue-2);
-  }
+  .btn:hover{ filter: brightness(1.02); }
+  .btn-blue{ background: var(--mw-blue); color:#fff; border-color: var(--mw-blue-2); }
+  .btn-green{ background:#16a34a; color:#fff; border-color:#15803d; }
+  .btn-red{ color:#b91c1c; border-color: rgba(239,68,68,.30); }
+  .btn-sm{ height:32px; padding: 0 10px; font-size:12px; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
 
-  .tm-table-wrap{ border-top:1px solid var(--mw-border); }
-  table.tm{
-    width:100%;
-    border-collapse:collapse;
-    table-layout:fixed;
-    font-size: 13px;
-  }
-  table.tm thead th{
-    text-align:left;
-    font-size:12px;
-    color:#334155;
-    background:#fbfcff;
-    border-bottom:1px solid var(--mw-border);
+  /* Lista de campos */
+  .cd-fields{ padding: 8px; }
+  .cd-field-row{
+    display:grid;
+    grid-template-columns: minmax(220px, 1.6fr) 140px 140px 120px auto;
+    gap: 12px;
+    align-items: center;
     padding: 12px 14px;
-  }
-  table.tm tbody td{
-    padding: 12px 14px;
-    border-bottom:1px solid #eef2f7;
-    color:#0f172a;
-    vertical-align:middle;
-    white-space:nowrap;
-    overflow:visible;
-    text-overflow:ellipsis;
-    position: relative;
-  }
-
-  .pill{
-    display:inline-flex;
-    align-items:center;
-    gap:8px;
-    padding: 6px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700;
-    border:1px solid var(--mw-border);
-    background:#fff;
-    color:#0f172a;
-  }
-  .pill.on{ background: rgba(22,163,74,.10); border-color: rgba(22,163,74,.25); color:#14532d; }
-  .pill.off{ background: rgba(100,116,139,.10); border-color: rgba(100,116,139,.22); color:#334155; }
-
-  /* "célula editável" discreta */
-  .cell-input{
-    width:100%;
-    height: 36px;
-    padding: 0 10px;
-    border:1px solid var(--mw-border);
     border-radius: 10px;
-    outline:none;
-    background:#fff;
+    border: 1px solid #eef2f7;
+    margin: 8px;
+    background: #fbfcff;
   }
-  .cell-input:focus{ border-color: rgba(27,42,166,.55); box-shadow: 0 0 0 3px rgba(27,42,166,.12); }
+  .cd-field-row:hover{ background:#f5f7fb; }
+  .cd-field-name{ font-weight:800; color:#0f172a; font-size:14px; }
+  .cd-field-sub{ font-size:11px; color:#64748b; margin-top:2px; }
+  .cd-field-type{
+    font-size:12px; font-weight:700; color:#334155;
+    padding:4px 10px; border-radius:999px;
+    background:#eef2f7; border:1px solid #e2e8f0;
+    display:inline-block;
+  }
+  .cd-chip-sys{
+    font-size:10px; font-weight:800; color:#7c2d12;
+    padding:2px 8px; border-radius:999px;
+    background:#fef3c7; border:1px solid #fde68a;
+    margin-left:6px;
+  }
+  .cd-scope{
+    font-size: 11px; color:#475569; display:flex; gap:6px; flex-wrap:wrap;
+  }
+  .cd-scope span{
+    padding:3px 8px; border-radius:6px;
+    background:#fff; border:1px solid #e2e8f0;
+  }
+  .cd-actions{ display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap; }
+
+  .cd-empty{
+    padding: 28px 18px; text-align:center; color:#64748b;
+  }
 
   /* Modal */
   .modal-backdrop{
-    position:fixed;
-    inset:0;
+    position:fixed; inset:0;
     background: rgba(15,23,42,.45);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    z-index: 50;
-    padding: 18px;
+    display:none; align-items:center; justify-content:center;
+    z-index: 60; padding: 18px;
   }
+  .modal-backdrop.open{ display:flex; }
   .modal{
-    width: 720px;
-    max-width: 100%;
-    background:#fff;
-    border-radius: 14px;
-    border:1px solid var(--mw-border);
-    overflow:hidden;
+    width: 720px; max-width: 100%; max-height: 90vh; overflow:auto;
+    background:#fff; border-radius:14px;
+    border:1px solid var(--mw-border); overflow-y:auto;
   }
+  .modal-wide{ width: 1000px; }
   .modal-h{
-    padding: 14px 16px;
-    background: var(--mw-blue);
-    color:#fff;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
+    padding: 14px 16px; background: var(--mw-blue); color:#fff;
+    display:flex; justify-content:space-between; align-items:center;
+    position: sticky; top: 0; z-index: 1;
+  }
+  .modal-h .ttl{ font-weight:800; font-size:15px; }
+  .modal-close{
+    background:transparent; border:none; color:#fff;
+    font-weight:900; cursor:pointer; font-size:22px; line-height:1;
   }
   .modal-b{ padding: 16px; }
-  .modal-close{
-    background: transparent;
-    border:none;
-    color:#fff;
-    font-weight:800;
-    cursor:pointer;
-    font-size: 18px;
-    line-height: 1;
+  .modal-f{
+    padding: 12px 16px; border-top:1px solid var(--mw-border);
+    display:flex; justify-content:flex-end; gap:8px;
+    position: sticky; bottom: 0; background:#fff;
+  }
+
+  .field-grid{
+    display:grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  @media (max-width: 700px){ .field-grid{ grid-template-columns: 1fr; } }
+  .field label{ display:block; font-size:12px; color:#475569; margin-bottom:6px; font-weight:800; }
+  .inp{
+    width:100%; height:40px; padding:0 12px;
+    border:1px solid var(--mw-border); border-radius:10px;
+    outline:none; background:#fff;
+  }
+  .inp:focus{ border-color: rgba(27,42,166,.55); box-shadow: 0 0 0 3px rgba(27,42,166,.12); }
+  textarea.inp{ height:80px; padding:8px 12px; resize: vertical; }
+
+  .toggle-row{
+    display:flex; align-items:center; gap:10px;
+    padding: 8px 12px; border:1px solid var(--mw-border);
+    border-radius: 10px; background:#fafbff; font-weight:700; color:#0f172a;
+    font-size: 13px;
+  }
+  .toggle-row input{ transform: scale(1.15); }
+
+  /* Tabela de opções */
+  .opts-table{
+    width:100%; border-collapse:collapse; font-size:13px;
+  }
+  .opts-table th{
+    background:#fbfcff; text-align:left; padding: 8px 10px;
+    font-size:11px; font-weight:700; color:#334155;
+    border-bottom:1px solid var(--mw-border);
+  }
+  .opts-table td{
+    padding: 8px 10px; border-bottom:1px solid #eef2f7;
+    vertical-align: middle;
+  }
+  .opts-table tr.new-row td{ background:#fef9c3; }
+  .opts-row-actions{ display:flex; gap:4px; justify-content:flex-end; }
+
+  /* Color picker */
+  .color-picker-wrap{ position: relative; display: inline-flex; align-items: center; gap: 6px; }
+  .color-swatch-btn{
+    width: 32px; height: 32px; border-radius: 8px;
+    border: 2px solid var(--mw-border); cursor: pointer;
+    position: relative;
+  }
+  .color-swatch-btn:hover{ border-color:#94a3b8; }
+  .color-swatch-btn.empty{
+    background: repeating-conic-gradient(#e5e7eb 0% 25%, #fff 0% 50%) 50%/12px 12px;
+  }
+  .color-dropdown{
+    display:none; position:fixed; z-index: 9999;
+    background:#fff; border:1px solid var(--mw-border);
+    border-radius:12px; padding:10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+    width: 240px;
+  }
+  .color-dropdown.open{ display:block; }
+  .color-grid{ display:grid; grid-template-columns: repeat(6, 1fr); gap:6px; }
+  .color-dot{
+    width:28px; height:28px; border-radius:50%;
+    border:2px solid transparent; cursor:pointer;
+    transition: transform .12s, border-color .12s;
+  }
+  .color-dot:hover{ transform: scale(1.18); border-color:#334155; }
+  .color-dot.selected{ border-color:#0f172a; transform:scale(1.15); box-shadow:0 0 0 2px #fff, 0 0 0 4px #0f172a; }
+  .color-clear-btn{
+    margin-top:8px; width:100%; padding:6px;
+    border-radius:8px; border:1px solid var(--mw-border);
+    background:#f8fafc; font-size:11px; font-weight:700;
+    color:#64748b; cursor:pointer; text-align:center;
+  }
+  .color-clear-btn:hover{ background:#eef2f7; }
+
+  /* Toggle preto/branco para cor da letra */
+  .font-color-toggle{
+    display:inline-flex; border-radius:8px;
+    border:1px solid var(--mw-border); overflow:hidden;
+    height:32px;
+  }
+  .font-color-toggle button{
+    border:none; width:36px; height:100%; cursor:pointer;
+    font-size:13px; font-weight:900; outline:none;
+  }
+  .font-color-toggle button.fc-black{ background:#000; color:#fff; }
+  .font-color-toggle button.fc-white{ background:#fff; color:#000; }
+  .font-color-toggle button.active{ box-shadow: inset 0 0 0 2px var(--mw-blue); }
+  .font-color-toggle button:not(.active){ opacity:.4; }
+
+  /* Hierarquia (select 1-10) */
+  .hier-input{
+    width:60px; height:32px; padding: 0 6px;
+    border:1px solid var(--mw-border); border-radius:8px;
+    font-size:13px; font-weight:700; text-align:center;
+    background:#fff;
+  }
+
+  /* Preview ao vivo no modal de opção */
+  .opt-preview{
+    margin-top: 14px; padding: 14px;
+    border:1px dashed var(--mw-border); border-radius:10px;
+    background:#fafbff;
+  }
+  .opt-preview-label{
+    font-size:11px; font-weight:800; color:#64748b;
+    margin-bottom:8px; text-transform: uppercase;
+  }
+  .opt-preview-row{
+    padding: 10px 14px; border-radius:8px;
+    font-weight:700; font-size:14px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.05);
+    transition: background-color .15s, color .15s;
   }
 
   .alert{
-    margin: 12px 18px 0;
-    padding: 12px 14px;
-    border-radius: 12px;
-    border: 1px solid rgba(239,68,68,.25);
-    background: rgba(239,68,68,.08);
-    color:#7f1d1d;
-    font-weight:700;
+    margin: 12px 18px 0; padding: 12px 14px; border-radius: 12px;
+    border:1px solid rgba(239,68,68,.25); background: rgba(239,68,68,.08);
+    color:#7f1d1d; font-weight:700;
   }
-
+  .alert-info{
+    margin: 12px 18px 0; padding: 12px 14px; border-radius:12px;
+    border:1px solid rgba(27,42,166,.20); background: rgba(27,42,166,.06);
+    color:#1e3a8a; font-weight:700;
+  }
   .alert-ok{
-    margin: 12px 18px 0;
-    padding: 12px 14px;
-    border-radius: 12px;
-    border: 1px solid rgba(22,163,74,.25);
-    background: rgba(22,163,74,.08);
-    color:#14532d;
-    font-weight:700;
-  }
-
-  /* ===================== COLOR PICKER (SWATCHES) ===================== */
-  .color-picker-wrap {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .color-swatch-btn {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    border: 2px solid var(--mw-border);
-    cursor: pointer;
-    position: relative;
-    transition: border-color .15s;
-  }
-  .color-swatch-btn:hover { border-color: #94a3b8; }
-  .color-swatch-btn.empty {
-    background: repeating-conic-gradient(#e5e7eb 0% 25%, #fff 0% 50%) 50%/12px 12px;
-  }
-
-  .color-dropdown {
-    display: none;
-    position: fixed;
-    z-index: 9999;
-    background: #fff;
-    border: 1px solid var(--mw-border);
-    border-radius: 12px;
-    padding: 10px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.18);
-    width: 230px;
-  }
-  .color-dropdown.open { display: block; }
-
-  .color-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 6px;
-  }
-
-  .color-dot {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    cursor: pointer;
-    transition: transform .12s, border-color .12s;
-  }
-  .color-dot:hover { transform: scale(1.18); border-color: #334155; }
-  .color-dot.selected { border-color: #0f172a; transform: scale(1.15); box-shadow: 0 0 0 2px #fff, 0 0 0 4px #0f172a; }
-
-  .color-clear-btn {
-    margin-top: 8px;
-    width: 100%;
-    padding: 6px;
-    border-radius: 8px;
-    border: 1px solid var(--mw-border);
-    background: #f8fafc;
-    font-size: 11px;
-    font-weight: 700;
-    color: #64748b;
-    cursor: pointer;
-    text-align: center;
-  }
-  .color-clear-btn:hover { background: #eef2f7; }
-
-  /* Font color toggle (preto/branco) */
-  .font-color-toggle {
-    display: inline-flex;
-    border-radius: 8px;
-    border: 1px solid var(--mw-border);
-    overflow: hidden;
-    height: 28px;
-  }
-  .font-color-toggle button {
-    border: none;
-    width: 32px;
-    height: 100%;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 800;
-    transition: box-shadow .12s;
-    outline: none;
-  }
-  .font-color-toggle button.fc-black {
-    background: #000;
-    color: #fff;
-  }
-  .font-color-toggle button.fc-white {
-    background: #fff;
-    color: #000;
-  }
-  .font-color-toggle button.active {
-    box-shadow: inset 0 0 0 2px #1b2aa6;
-  }
-  .font-color-toggle button:not(.active) {
-    opacity: 0.35;
+    margin: 12px 18px 0; padding: 12px 14px; border-radius:12px;
+    border:1px solid rgba(22,163,74,.25); background: rgba(22,163,74,.08);
+    color:#14532d; font-weight:700;
   }
 </style>
 
-<div class="tm-page">
-
-  <div class="tm-card">
-    <div class="tm-card-h">
+<div class="cd-page">
+  <div class="cd-card">
+    <div class="cd-card-h">
       <div>
-        <div class="tm-title">Table Management</div>
-        <div class="tm-sub">Gerencie tabelas de cadastro (com validação de uso em Acordos e Mandados)</div>
+        <div class="cd-title">Cadastros — Campos personalizados</div>
+        <div class="cd-sub">Gerencie os campos das tabelas Acordos e Mandados deste tenant. Até 10 campos.</div>
       </div>
-
-      <form method="get" action="{{ url_for('cadastros') }}" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <input class="tm-search" type="text" name="s" value="{{ (request.args.get('s') or '') }}"
-               placeholder="Search..." />
-        <button class="btn btn-blue" type="submit">Search</button>
-      </form>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <span id="cdCounter" class="cd-counter">— / 10</span>
+        <button id="cdBtnAdd" class="btn btn-blue" type="button">+ Novo campo</button>
+      </div>
     </div>
 
-    {% if error %}
-      <div class="alert">Atenção: {{ error }}</div>
-    {% endif %}
+    <div id="cdAlert" class="alert" style="display:none;"></div>
+    <div id="cdOk" class="alert-ok" style="display:none;"></div>
 
-    {% if ok %}
-      <div class="alert-ok">{{ ok }}</div>
-    {% endif %}
+    <div id="cdFields" class="cd-fields">
+      <div class="cd-empty">Carregando…</div>
+    </div>
+  </div>
+</div>
 
-    <div class="tm-toolbar">
-      <form method="get" action="{{ url_for('cadastros') }}" class="tm-field" style="display:flex; gap:12px; flex-wrap:wrap; align-items:end;">
-        <div>
-          <label>Selecione a tabela</label>
-          <select class="tm-select" name="table" onchange="this.form.submit()">
-            {% for tname, tc in cadastro_tables.items() %}
-              <option value="{{ tname }}" {% if tname == table %}selected{% endif %}>
-                {{ cadastro_labels.get(tname, tc.label) }}
-              </option>
+
+<!-- ===================== MODAL: CAMPO (NOVO / EDITAR) ===================== -->
+<div id="modalCampo" class="modal-backdrop">
+  <div class="modal">
+    <div class="modal-h">
+      <div class="ttl" id="mcTitle">Novo campo personalizado</div>
+      <button class="modal-close" type="button" data-close-modal="modalCampo">×</button>
+    </div>
+    <div class="modal-b">
+      <input type="hidden" id="mcId" value="">
+      <input type="hidden" id="mcSystemLocked" value="0">
+
+      <div class="field-grid">
+        <div class="field">
+          <label>Nome do campo</label>
+          <input id="mcNome" class="inp" placeholder="Ex.: Status, Réu, Etiqueta…">
+        </div>
+        <div class="field">
+          <label>Tipo</label>
+          <select id="mcTipo" class="inp">
+            <option value="select_single">Seleção única</option>
+            <option value="select_multi">Seleção múltipla</option>
+            <option value="texto">Texto livre</option>
+            <option value="numero">Número</option>
+            <option value="data">Data</option>
+            <option value="hora">Hora</option>
+          </select>
+          <div id="mcTipoLock" style="display:none; font-size:11px; color:#7c2d12; margin-top:6px; font-weight:700;">
+            Campo do sistema — tipo não pode ser alterado.
+          </div>
+        </div>
+      </div>
+
+      <div class="field-grid" style="margin-top:12px;">
+        <label class="toggle-row">
+          <input type="checkbox" id="mcEscopoA" checked>
+          Aparece em Acordos
+        </label>
+        <label class="toggle-row">
+          <input type="checkbox" id="mcEscopoM" checked>
+          Aparece em Mandados
+        </label>
+      </div>
+
+      <label class="toggle-row" style="margin-top:12px;">
+        <input type="checkbox" id="mcAtivo" checked>
+        Campo ativo
+      </label>
+    </div>
+    <div class="modal-f">
+      <button class="btn" type="button" data-close-modal="modalCampo">Cancelar</button>
+      <button id="mcSalvar" class="btn btn-green" type="button">Salvar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===================== MODAL: OPÇÕES DO CAMPO ===================== -->
+<div id="modalOpcoes" class="modal-backdrop">
+  <div class="modal modal-wide">
+    <div class="modal-h">
+      <div class="ttl">Opções — <span id="moNome">—</span></div>
+      <button class="modal-close" type="button" data-close-modal="modalOpcoes">×</button>
+    </div>
+    <div class="modal-b">
+      <input type="hidden" id="moFieldId" value="">
+
+      <table class="opts-table">
+        <thead>
+          <tr>
+            <th style="width:30%;">Valor</th>
+            <th style="width:80px;">Cor fundo</th>
+            <th style="width:80px;">Letra</th>
+            <th style="width:90px;">Hierarquia</th>
+            <th style="width:80px;">Ativo</th>
+            <th style="width:120px; text-align:right;">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="moTbody">
+          <tr><td colspan="6" style="padding:18px; text-align:center; color:#64748b;">Carregando…</td></tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top:14px;">
+        <button class="btn btn-blue btn-sm" type="button" id="moBtnAddOpcao">+ Adicionar opção</button>
+      </div>
+
+      <div class="opt-preview">
+        <div class="opt-preview-label">Pré-visualização</div>
+        <div id="moPreview" class="opt-preview-row" style="background:#fff; color:#0f172a;">
+          Selecione cor e letra para ver o exemplo
+        </div>
+        <div style="font-size:11px; color:#64748b; margin-top:6px;">
+          A pré-visualização reflete a opção selecionada. Quando duas opções coloridas aparecem na mesma linha,
+          vence a de <strong>menor hierarquia</strong> (1 = maior prioridade).
+        </div>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn" type="button" data-close-modal="modalOpcoes">Fechar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===================== MODAL: NOVA / EDITAR OPÇÃO ===================== -->
+<div id="modalOpcao" class="modal-backdrop">
+  <div class="modal">
+    <div class="modal-h">
+      <div class="ttl" id="opTitle">Nova opção</div>
+      <button class="modal-close" type="button" data-close-modal="modalOpcao">×</button>
+    </div>
+    <div class="modal-b">
+      <input type="hidden" id="opId" value="">
+      <input type="hidden" id="opFieldId" value="">
+
+      <div class="field">
+        <label>Valor</label>
+        <input id="opValor" class="inp" placeholder="Ex.: Pago, PIX, MG…">
+      </div>
+
+      <div class="field-grid" style="margin-top:12px;">
+        <div class="field">
+          <label>Cor de fundo</label>
+          <div class="color-picker-wrap">
+            <input type="hidden" id="opCor" value="">
+            <button type="button" id="opCorBtn" class="color-swatch-btn empty" onclick="toggleColorDropdownOp()"></button>
+            <span id="opCorTxt" style="font-size:12px; color:#64748b;">sem cor</span>
+            <div id="opCorDropdown" class="color-dropdown"></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Cor da letra</label>
+          <input type="hidden" id="opCorLetra" value="#000000">
+          <div class="font-color-toggle">
+            <button type="button" class="fc-black active" onclick="setOpLetra('#000000', this)">A</button>
+            <button type="button" class="fc-white" onclick="setOpLetra('#ffffff', this)">A</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-grid" style="margin-top:12px;">
+        <div class="field">
+          <label>Hierarquia (1 = maior prioridade)</label>
+          <select id="opHierarquia" class="inp">
+            {% for n in range(1, 11) %}
+            <option value="{{ n }}" {% if n == 5 %}selected{% endif %}>{{ n }}</option>
             {% endfor %}
           </select>
         </div>
-      </form>
-
-      <div class="tm-actions">
-        <a class="btn" href="{{ url_for('cadastros_config') }}" style="text-decoration:none; display:inline-flex; align-items:center;">Configurações</a>
-        <button class="btn" type="button" onclick="openAddModal()">Adicionar</button>
-      </div>
-    </div>
-
-    <div class="tm-table-wrap">
-      <table class="tm">
-        <thead>
-          <tr>
-            <th style="width:{% if cor_col %}35{% else %}55{% endif %}%;">{{ label_atual }}</th>
-            {% if cor_col %}
-              <th style="width:8%;">Cor</th>
-            {% endif %}
-            {% if cor_letra_col %}
-              <th style="width:8%;">Letra</th>
-            {% endif %}
-            {% if hierarquia_col %}
-              <th style="width:12%;">Hierarquia</th>
-            {% endif %}
-            <th style="width:12%;">Ativo</th>
-            <th style="width:{% if cor_col %}20{% else %}30{% endif %}%; text-align:right;">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in rows %}
-            <tr>
-              <td title="{{ r[value_col] }}">
-                <form method="post" action="{{ url_for('cadastros_update', table=table) }}"
-                      style="display:flex; gap:10px; align-items:center;">
-                  <input type="hidden" name="old_value" value="{{ r[value_col] }}">
-                  <input class="cell-input" name="value" value="{{ r[value_col] }}">
-              </td>
-
-              {% if cor_col %}
-              <td>
-                  <div class="color-picker-wrap">
-                    <input type="hidden" name="cor" value="{{ r.get(cor_col) or '' }}">
-                    <button type="button"
-                            class="color-swatch-btn {{ 'empty' if not r.get(cor_col) else '' }}"
-                            style="{{ 'background:' + r[cor_col] + ';' if r.get(cor_col) else '' }}"
-                            onclick="toggleColorDropdown(this)"></button>
-                    <div class="color-dropdown"></div>
-                  </div>
-              </td>
-              {% endif %}
-
-              {% if cor_letra_col %}
-              <td>
-                  {% set cl_val = r.get(cor_letra_col) or '#000000' %}
-                  <input type="hidden" name="cor_letra" value="{{ cl_val }}">
-                  <div class="font-color-toggle">
-                    <button type="button" class="fc-black {{ 'active' if cl_val != '#ffffff' else '' }}"
-                            onclick="setFontColor(this, '#000000')">A</button>
-                    <button type="button" class="fc-white {{ 'active' if cl_val == '#ffffff' else '' }}"
-                            onclick="setFontColor(this, '#ffffff')">A</button>
-                  </div>
-              </td>
-              {% endif %}
-
-              {% if hierarquia_col %}
-              <td>
-                  {% set h_val = r.get(hierarquia_col, 2) %}
-                  <select name="hierarquia" class="cell-input" style="width:80px; height:32px; padding:0 6px; font-size:12px;">
-                    <option value="1" {{ 'selected' if h_val == 1 else '' }}>1ª</option>
-                    <option value="2" {{ 'selected' if h_val != 1 else '' }}>2ª</option>
-                  </select>
-              </td>
-              {% endif %}
-
-              <td>
-                  {% set is_active = (r[ativo_col] == 1) %}
-                  <label class="pill {{ 'on' if is_active else 'off' }}" style="cursor:pointer;">
-                    <input type="checkbox" name="ativo" value="1" {% if is_active %}checked{% endif %} style="transform:scale(1.1);">
-                    {{ 'Ativo' if is_active else 'Inativo' }}
-                  </label>
-              </td>
-
-              <td style="text-align:right;">
-                  <button class="btn btn-blue" type="submit">Salvar</button>
-                </form>
-
-                <form method="post" action="{{ url_for('cadastros_delete', table=table) }}"
-                      onsubmit="return confirm('Tem certeza que deseja excluir?');"
-                      style="display:inline;">
-                  <input type="hidden" name="value" value="{{ r[value_col] }}">
-                  <button class="btn" style="margin-left:8px; border-color: rgba(239,68,68,.30); color:#b91c1c;" type="submit">
-                    Excluir
-                  </button>
-                </form>
-              </td>
-            </tr>
-          {% endfor %}
-
-          {% if not rows %}
-            <tr>
-              <td colspan="{{ (1 + (1 if cor_col else 0) + (1 if hierarquia_col else 0) + 2) }}" style="padding:16px 14px; color:#64748b;">
-                Nenhum registro encontrado.
-              </td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
-
-  </div>
-</div>
-
-<!-- Modal Add Record -->
-<div id="addBackdrop" class="modal-backdrop">
-  <div class="modal">
-    <div class="modal-h">
-      <div style="font-weight:800;">Adicionar — {{ label_atual }}</div>
-      <button class="modal-close" onclick="closeAddModal()">×</button>
-    </div>
-    <div class="modal-b">
-      <form method="post" action="{{ url_for('cadastros_add', table=table) }}" style="display:flex; gap:12px; flex-wrap:wrap; align-items:end;">
-        <div style="flex:1; min-width:260px;">
-          <label class="gs-label" style="display:block; font-size:12px; color:#475569; margin-bottom:6px;">Valor</label>
-          <input class="tm-search" style="min-width:100%;" name="value" placeholder="Digite o valor..." />
-        </div>
-
-        {% if cor_col %}
-        <div style="width:100px;">
-          <label style="display:block; font-size:12px; color:#475569; margin-bottom:6px;">Cor</label>
-          <div class="color-picker-wrap">
-            <input type="hidden" name="cor" value="">
-            <button type="button" class="color-swatch-btn empty"
-                    onclick="toggleColorDropdown(this)"></button>
-            <div class="color-dropdown"></div>
-          </div>
-        </div>
-        {% endif %}
-
-        {% if hierarquia_col %}
-        <div style="width:100px;">
-          <label style="display:block; font-size:12px; color:#475569; margin-bottom:6px;">Hierarquia</label>
-          <select name="hierarquia" class="cell-input" style="height:40px; padding:0 8px;">
-            <option value="1">1ª</option>
-            <option value="2" selected>2ª</option>
-          </select>
-        </div>
-        {% endif %}
-
-        {% if cor_letra_col %}
-        <div style="width:90px;">
-          <label style="display:block; font-size:12px; color:#475569; margin-bottom:6px;">Letra</label>
-          <input type="hidden" name="cor_letra" value="#000000">
-          <div class="font-color-toggle">
-            <button type="button" class="fc-black active"
-                    onclick="setFontColor(this, '#000000')">A</button>
-            <button type="button" class="fc-white"
-                    onclick="setFontColor(this, '#ffffff')">A</button>
-          </div>
-        </div>
-        {% endif %}
-
-        <div style="width:140px;">
-          <label style="display:block; font-size:12px; color:#475569; margin-bottom:6px;">Ativo</label>
-          <label class="pill on" style="height:40px; display:flex; align-items:center; justify-content:center; gap:10px;">
-            <input type="checkbox" name="ativo" value="1" checked style="transform:scale(1.1);">
+        <div class="field">
+          <label>Status</label>
+          <label class="toggle-row" style="height:40px;">
+            <input type="checkbox" id="opAtivo" checked>
             Ativo
           </label>
         </div>
-        <button class="btn btn-green" type="submit">Salvar</button>
-        <button class="btn" type="button" onclick="closeAddModal()">Cancelar</button>
-      </form>
-
-      <div style="margin-top:10px; font-size:12px; color:#64748b;">
-        Observação: se o valor estiver em uso em Acordos/Mandados, o sistema bloqueia alteração do texto e exclusão.
       </div>
+
+      <!-- Preview ao vivo -->
+      <div class="opt-preview">
+        <div class="opt-preview-label">Como ficará na tabela</div>
+        <div id="opPreview" class="opt-preview-row" style="background:#fff; color:#0f172a;">
+          Pré-visualização
+        </div>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn" type="button" data-close-modal="modalOpcao">Cancelar</button>
+      <button id="opSalvar" class="btn btn-green" type="button">Salvar opção</button>
     </div>
   </div>
 </div>
 
+
 <script>
-  function openAddModal(){
-    document.getElementById("addBackdrop").style.display = "flex";
+/* ===================== Cadastros — JS ===================== */
+(function(){
+  "use strict";
+
+  /* ---------- Helpers de UI ---------- */
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+  function showAlert(msg, isOk){
+    const el = isOk ? $("#cdOk") : $("#cdAlert");
+    const other = isOk ? $("#cdAlert") : $("#cdOk");
+    other.style.display = "none";
+    el.textContent = msg;
+    el.style.display = "block";
+    setTimeout(() => { el.style.display = "none"; }, 4500);
   }
-  function closeAddModal(){
-    document.getElementById("addBackdrop").style.display = "none";
-  }
-  // fecha clicando fora
-  document.getElementById("addBackdrop")?.addEventListener("click", (e) => {
-    if (e.target.id === "addBackdrop") closeAddModal();
+
+  function openModal(id){ $("#" + id).classList.add("open"); }
+  function closeModal(id){ $("#" + id).classList.remove("open"); }
+
+  $$("[data-close-modal]").forEach(btn => {
+    btn.addEventListener("click", () => closeModal(btn.dataset.closeModal));
+  });
+  $$(".modal-backdrop").forEach(b => {
+    b.addEventListener("click", (e) => { if (e.target === b) b.classList.remove("open"); });
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") $$(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
   });
 
-  // ===================== FONT COLOR TOGGLE =====================
-  function setFontColor(btn, colorHex) {
-    const wrap = btn.closest(".font-color-toggle");
-    if (!wrap) return;
-
-    // Atualiza input hidden
-    const hiddenInput = wrap.parentElement.querySelector('input[name="cor_letra"]');
-    if (hiddenInput) hiddenInput.value = colorHex;
-
-    // Atualiza classes dos botaos
-    wrap.querySelectorAll("button").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
+  function escapeHtml(s){
+    return String(s ?? "").replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[c]));
   }
 
-  // ===================== COLOR PICKER =====================
+  /* ---------- Tipos de campo (labels) ---------- */
+  const TIPO_LABELS = {
+    texto: "Texto livre",
+    numero: "Número",
+    data: "Data",
+    hora: "Hora",
+    select_single: "Seleção única",
+    select_multi: "Seleção múltipla",
+  };
+
+  /* ---------- Estado ---------- */
+  const state = {
+    campos: [],
+    limite: 10,
+  };
+
+  /* ---------- API ---------- */
+  async function api(method, path, body){
+    const resp = await fetch(path, {
+      method,
+      headers: body ? {"Content-Type": "application/json"} : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+      credentials: "same-origin",
+    });
+    let data = null;
+    try { data = await resp.json(); } catch(_){}
+    return { ok: resp.ok && (data?.ok !== false), status: resp.status, data };
+  }
+
+  /* ---------- Render lista de campos ---------- */
+  function renderCampos(){
+    const wrap = $("#cdFields");
+    if (!state.campos.length){
+      wrap.innerHTML = `<div class="cd-empty">Nenhum campo cadastrado neste tenant ainda.</div>`;
+    } else {
+      wrap.innerHTML = state.campos.map(c => {
+        const isSys = Number(c.system_locked) === 1;
+        const isSelect = (c.tipo === "select_single" || c.tipo === "select_multi");
+        const qtdOpcoes = Array.isArray(c.opcoes) ? c.opcoes.length : 0;
+        const inativo = Number(c.ativo) !== 1;
+
+        return `
+          <div class="cd-field-row" data-field-id="${c.id}">
+            <div>
+              <div class="cd-field-name">
+                ${escapeHtml(c.nome)}
+                ${isSys ? '<span class="cd-chip-sys">PADRÃO DO SISTEMA</span>' : ""}
+                ${inativo ? '<span class="cd-chip-sys" style="background:#fee2e2;border-color:#fecaca;color:#7f1d1d;">INATIVO</span>' : ""}
+              </div>
+              <div class="cd-field-sub">chave: <code>${escapeHtml(c.chave)}</code></div>
+            </div>
+            <div><span class="cd-field-type">${TIPO_LABELS[c.tipo] || c.tipo}</span></div>
+            <div class="cd-scope">
+              ${Number(c.escopo_acordos) === 1 ? '<span>Acordos</span>' : ''}
+              ${Number(c.escopo_mandados) === 1 ? '<span>Mandados</span>' : ''}
+            </div>
+            <div style="font-size:12px; color:#64748b;">
+              ${isSelect ? qtdOpcoes + " opção(ões)" : "—"}
+            </div>
+            <div class="cd-actions">
+              <button class="btn btn-sm" type="button" data-act="edit" data-id="${c.id}">Editar</button>
+              ${isSelect
+                ? `<button class="btn btn-sm btn-blue" type="button" data-act="opcoes" data-id="${c.id}">Opções</button>`
+                : ""}
+              <button class="btn btn-sm btn-red" type="button"
+                data-act="delete" data-id="${c.id}"
+                ${isSys ? "disabled title='Campo do sistema'" : ""}>Excluir</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    const counter = $("#cdCounter");
+    counter.textContent = `${state.campos.length} / ${state.limite}`;
+    counter.classList.toggle("warn", state.campos.length >= state.limite);
+    $("#cdBtnAdd").disabled = state.campos.length >= state.limite;
+
+    // Bind ações
+    wrap.querySelectorAll("[data-act]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = Number(btn.dataset.id);
+        const act = btn.dataset.act;
+        if (act === "edit")   openCampoModal(id);
+        if (act === "opcoes") openOpcoesModal(id);
+        if (act === "delete") deletarCampo(id);
+      });
+    });
+  }
+
+  /* ---------- Carregar campos ---------- */
+  async function carregarCampos(){
+    const wrap = $("#cdFields");
+    wrap.innerHTML = `<div class="cd-empty">Carregando…</div>`;
+
+    const r = await api("GET", "/api/campos");
+    if (!r.ok){
+      if (r.status === 503){
+        wrap.innerHTML = `
+          <div class="cd-empty" style="color:#7f1d1d;">
+            <div style="font-size:14px; font-weight:800; margin-bottom:6px;">Migration 05 não foi aplicada</div>
+            <div>O novo sistema de campos personalizados precisa da migration <code>migrations/05_custom_fields.sql</code>.
+            Rode o backup, depois aplique a migration no Supabase SQL Editor e recarregue esta página.</div>
+          </div>`;
+        $("#cdBtnAdd").disabled = true;
+        return;
+      }
+      showAlert(r.data?.error || "Falha ao carregar campos.");
+      wrap.innerHTML = `<div class="cd-empty">Não foi possível carregar.</div>`;
+      return;
+    }
+
+    state.campos = (r.data?.campos) || [];
+    state.limite = Number(r.data?.limite || 10);
+    renderCampos();
+  }
+
+  /* ---------- Modal: Campo (novo / editar) ---------- */
+  function openCampoModal(id){
+    if (id){
+      const c = state.campos.find(f => f.id === id);
+      if (!c) return;
+      $("#mcTitle").textContent = "Editar campo — " + c.nome;
+      $("#mcId").value = c.id;
+      $("#mcSystemLocked").value = c.system_locked || 0;
+      $("#mcNome").value = c.nome || "";
+      $("#mcTipo").value = c.tipo || "select_single";
+      $("#mcEscopoA").checked = Number(c.escopo_acordos) === 1;
+      $("#mcEscopoM").checked = Number(c.escopo_mandados) === 1;
+      $("#mcAtivo").checked = Number(c.ativo) === 1;
+
+      const lock = Number(c.system_locked) === 1;
+      $("#mcTipo").disabled = lock;
+      $("#mcTipoLock").style.display = lock ? "block" : "none";
+    } else {
+      $("#mcTitle").textContent = "Novo campo personalizado";
+      $("#mcId").value = "";
+      $("#mcSystemLocked").value = "0";
+      $("#mcNome").value = "";
+      $("#mcTipo").value = "select_single";
+      $("#mcTipo").disabled = false;
+      $("#mcTipoLock").style.display = "none";
+      $("#mcEscopoA").checked = true;
+      $("#mcEscopoM").checked = true;
+      $("#mcAtivo").checked = true;
+    }
+    openModal("modalCampo");
+  }
+
+  $("#cdBtnAdd").addEventListener("click", () => openCampoModal(null));
+
+  $("#mcSalvar").addEventListener("click", async () => {
+    const id = $("#mcId").value.trim();
+    const nome = $("#mcNome").value.trim();
+    if (!nome){ showAlert("Informe o nome do campo."); return; }
+
+    const payload = {
+      nome,
+      tipo: $("#mcTipo").value,
+      escopo_acordos: $("#mcEscopoA").checked ? 1 : 0,
+      escopo_mandados: $("#mcEscopoM").checked ? 1 : 0,
+      ativo: $("#mcAtivo").checked ? 1 : 0,
+    };
+
+    let r;
+    if (id){
+      r = await api("PUT", `/api/campos/${id}`, payload);
+    } else {
+      r = await api("POST", "/api/campos", payload);
+    }
+    if (!r.ok){
+      showAlert(r.data?.error || "Falha ao salvar campo.");
+      return;
+    }
+    closeModal("modalCampo");
+    showAlert(id ? "Campo atualizado." : "Campo criado.", true);
+    await carregarCampos();
+  });
+
+  async function deletarCampo(id){
+    const c = state.campos.find(f => f.id === id);
+    if (!c) return;
+    if (!confirm(`Excluir o campo "${c.nome}"? Esta ação não pode ser desfeita.`)) return;
+    const r = await api("DELETE", `/api/campos/${id}`);
+    if (!r.ok){
+      showAlert(r.data?.error || "Falha ao excluir.");
+      return;
+    }
+    showAlert("Campo excluído.", true);
+    await carregarCampos();
+  }
+
+  /* ---------- Modal: Opções ---------- */
+  const moState = { fieldId: null, opcoes: [] };
+
+  function openOpcoesModal(fieldId){
+    const c = state.campos.find(f => f.id === fieldId);
+    if (!c) return;
+    moState.fieldId = fieldId;
+    $("#moFieldId").value = fieldId;
+    $("#moNome").textContent = c.nome;
+    renderOpcoes(c.opcoes || []);
+    updateMoPreview(null);
+    openModal("modalOpcoes");
+  }
+
+  function renderOpcoes(opcoes){
+    moState.opcoes = opcoes;
+    const tb = $("#moTbody");
+    if (!opcoes.length){
+      tb.innerHTML = `<tr><td colspan="6" style="padding:18px; text-align:center; color:#64748b;">Nenhuma opção. Clique em "+ Adicionar opção".</td></tr>`;
+      return;
+    }
+    tb.innerHTML = opcoes.map(o => {
+      const cor = o.cor || "";
+      const corLetra = o.cor_letra || "#000000";
+      const inativo = Number(o.ativo) !== 1;
+      const previewStyle = cor
+        ? `background:${escapeHtml(cor)}; color:${escapeHtml(corLetra)};`
+        : "background:#fff; color:#0f172a;";
+      return `
+        <tr data-opt-id="${o.id}">
+          <td>
+            <div style="display:inline-block; padding:4px 10px; border-radius:6px; ${previewStyle} font-weight:700;">
+              ${escapeHtml(o.valor)}
+            </div>
+            ${inativo ? '<div style="font-size:10px; color:#b91c1c; font-weight:800; margin-top:2px;">INATIVO</div>' : ""}
+          </td>
+          <td>
+            ${cor
+              ? `<span style="display:inline-block; width:28px; height:28px; border-radius:6px; background:${escapeHtml(cor)}; border:1px solid #e2e8f0;"></span>`
+              : `<span style="font-size:11px; color:#94a3b8;">sem cor</span>`}
+          </td>
+          <td><span style="font-weight:800;">${corLetra === "#ffffff" ? "Branca" : "Preta"}</span></td>
+          <td style="text-align:center; font-weight:800;">${o.hierarquia || 5}</td>
+          <td>${inativo ? "Não" : "Sim"}</td>
+          <td>
+            <div class="opts-row-actions">
+              <button class="btn btn-sm" type="button" data-opt-act="edit" data-id="${o.id}">Editar</button>
+              <button class="btn btn-sm btn-red" type="button" data-opt-act="delete" data-id="${o.id}">Excluir</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    tb.querySelectorAll("[data-opt-act]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const oid = Number(btn.dataset.id);
+        const act = btn.dataset.optAct;
+        if (act === "edit")   openOpcaoModal(oid);
+        if (act === "delete") deletarOpcao(oid);
+      });
+    });
+  }
+
+  $("#moBtnAddOpcao").addEventListener("click", () => openOpcaoModal(null));
+
+  function updateMoPreview(opt){
+    const el = $("#moPreview");
+    if (!opt || !opt.cor){
+      el.style.background = "#fff";
+      el.style.color = "#0f172a";
+      el.textContent = "Selecione cor e letra para ver o exemplo";
+      return;
+    }
+    el.style.background = opt.cor;
+    el.style.color = opt.cor_letra || "#000000";
+    el.textContent = `${opt.valor || "Exemplo"} — hierarquia ${opt.hierarquia || 5}`;
+  }
+
+  async function deletarOpcao(optId){
+    const o = moState.opcoes.find(x => x.id === optId);
+    if (!o) return;
+    if (!confirm(`Excluir a opção "${o.valor}"?`)) return;
+    const r = await api("DELETE", `/api/campos/${moState.fieldId}/opcoes/${optId}`);
+    if (!r.ok){
+      showAlert(r.data?.error || "Falha ao excluir.");
+      return;
+    }
+    showAlert("Opção excluída.", true);
+    await carregarCampos();
+    // re-renderiza opções dentro do modal a partir do state atualizado
+    const c = state.campos.find(f => f.id === moState.fieldId);
+    renderOpcoes(c?.opcoes || []);
+  }
+
+  /* ---------- Modal: Opção (criar / editar) ---------- */
+  function openOpcaoModal(optId){
+    $("#opFieldId").value = moState.fieldId;
+    if (optId){
+      const o = moState.opcoes.find(x => x.id === optId);
+      if (!o) return;
+      $("#opTitle").textContent = "Editar opção";
+      $("#opId").value = o.id;
+      $("#opValor").value = o.valor || "";
+      $("#opCor").value = o.cor || "";
+      const corLetra = o.cor_letra || "#000000";
+      $("#opCorLetra").value = corLetra;
+      $("#opHierarquia").value = String(o.hierarquia || 5);
+      $("#opAtivo").checked = Number(o.ativo) === 1;
+      // pintar swatch
+      const swatch = $("#opCorBtn");
+      if (o.cor){
+        swatch.style.background = o.cor;
+        swatch.classList.remove("empty");
+        $("#opCorTxt").textContent = o.cor;
+      } else {
+        swatch.style.background = "";
+        swatch.classList.add("empty");
+        $("#opCorTxt").textContent = "sem cor";
+      }
+      // letra toggle
+      setFcToggle(corLetra);
+    } else {
+      $("#opTitle").textContent = "Nova opção";
+      $("#opId").value = "";
+      $("#opValor").value = "";
+      $("#opCor").value = "";
+      $("#opCorLetra").value = "#000000";
+      $("#opHierarquia").value = "5";
+      $("#opAtivo").checked = true;
+      const swatch = $("#opCorBtn");
+      swatch.style.background = "";
+      swatch.classList.add("empty");
+      $("#opCorTxt").textContent = "sem cor";
+      setFcToggle("#000000");
+    }
+    updateOpPreview();
+    openModal("modalOpcao");
+  }
+
+  function setFcToggle(corLetra){
+    const wrap = document.querySelector(".font-color-toggle");
+    if (!wrap) return;
+    wrap.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+    if (corLetra === "#ffffff"){
+      wrap.querySelector(".fc-white").classList.add("active");
+    } else {
+      wrap.querySelector(".fc-black").classList.add("active");
+    }
+  }
+
+  window.setOpLetra = function(hex, btn){
+    $("#opCorLetra").value = hex;
+    const wrap = btn.closest(".font-color-toggle");
+    wrap.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    updateOpPreview();
+  };
+
+  function updateOpPreview(){
+    const valor = $("#opValor").value.trim() || "Exemplo";
+    const cor = $("#opCor").value;
+    const corLetra = $("#opCorLetra").value || "#000000";
+    const hier = $("#opHierarquia").value;
+    const el = $("#opPreview");
+    if (cor){
+      el.style.background = cor;
+      el.style.color = corLetra;
+      el.textContent = `${valor} — pintaria a linha (hierarquia ${hier})`;
+    } else {
+      el.style.background = "#fff";
+      el.style.color = "#0f172a";
+      el.textContent = `${valor} — sem pintura`;
+    }
+  }
+
+  ["input","change"].forEach(ev => {
+    $("#opValor").addEventListener(ev, updateOpPreview);
+    $("#opHierarquia").addEventListener(ev, updateOpPreview);
+  });
+
+  $("#opSalvar").addEventListener("click", async () => {
+    const id = $("#opId").value.trim();
+    const fieldId = $("#opFieldId").value.trim();
+    const payload = {
+      valor: $("#opValor").value.trim(),
+      cor: $("#opCor").value || null,
+      cor_letra: $("#opCorLetra").value || "#000000",
+      hierarquia: Number($("#opHierarquia").value),
+      ativo: $("#opAtivo").checked ? 1 : 0,
+    };
+    if (!payload.valor){ showAlert("Informe o valor da opção."); return; }
+
+    let r;
+    if (id){
+      r = await api("PUT", `/api/campos/${fieldId}/opcoes/${id}`, payload);
+    } else {
+      r = await api("POST", `/api/campos/${fieldId}/opcoes`, payload);
+    }
+    if (!r.ok){
+      showAlert(r.data?.error || "Falha ao salvar opção.");
+      return;
+    }
+    closeModal("modalOpcao");
+    showAlert(id ? "Opção atualizada." : "Opção criada.", true);
+    await carregarCampos();
+    const c = state.campos.find(f => f.id === Number(fieldId));
+    renderOpcoes(c?.opcoes || []);
+    updateMoPreview(null);
+  });
+
+
+  /* ===================== COLOR PICKER (paleta) ===================== */
   const COLOR_PALETTE = [
     "#ff00ff", "#ffff00", "#c27ba0", "#00b050", "#0070c0", "#a2c4c9",
     "#ff0000", "#ff6600", "#ff9900", "#ffcc00", "#ccff00", "#66ff00",
@@ -536,12 +894,10 @@
     "#c0c0c0", "#808080", "#ffcccc", "#ccffcc", "#ccccff", "#ffffcc", "#ffd700"
   ];
 
-  function buildColorGrid(dropdown, currentColor, hiddenInput, swatchBtn) {
+  function buildColorGrid(dropdown, currentColor, onPick){
     dropdown.innerHTML = "";
-
     const grid = document.createElement("div");
     grid.className = "color-grid";
-
     COLOR_PALETTE.forEach(hex => {
       const dot = document.createElement("div");
       dot.className = "color-dot" + (currentColor === hex ? " selected" : "");
@@ -549,17 +905,11 @@
       dot.title = hex;
       dot.addEventListener("click", (e) => {
         e.stopPropagation();
-        hiddenInput.value = hex;
-        swatchBtn.style.background = hex;
-        swatchBtn.classList.remove("empty");
+        onPick(hex);
         dropdown.classList.remove("open");
-        // update selected state
-        grid.querySelectorAll(".color-dot").forEach(d => d.classList.remove("selected"));
-        dot.classList.add("selected");
       });
       grid.appendChild(dot);
     });
-
     dropdown.appendChild(grid);
 
     const clearBtn = document.createElement("button");
@@ -568,98 +918,51 @@
     clearBtn.textContent = "Sem cor";
     clearBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      hiddenInput.value = "";
-      swatchBtn.style.background = "";
-      swatchBtn.classList.add("empty");
+      onPick(null);
       dropdown.classList.remove("open");
-      grid.querySelectorAll(".color-dot").forEach(d => d.classList.remove("selected"));
     });
     dropdown.appendChild(clearBtn);
   }
 
-  function toggleColorDropdown(btn) {
-    const wrap = btn.closest(".color-picker-wrap");
-    const dropdown = wrap.querySelector(".color-dropdown");
-    const hiddenInput = wrap.querySelector('input[name="cor"]');
+  window.toggleColorDropdownOp = function(){
+    const btn = $("#opCorBtn");
+    const dropdown = $("#opCorDropdown");
+    const current = $("#opCor").value || "";
+    const isOpen = dropdown.classList.contains("open");
+    document.querySelectorAll(".color-dropdown.open").forEach(d => d.classList.remove("open"));
+    if (isOpen) return;
 
-    // close all other open dropdowns
-    document.querySelectorAll(".color-dropdown.open").forEach(d => {
-      if (d !== dropdown) d.classList.remove("open");
+    buildColorGrid(dropdown, current, (hex) => {
+      $("#opCor").value = hex || "";
+      if (hex){
+        btn.style.background = hex;
+        btn.classList.remove("empty");
+        $("#opCorTxt").textContent = hex;
+      } else {
+        btn.style.background = "";
+        btn.classList.add("empty");
+        $("#opCorTxt").textContent = "sem cor";
+      }
+      updateOpPreview();
     });
 
-    if (!dropdown.classList.contains("open")) {
-      buildColorGrid(dropdown, (hiddenInput.value || "").trim(), hiddenInput, btn);
-
-      // Position dropdown below the button using fixed coordinates
-      const rect = btn.getBoundingClientRect();
-      dropdown.style.left = rect.left + "px";
-      dropdown.style.top = (rect.bottom + 4) + "px";
-
-      // If dropdown would go off-screen bottom, show it above
-      const dropH = 320;
-      if (rect.bottom + dropH > window.innerHeight) {
-        dropdown.style.top = Math.max(4, rect.top - dropH - 4) + "px";
-      }
-
-      dropdown.classList.add("open");
-    } else {
-      dropdown.classList.remove("open");
+    const rect = btn.getBoundingClientRect();
+    dropdown.style.left = rect.left + "px";
+    dropdown.style.top = (rect.bottom + 6) + "px";
+    if (rect.bottom + 320 > window.innerHeight){
+      dropdown.style.top = Math.max(4, rect.top - 320 - 6) + "px";
     }
-  }
+    dropdown.classList.add("open");
+  };
 
-  // Fechar dropdown ao clicar fora
   document.addEventListener("click", (e) => {
-    if (!e.target.closest(".color-picker-wrap")) {
+    if (!e.target.closest(".color-picker-wrap")){
       document.querySelectorAll(".color-dropdown.open").forEach(d => d.classList.remove("open"));
     }
   });
 
-  // Busca dinâmica (client-side) — filtra a tabela enquanto digita
-  (function(){
-    const search = document.querySelector('.tm-card-h .tm-search');
-    const tbody = document.querySelector('.tm-table-wrap table.tm tbody');
-    if(!search || !tbody) return;
-
-    function debounce(fn, wait){ let t; return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn(...args), wait); }; }
-
-    // remove acentuação para comparação
-    function normalizeText(s){ return (s||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase(); }
-
-    function filterRows(q){
-      q = normalizeText((q||'').trim());
-      const rows = Array.from(tbody.querySelectorAll('tr')).filter(r=>!r.classList.contains('no-results'));
-      let visible = 0;
-      for(const tr of rows){
-        // priorizar o valor do input na célula (nome do cadastro)
-        const input = tr.querySelector('input[name="value"]');
-        const valueText = input ? input.value : (tr.cells[0] ? tr.cells[0].innerText : '');
-        const ativoLabel = (tr.querySelector('.pill') || {}).innerText || '';
-        const text = normalizeText((valueText + ' ' + ativoLabel).replace(/\s+/g,' '));
-
-        if(!q || text.indexOf(q) !== -1){ tr.style.display = ''; visible++; }
-        else { tr.style.display = 'none'; }
-      }
-
-      const existing = tbody.querySelector('.no-results');
-      if(visible === 0){
-        if(!existing){
-          const nr = document.createElement('tr');
-          nr.className = 'no-results';
-          nr.innerHTML = '<td colspan="{{ 4 if cor_col else 3 }}" style="padding:16px 14px; color:#64748b;">Nenhum registro encontrado.</td>';
-          tbody.appendChild(nr);
-        }
-      } else if(existing){ existing.remove(); }
-    }
-
-    const handler = debounce((e)=> filterRows(e.target.value), 180);
-    search.addEventListener('input', handler);
-
-    // suporte: ESC limpa
-    search.addEventListener('keydown', (e)=>{ if(e.key === 'Escape'){ e.target.value=''; filterRows(''); } });
-
-    // aplica filtro inicial (se houver valor vindo do servidor)
-    filterRows(search.value || '');
-  })();
-  
+  /* ---------- Init ---------- */
+  carregarCampos();
+})();
 </script>
 {% endblock %}

@@ -326,8 +326,14 @@ def parse_numeric(v):
         return None
 
 
-NUMERIC_FIELDS_ACORDOS = {"valor_acordo", "deposito", "correcao", "honorarios", "repasse", "sucumbencia", "porcentagem_honorarios"}
-NUMERIC_FIELDS_MANDADOS = {"deposito", "correcao", "honorarios", "repasse", "sucumbencia", "porcentagem_honorarios"}
+NUMERIC_FIELDS_ACORDOS = {
+    "valor_acordo", "deposito", "correcao", "honorarios", "audiencista",
+    "repasse", "sucumbencia", "porcentagem_honorarios",
+}
+NUMERIC_FIELDS_MANDADOS = {
+    "sentenca", "quitacao", "deposito", "correcao", "honorarios", "audiencista",
+    "repasse", "sucumbencia", "porcentagem_honorarios",
+}
 
 
 def clean_payload(payload: dict, numeric_fields: set[str]):
@@ -1548,7 +1554,7 @@ def _campos_config_rows(tenant: str, escopo: str) -> list[dict]:
     try:
         res = (
             supabase.table(TABLE_CAMPOS_CONFIG)
-            .select("chave,label,valor,visivel")
+            .select("chave,label,valor,visivel,ordem")
             .eq("tenant", tenant)
             .eq("escopo", escopo)
             .limit(5000)
@@ -1674,55 +1680,16 @@ def api_row_colors():
 @app.get("/cadastros")
 @login_required
 def cadastros():
+    """Nova tela de cadastros (Fase 2): carrega tudo via /api/campos no JS.
+
+    O template antigo (table selector + CRUD inline) foi substituído. Se a
+    migration 05 ainda não rodou, o próprio template mostra um aviso.
+
+    As rotas legadas /cadastros/<table>/add|update|delete continuam existindo
+    para rollback rápido (Fase 5 fará a limpeza).
+    """
     require_admin()
-
-    table = (request.args.get("table") or "").strip()
-    if table not in CADASTRO_TABLES:
-        table = next(iter(CADASTRO_TABLES.keys()))
-
-    cfg = CADASTRO_TABLES[table]
-    value_col = cfg["value_col"]
-    ativo_col = cfg["ativo_col"]
-    cor_col = cfg.get("cor_col")
-    cor_letra_col = cfg.get("cor_letra_col")
-    hierarquia_col = cfg.get("hierarquia_col")
-
-    columns = f"{value_col},{ativo_col}"
-    if cor_col:
-        columns += f",{cor_col}"
-    if cor_letra_col:
-        columns += f",{cor_letra_col}"
-    if hierarquia_col:
-        columns += f",{hierarquia_col}"
-
-    rows = sb_select(
-        table,
-        columns=columns,
-        limit=5000,
-        order_col=value_col,
-        desc=False
-    )
-
-    # Labels custom por tenant (item 1) — sobrescrevem cfg.label / dropdown.
-    labels_por_tenant = _labels_cadastro(_get_tenant())
-    label_atual = labels_por_tenant.get(table, cfg["label"])
-
-    return render_template(
-        "cadastros.html",
-        cadastro_tables=CADASTRO_TABLES,
-        cadastro_labels=labels_por_tenant,
-        label_atual=label_atual,
-        table=table,
-        cfg=cfg,
-        value_col=value_col,
-        ativo_col=ativo_col,
-        cor_col=cor_col,
-        cor_letra_col=cor_letra_col,
-        hierarquia_col=hierarquia_col,
-        rows=rows,
-        error=request.args.get("error"),
-        ok=request.args.get("ok"),
-    )
+    return render_template("cadastros.html")
 
 
 @app.post("/cadastros/<table>/add")
@@ -1862,27 +1829,14 @@ def cadastros_delete(table):
 @app.get("/cadastros/configuracoes")
 @login_required
 def cadastros_config():
+    """Rota legada — redireciona para a nova tela em Admin.
+
+    As configurações por campo migraram para o editar individual de cada
+    campo em /cadastros (Fase 2). O que sobrou (ordem de colunas + %
+    honorários) vive agora em /admin/ordem-colunas.
+    """
     require_admin()
-    tenant = _get_tenant()
-
-    labels_cadastro = _labels_cadastro(tenant)
-    cfg_acordos = _config_campos_tabela(tenant, "acordos")
-    cfg_mandados = _config_campos_tabela(tenant, "mandados")
-    porc_default = _honorarios_default(tenant)
-
-    return render_template(
-        "cadastros_config.html",
-        cadastro_tables=CADASTRO_TABLES,
-        cadastro_labels=labels_cadastro,
-        colunas_acordos=COLUNAS_ACORDOS,
-        colunas_mandados=COLUNAS_MANDADOS,
-        campos_extras=CAMPOS_EXTRAS,
-        cfg_acordos=cfg_acordos,
-        cfg_mandados=cfg_mandados,
-        porc_default=porc_default,
-        error=request.args.get("error"),
-        ok=request.args.get("ok"),
-    )
+    return redirect(url_for("ordem_colunas_page"))
 
 
 @app.post("/cadastros/configuracoes")
@@ -1925,6 +1879,858 @@ def cadastros_config_save():
                                 error="Falha ao salvar — a migration 04 já foi aplicada?"))
 
     return redirect(url_for("cadastros_config", ok="Configurações salvas."))
+
+
+# ===================== CAMPOS PERSONALIZADOS (V2) =====================
+# Novo modelo (migration 05): substitui fin_status/local/conta/reu/uf/
+# patrono_reu/prazo_estimado por uma tabela genérica fin_custom_fields +
+# fin_custom_field_options. Cada tenant tem até 10 campos personalizados.
+#
+# Os endpoints aqui são ADITIVOS — convivem com o CRUD antigo de cadastros
+# (que continua funcionando) até a Fase 5 do refactor. Todo acesso é
+# defensivo: se a migration 05 ainda não rodou, os endpoints retornam
+# erro 503 com mensagem clara em vez de quebrar.
+
+TABLE_CUSTOM_FIELDS = "fin_custom_fields"
+TABLE_CUSTOM_FIELD_OPTIONS = "fin_custom_field_options"
+
+CUSTOM_FIELD_TYPES = {"texto", "numero", "data", "hora", "select_single", "select_multi"}
+CUSTOM_FIELDS_MAX_PER_TENANT = 10
+
+# Tabelas legadas, por chave de campo sistema. Usadas para validar
+# "valor em uso" antes de deletar opção (mantém compatibilidade enquanto
+# fin_acordos/fin_mandados continuam tendo colunas fixas).
+CUSTOM_FIELD_COLUNA_FIXA = {
+    "status": "status",
+    "local": "local",
+    "reu": "reu",
+    "uf": "uf",
+    "escritorio_reu": "escritorio_reu",
+    "prazo_estimado": "prazo_estimado",
+    # 'conta' não tem coluna fixa — vai para valores_custom JSONB.
+}
+
+
+class CamposConfigIndisponivelError(RuntimeError):
+    """Migration 05 ainda não foi aplicada — endpoints v2 indisponíveis."""
+
+
+def _campos_v2_disponivel() -> bool:
+    """Verifica se a migration 05 já criou as tabelas.
+
+    Cacheia APENAS o caso positivo. Se a tabela ainda não existir, retesta
+    a cada chamada — permite que o app passe a usar o sistema novo
+    imediatamente após o usuário aplicar a migration, sem reiniciar.
+    """
+    if _EXTRAS_EXISTS_CACHE.get("__campos_v2__") is True:
+        return True
+    try:
+        supabase.table(TABLE_CUSTOM_FIELDS).select("id").limit(1).execute()
+        _EXTRAS_EXISTS_CACHE["__campos_v2__"] = True
+        return True
+    except Exception:
+        return False
+
+
+def _require_campos_v2():
+    if not _campos_v2_disponivel():
+        raise CamposConfigIndisponivelError(
+            "Recurso indisponível: a migration 05 ainda não foi aplicada."
+        )
+
+
+def _list_custom_fields(tenant: str) -> list[dict]:
+    """Lista campos do tenant, ordenados por `ordem`. Defensivo."""
+    if not _campos_v2_disponivel():
+        return []
+    try:
+        res = (
+            supabase.table(TABLE_CUSTOM_FIELDS)
+            .select("*")
+            .eq("tenant", tenant)
+            .order("ordem")
+            .limit(100)
+            .execute()
+        )
+        return getattr(res, "data", None) or []
+    except Exception:
+        app.logger.exception("Falha ao listar fin_custom_fields")
+        return []
+
+
+def _get_custom_field(tenant: str, field_id: int) -> dict | None:
+    if not _campos_v2_disponivel():
+        return None
+    try:
+        res = (
+            supabase.table(TABLE_CUSTOM_FIELDS)
+            .select("*")
+            .eq("tenant", tenant)
+            .eq("id", field_id)
+            .limit(1)
+            .execute()
+        )
+        rows = getattr(res, "data", None) or []
+        return rows[0] if rows else None
+    except Exception:
+        return None
+
+
+def _list_field_options(tenant: str, field_id: int) -> list[dict]:
+    if not _campos_v2_disponivel():
+        return []
+    try:
+        res = (
+            supabase.table(TABLE_CUSTOM_FIELD_OPTIONS)
+            .select("*")
+            .eq("tenant", tenant)
+            .eq("field_id", field_id)
+            .order("ordem")
+            .order("valor")
+            .limit(5000)
+            .execute()
+        )
+        return getattr(res, "data", None) or []
+    except Exception:
+        return []
+
+
+def _option_in_use(field: dict, valor: str) -> bool:
+    """Verifica se a opção está em uso em fin_acordos/fin_mandados.
+
+    Para campos com coluna_fixa: consulta a coluna fixa.
+    Para campos sem coluna fixa: consulta valores_custom (JSONB).
+    """
+    if not field or not valor:
+        return False
+    chave = (field.get("chave") or "").strip()
+    coluna = (field.get("coluna_fixa") or "").strip()
+    tenant = _get_tenant()
+
+    tabelas_alvo = []
+    if int(field.get("escopo_acordos") or 0) == 1:
+        tabelas_alvo.append(TABLE_ACORDOS)
+    if int(field.get("escopo_mandados") or 0) == 1:
+        tabelas_alvo.append(TABLE_MANDADOS)
+
+    for t in tabelas_alvo:
+        try:
+            q = supabase.table(t).select("id").eq("tenant", tenant)
+            if coluna:
+                q = q.eq(coluna, valor)
+            elif chave:
+                # JSONB: valores_custom->>chave = valor
+                # PostgREST: usa .filter("valores_custom->>chave","eq",valor)
+                q = q.filter(f"valores_custom->>{chave}", "eq", valor)
+            else:
+                continue
+            r = q.limit(1).execute()
+            if getattr(r, "data", None):
+                return True
+        except Exception:
+            # Se a coluna valores_custom ainda não existir, deixa passar.
+            pass
+
+    return False
+
+
+def _next_custom_chave(tenant: str) -> str:
+    """Gera próxima chave livre tipo cf_1..cf_10 (ignorando as system)."""
+    existentes = {(f.get("chave") or "").strip()
+                  for f in _list_custom_fields(tenant)}
+    for n in range(1, 100):
+        chave = f"cf_{n}"
+        if chave not in existentes:
+            return chave
+    return f"cf_{int(datetime.now().timestamp())}"
+
+
+def _campos_v2_error_response(e: Exception):
+    if isinstance(e, CamposConfigIndisponivelError):
+        return jsonify({"ok": False, "error": str(e)}), 503
+    app.logger.exception("Erro em endpoint /api/campos")
+    return jsonify({"ok": False, "error": "Erro interno."}), 500
+
+
+# ---------- GET /api/campos — lista campos + opções do tenant ----------
+
+@app.get("/api/campos")
+@login_required
+def api_campos_list():
+    try:
+        _require_campos_v2()
+        tenant = _get_tenant()
+        fields = _list_custom_fields(tenant)
+
+        # Carrega todas as opções do tenant em uma única query e agrupa por field_id.
+        opts_por_field: dict[int, list[dict]] = {}
+        try:
+            res = (
+                supabase.table(TABLE_CUSTOM_FIELD_OPTIONS)
+                .select("*")
+                .eq("tenant", tenant)
+                .order("ordem")
+                .order("valor")
+                .limit(10000)
+                .execute()
+            )
+            for o in (getattr(res, "data", None) or []):
+                opts_por_field.setdefault(o["field_id"], []).append(o)
+        except Exception:
+            app.logger.exception("Falha ao listar opções")
+
+        for f in fields:
+            f["opcoes"] = opts_por_field.get(f["id"], [])
+
+        return jsonify({
+            "ok": True,
+            "campos": fields,
+            "limite": CUSTOM_FIELDS_MAX_PER_TENANT,
+            "tipos_validos": sorted(CUSTOM_FIELD_TYPES),
+        })
+    except Exception as e:
+        return _campos_v2_error_response(e)
+
+
+# ---------- POST /api/campos — criar campo ----------
+
+@app.post("/api/campos")
+@login_required
+def api_campos_create():
+    try:
+        require_admin()
+        _require_campos_v2()
+        tenant = _get_tenant()
+
+        data = request.get_json(force=True) or {}
+        nome = (data.get("nome") or "").strip()
+        tipo = (data.get("tipo") or "select_single").strip()
+        escopo_a = 1 if data.get("escopo_acordos", 1) else 0
+        escopo_m = 1 if data.get("escopo_mandados", 1) else 0
+
+        if not nome:
+            return jsonify({"ok": False, "error": "Informe o nome do campo."}), 400
+        if tipo not in CUSTOM_FIELD_TYPES:
+            return jsonify({"ok": False, "error": f"Tipo inválido: {tipo}"}), 400
+
+        atuais = _list_custom_fields(tenant)
+        if len(atuais) >= CUSTOM_FIELDS_MAX_PER_TENANT:
+            return jsonify({
+                "ok": False,
+                "error": f"Limite de {CUSTOM_FIELDS_MAX_PER_TENANT} campos atingido."
+            }), 400
+
+        chave = _next_custom_chave(tenant)
+        proxima_ordem = max([int(f.get("ordem") or 0) for f in atuais], default=0) + 1
+
+        payload = {
+            "tenant": tenant,
+            "chave": chave,
+            "nome": nome,
+            "tipo": tipo,
+            "ordem": proxima_ordem,
+            "escopo_acordos": escopo_a,
+            "escopo_mandados": escopo_m,
+            "ativo": 1,
+            "system_locked": 0,
+            "coluna_fixa": None,
+        }
+        res = supabase.table(TABLE_CUSTOM_FIELDS).insert(payload).execute()
+        rows = getattr(res, "data", None) or []
+        return jsonify({"ok": True, "campo": rows[0] if rows else payload})
+    except Exception as e:
+        return _campos_v2_error_response(e)
+
+
+# ---------- PUT /api/campos/<id> — editar campo ----------
+
+@app.put("/api/campos/<int:field_id>")
+@login_required
+def api_campos_update(field_id: int):
+    try:
+        require_admin()
+        _require_campos_v2()
+        tenant = _get_tenant()
+
+        existente = _get_custom_field(tenant, field_id)
+        if not existente:
+            return jsonify({"ok": False, "error": "Campo não encontrado."}), 404
+
+        data = request.get_json(force=True) or {}
+        payload = {"updated_at": datetime.now().isoformat()}
+
+        if "nome" in data:
+            nome = (data.get("nome") or "").strip()
+            if not nome:
+                return jsonify({"ok": False, "error": "Nome não pode ficar vazio."}), 400
+            payload["nome"] = nome
+
+        if "tipo" in data:
+            tipo = (data.get("tipo") or "").strip()
+            if tipo not in CUSTOM_FIELD_TYPES:
+                return jsonify({"ok": False, "error": f"Tipo inválido: {tipo}"}), 400
+            if int(existente.get("system_locked") or 0) == 1 and tipo != existente.get("tipo"):
+                return jsonify({
+                    "ok": False,
+                    "error": "Este campo é do sistema; o tipo não pode ser alterado."
+                }), 400
+            payload["tipo"] = tipo
+
+        if "ativo" in data:
+            payload["ativo"] = 1 if data.get("ativo") else 0
+
+        if "escopo_acordos" in data:
+            payload["escopo_acordos"] = 1 if data.get("escopo_acordos") else 0
+        if "escopo_mandados" in data:
+            payload["escopo_mandados"] = 1 if data.get("escopo_mandados") else 0
+
+        if "ordem" in data:
+            try:
+                payload["ordem"] = int(data.get("ordem"))
+            except (TypeError, ValueError):
+                pass
+
+        if len(payload) == 1:  # só updated_at
+            return jsonify({"ok": False, "error": "Nada para atualizar."}), 400
+
+        supabase.table(TABLE_CUSTOM_FIELDS).update(payload).eq(
+            "tenant", tenant
+        ).eq("id", field_id).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return _campos_v2_error_response(e)
+
+
+# ---------- DELETE /api/campos/<id> ----------
+
+@app.delete("/api/campos/<int:field_id>")
+@login_required
+def api_campos_delete(field_id: int):
+    try:
+        require_admin()
+        _require_campos_v2()
+        tenant = _get_tenant()
+
+        existente = _get_custom_field(tenant, field_id)
+        if not existente:
+            return jsonify({"ok": False, "error": "Campo não encontrado."}), 404
+
+        if int(existente.get("system_locked") or 0) == 1:
+            return jsonify({
+                "ok": False,
+                "error": "Este campo é do sistema e não pode ser excluído."
+            }), 400
+
+        # Bloqueia se alguma opção do campo está em uso em Acordos/Mandados.
+        for opt in _list_field_options(tenant, field_id):
+            if _option_in_use(existente, opt.get("valor") or ""):
+                return jsonify({
+                    "ok": False,
+                    "error": "Campo tem opções em uso em Acordos/Mandados. Exclusão bloqueada."
+                }), 400
+
+        # ON DELETE CASCADE apaga as opções automaticamente.
+        supabase.table(TABLE_CUSTOM_FIELDS).delete().eq(
+            "tenant", tenant
+        ).eq("id", field_id).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return _campos_v2_error_response(e)
+
+
+# ---------- POST /api/campos/<id>/opcoes — criar opção ----------
+
+@app.post("/api/campos/<int:field_id>/opcoes")
+@login_required
+def api_campos_opcao_create(field_id: int):
+    try:
+        require_admin()
+        _require_campos_v2()
+        tenant = _get_tenant()
+
+        campo = _get_custom_field(tenant, field_id)
+        if not campo:
+            return jsonify({"ok": False, "error": "Campo não encontrado."}), 404
+        if campo.get("tipo") not in ("select_single", "select_multi"):
+            return jsonify({
+                "ok": False,
+                "error": "Só campos do tipo seleção têm opções."
+            }), 400
+
+        data = request.get_json(force=True) or {}
+        valor = (data.get("valor") or "").strip()
+        if not valor:
+            return jsonify({"ok": False, "error": "Informe o valor da opção."}), 400
+
+        cor = (data.get("cor") or "").strip() or None
+        cor_letra = (data.get("cor_letra") or "#000000").strip() or "#000000"
+        # Atenção: `int(data.get("hierarquia") or 5)` falha quando o usuário
+        # manda 0 (que é falsy em Python). Trate None/"" explicitamente.
+        h_raw = data.get("hierarquia")
+        if h_raw is None or h_raw == "":
+            hierarquia = 5
+        else:
+            try:
+                hierarquia = int(h_raw)
+            except (TypeError, ValueError):
+                hierarquia = 5
+        hierarquia = max(1, min(10, hierarquia))
+        ativo = 1 if data.get("ativo", 1) else 0
+        try:
+            ordem = int(data.get("ordem") or 100)
+        except (TypeError, ValueError):
+            ordem = 100
+
+        # Duplicação (case-insensitive)
+        existentes = _list_field_options(tenant, field_id)
+        if any((o.get("valor") or "").strip().lower() == valor.lower() for o in existentes):
+            return jsonify({"ok": False, "error": "Já existe uma opção com esse valor."}), 400
+
+        payload = {
+            "tenant": tenant,
+            "field_id": field_id,
+            "valor": valor,
+            "cor": cor,
+            "cor_letra": cor_letra,
+            "hierarquia": hierarquia,
+            "ativo": ativo,
+            "ordem": ordem,
+        }
+        res = supabase.table(TABLE_CUSTOM_FIELD_OPTIONS).insert(payload).execute()
+        rows = getattr(res, "data", None) or []
+        return jsonify({"ok": True, "opcao": rows[0] if rows else payload})
+    except Exception as e:
+        return _campos_v2_error_response(e)
+
+
+# ---------- PUT /api/campos/<id>/opcoes/<oid> — editar opção ----------
+
+@app.put("/api/campos/<int:field_id>/opcoes/<int:option_id>")
+@login_required
+def api_campos_opcao_update(field_id: int, option_id: int):
+    try:
+        require_admin()
+        _require_campos_v2()
+        tenant = _get_tenant()
+
+        campo = _get_custom_field(tenant, field_id)
+        if not campo:
+            return jsonify({"ok": False, "error": "Campo não encontrado."}), 404
+
+        data = request.get_json(force=True) or {}
+        payload = {"updated_at": datetime.now().isoformat()}
+
+        # Carrega opção existente para validar renomeio.
+        existentes = _list_field_options(tenant, field_id)
+        opt = next((o for o in existentes if int(o.get("id")) == option_id), None)
+        if not opt:
+            return jsonify({"ok": False, "error": "Opção não encontrada."}), 404
+
+        if "valor" in data:
+            novo = (data.get("valor") or "").strip()
+            if not novo:
+                return jsonify({"ok": False, "error": "Valor não pode ficar vazio."}), 400
+            antigo = (opt.get("valor") or "").strip()
+            if novo.lower() != antigo.lower():
+                # Renomeio: bloqueia se estiver em uso (idêntico ao comportamento antigo).
+                if _option_in_use(campo, antigo):
+                    return jsonify({
+                        "ok": False,
+                        "error": "Valor em uso em Acordos/Mandados. Renomeio bloqueado."
+                    }), 400
+                # Verifica duplicação
+                if any((o.get("valor") or "").strip().lower() == novo.lower()
+                       and int(o.get("id")) != option_id for o in existentes):
+                    return jsonify({"ok": False, "error": "Já existe opção com esse valor."}), 400
+            payload["valor"] = novo
+
+        if "cor" in data:
+            cor = (data.get("cor") or "").strip()
+            payload["cor"] = cor or None
+        if "cor_letra" in data:
+            payload["cor_letra"] = (data.get("cor_letra") or "#000000").strip() or "#000000"
+        if "hierarquia" in data:
+            try:
+                h = int(data.get("hierarquia"))
+                payload["hierarquia"] = max(1, min(10, h))
+            except (TypeError, ValueError):
+                pass
+        if "ativo" in data:
+            payload["ativo"] = 1 if data.get("ativo") else 0
+        if "ordem" in data:
+            try:
+                payload["ordem"] = int(data.get("ordem"))
+            except (TypeError, ValueError):
+                pass
+
+        if len(payload) == 1:
+            return jsonify({"ok": False, "error": "Nada para atualizar."}), 400
+
+        supabase.table(TABLE_CUSTOM_FIELD_OPTIONS).update(payload).eq(
+            "tenant", tenant
+        ).eq("field_id", field_id).eq("id", option_id).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return _campos_v2_error_response(e)
+
+
+# ---------- DELETE /api/campos/<id>/opcoes/<oid> ----------
+
+@app.delete("/api/campos/<int:field_id>/opcoes/<int:option_id>")
+@login_required
+def api_campos_opcao_delete(field_id: int, option_id: int):
+    try:
+        require_admin()
+        _require_campos_v2()
+        tenant = _get_tenant()
+
+        campo = _get_custom_field(tenant, field_id)
+        if not campo:
+            return jsonify({"ok": False, "error": "Campo não encontrado."}), 404
+
+        opts = _list_field_options(tenant, field_id)
+        opt = next((o for o in opts if int(o.get("id")) == option_id), None)
+        if not opt:
+            return jsonify({"ok": False, "error": "Opção não encontrada."}), 404
+
+        if _option_in_use(campo, opt.get("valor") or ""):
+            return jsonify({
+                "ok": False,
+                "error": "Valor em uso em Acordos/Mandados. Exclusão bloqueada."
+            }), 400
+
+        supabase.table(TABLE_CUSTOM_FIELD_OPTIONS).delete().eq(
+            "tenant", tenant
+        ).eq("field_id", field_id).eq("id", option_id).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return _campos_v2_error_response(e)
+
+
+# ---------- PUT /api/campos/ordem — reordenar campos (Fase 3) ----------
+
+@app.put("/api/campos/ordem")
+@login_required
+def api_campos_reordenar():
+    """Recebe { "ordem": [{ "id": 1, "ordem": 1 }, ...] } e aplica em lote."""
+    try:
+        require_admin()
+        _require_campos_v2()
+        tenant = _get_tenant()
+
+        data = request.get_json(force=True) or {}
+        itens = data.get("ordem") or []
+        if not isinstance(itens, list):
+            return jsonify({"ok": False, "error": "Formato inválido."}), 400
+
+        for item in itens:
+            try:
+                fid = int(item.get("id"))
+                ordem = int(item.get("ordem"))
+            except (TypeError, ValueError):
+                continue
+            try:
+                supabase.table(TABLE_CUSTOM_FIELDS).update(
+                    {"ordem": ordem, "updated_at": datetime.now().isoformat()}
+                ).eq("tenant", tenant).eq("id", fid).execute()
+            except Exception:
+                app.logger.exception("Falha ao reordenar campo %s", fid)
+
+        return jsonify({"ok": True})
+    except Exception as e:
+        return _campos_v2_error_response(e)
+
+
+# ---------- GET /api/row-colors-v2 — mapa de pintura por chave de campo ----------
+
+@app.get("/api/row-colors-v2")
+@login_required
+def api_row_colors_v2():
+    """Retorna mapa { chave_campo: { VALOR_UPPER: {cor, cor_letra, hierarquia} } }
+    consolidando TODAS as opções coloridas do tenant. Usado pela Fase 4 para
+    decidir qual cor pinta a linha quando o registro tem múltiplos valores."""
+    try:
+        _require_campos_v2()
+        tenant = _get_tenant()
+        fields = _list_custom_fields(tenant)
+        out: dict[str, dict] = {}
+
+        # Carrega tudo de uma vez
+        try:
+            res = (
+                supabase.table(TABLE_CUSTOM_FIELD_OPTIONS)
+                .select("field_id,valor,cor,cor_letra,hierarquia,ativo")
+                .eq("tenant", tenant)
+                .limit(10000)
+                .execute()
+            )
+            opts = getattr(res, "data", None) or []
+        except Exception:
+            opts = []
+
+        opts_by_field: dict[int, list[dict]] = {}
+        for o in opts:
+            opts_by_field.setdefault(o["field_id"], []).append(o)
+
+        for f in fields:
+            chave = (f.get("chave") or "").strip()
+            if not chave:
+                continue
+            m: dict[str, dict] = {}
+            for o in opts_by_field.get(f["id"], []):
+                v = (o.get("valor") or "").strip()
+                cor = (o.get("cor") or "").strip()
+                if not v or not cor:
+                    continue
+                m[v.upper()] = {
+                    "cor": cor,
+                    "cor_letra": (o.get("cor_letra") or "#000000").strip(),
+                    "hierarquia": int(o.get("hierarquia") or 5),
+                }
+            out[chave] = m
+
+        return jsonify({"ok": True, "mapa": out})
+    except Exception as e:
+        return _campos_v2_error_response(e)
+
+
+# ===================== ORDEM DAS COLUNAS POR TENANT (FASE 3) =====================
+# A ordenação combina:
+#   - Colunas fixas em fin_acordos/fin_mandados (COLUNAS_POR_ESCOPO).
+#   - Campos personalizados em fin_custom_fields com escopo_<escopo>=1
+#     (apenas os ativos).
+#
+# Persistência: fin_campos_config com escopo='ordem_acordos'|'ordem_mandados'
+# e chave = nome da coluna. A coluna `ordem` (int) é a posição (1-N).
+# Itens sem entrada em fin_campos_config caem no padrão (ordem do código).
+
+ESCOPOS_ORDEM = {
+    "acordos": "ordem_acordos",
+    "mandados": "ordem_mandados",
+}
+
+
+def _build_ordem_colunas(tenant: str, escopo: str) -> list[dict]:
+    """Retorna lista ordenada de colunas para o escopo.
+
+    Cada item: { chave, label, origem ('fixa' | 'custom'), ordem, visivel }
+    """
+    if escopo not in ESCOPOS_ORDEM:
+        return []
+
+    # 1) Coleta itens candidatos.
+    itens: list[dict] = []
+
+    # Fixas: vêm de COLUNAS_POR_ESCOPO no app (ordem natural do código).
+    base_fixas = COLUNAS_POR_ESCOPO.get(escopo, [])
+    for idx, (chave, label_pad) in enumerate(base_fixas):
+        itens.append({
+            "chave": chave,
+            "label": label_pad,
+            "origem": "fixa",
+            "ordem_default": idx + 1,
+        })
+
+    # Campos personalizados (apenas os com escopo deste lado, ativos).
+    escopo_col = "escopo_acordos" if escopo == "acordos" else "escopo_mandados"
+    for f in _list_custom_fields(tenant):
+        if int(f.get(escopo_col) or 0) != 1:
+            continue
+        if int(f.get("ativo") or 0) != 1:
+            continue
+        chave = (f.get("chave") or "").strip()
+        if not chave:
+            continue
+        # Os 7 sistemas já podem aparecer em base_fixas (status/local/uf/etc.) —
+        # nesse caso, NÃO duplica; o nome custom (f.nome) sobrescreve o label.
+        existente = next((i for i in itens if i["chave"] == chave), None)
+        if existente:
+            existente["label"] = f.get("nome") or existente["label"]
+            existente["origem"] = "sistema"  # marcador
+        else:
+            itens.append({
+                "chave": chave,
+                "label": f.get("nome") or chave,
+                "origem": "custom",
+                "ordem_default": 1000 + int(f.get("ordem") or 0),
+            })
+
+    # 2) Lê ordem custom em fin_campos_config.
+    ordens_custom: dict[str, int] = {}
+    visiveis_custom: dict[str, int] = {}
+    for r in _campos_config_rows(tenant, ESCOPOS_ORDEM[escopo]):
+        chave = (r.get("chave") or "").strip()
+        if not chave:
+            continue
+        ord_v = r.get("ordem")
+        if ord_v is not None:
+            try:
+                ordens_custom[chave] = int(ord_v)
+            except (TypeError, ValueError):
+                pass
+        # Visibilidade pode estar nesse mesmo registro (compatibilidade).
+        if r.get("visivel") is not None:
+            visiveis_custom[chave] = int(r.get("visivel") or 0)
+
+    # 3) Lê visibilidade da config existente (escopo='acordos'|'mandados').
+    visiveis_base: dict[str, int] = {}
+    for r in _campos_config_rows(tenant, escopo):
+        chave = (r.get("chave") or "").strip()
+        if not chave:
+            continue
+        if r.get("visivel") is not None:
+            visiveis_base[chave] = int(r.get("visivel") or 0)
+
+    # 4) Monta saída final, aplicando ordem custom (quando definida).
+    out = []
+    for it in itens:
+        chave = it["chave"]
+        ordem = ordens_custom.get(chave, it.get("ordem_default", 1000))
+        vis = visiveis_custom.get(chave, visiveis_base.get(chave, 1))
+        out.append({
+            "chave": chave,
+            "label": it["label"],
+            "origem": it["origem"],
+            "ordem": ordem,
+            "visivel": int(vis),
+        })
+
+    out.sort(key=lambda x: (x["ordem"], x["chave"]))
+    return out
+
+
+@app.get("/api/ordem-colunas/<escopo>")
+@login_required
+def api_ordem_colunas(escopo: str):
+    if escopo not in ESCOPOS_ORDEM:
+        return jsonify({"ok": False, "error": "Escopo inválido."}), 400
+    try:
+        tenant = _get_tenant()
+        return jsonify({
+            "ok": True,
+            "escopo": escopo,
+            "colunas": _build_ordem_colunas(tenant, escopo),
+        })
+    except Exception:
+        app.logger.exception("Falha em /api/ordem-colunas")
+        return jsonify({"ok": False, "error": "Erro interno."}), 500
+
+
+@app.get("/admin/ordem-colunas")
+@login_required
+def ordem_colunas_page():
+    """Tela de Admin (separada de Cadastros) para organizar a ordem das
+    colunas das tabelas Acordos/Mandados e o % de honorários padrão.
+
+    Toda configuração por campo é feita no editar individual em /cadastros;
+    aqui ficam só as configs que são cross-campo / globais do tenant.
+    """
+    require_admin()
+    tenant = _get_tenant()
+    return render_template(
+        "ordem_colunas.html",
+        porc_default=_honorarios_default(tenant),
+    )
+
+
+@app.put("/api/config/honorarios-default")
+@login_required
+def api_honorarios_default_salvar():
+    """Salva o % padrão. Aceita string vazia para LIMPAR o valor.
+
+    Não usa _upsert_campo_config porque ele ignora `valor=None` na hora de
+    fazer UPDATE — aqui precisamos de fato escrever NULL para zerar.
+    """
+    require_admin()
+    tenant = _get_tenant()
+    data = request.get_json(force=True) or {}
+    porc = (data.get("valor") or "").strip()
+    porc_norm = porc.replace(",", ".") if porc else None  # None = limpar
+
+    try:
+        existing = (
+            supabase.table(TABLE_CAMPOS_CONFIG).select("id")
+            .eq("tenant", tenant)
+            .eq("escopo", "setting")
+            .eq("chave", SETTING_PORC_HON_DEFAULT)
+            .limit(1).execute()
+        )
+        payload = {"valor": porc_norm, "updated_at": datetime.now().isoformat()}
+        if getattr(existing, "data", None):
+            (supabase.table(TABLE_CAMPOS_CONFIG).update(payload)
+             .eq("tenant", tenant)
+             .eq("escopo", "setting")
+             .eq("chave", SETTING_PORC_HON_DEFAULT)
+             .execute())
+        else:
+            payload.update({
+                "tenant": tenant,
+                "escopo": "setting",
+                "chave": SETTING_PORC_HON_DEFAULT,
+                "visivel": 1,
+            })
+            supabase.table(TABLE_CAMPOS_CONFIG).insert(payload).execute()
+    except Exception:
+        app.logger.exception("Falha ao salvar % honorários padrão")
+        return jsonify({"ok": False, "error": "Falha ao salvar."}), 500
+    return jsonify({"ok": True})
+
+
+@app.put("/api/ordem-colunas/<escopo>")
+@login_required
+def api_ordem_colunas_salvar(escopo: str):
+    require_admin()
+    if escopo not in ESCOPOS_ORDEM:
+        return jsonify({"ok": False, "error": "Escopo inválido."}), 400
+
+    tenant = _get_tenant()
+    data = request.get_json(force=True) or {}
+    ordem = data.get("ordem") or []
+    if not isinstance(ordem, list):
+        return jsonify({"ok": False, "error": "Formato inválido."}), 400
+
+    escopo_cfg = ESCOPOS_ORDEM[escopo]
+    try:
+        for idx, item in enumerate(ordem, start=1):
+            chave = (item.get("chave") or "").strip() if isinstance(item, dict) else ""
+            if not chave:
+                continue
+            # Upsert linha em fin_campos_config (mesma lógica do helper, mas
+            # carrega `ordem` em vez de só label/valor/visivel).
+            existing = (
+                supabase.table(TABLE_CAMPOS_CONFIG)
+                .select("id")
+                .eq("tenant", tenant)
+                .eq("escopo", escopo_cfg)
+                .eq("chave", chave)
+                .limit(1)
+                .execute()
+            )
+            payload = {
+                "ordem": idx,
+                "updated_at": datetime.now().isoformat(),
+            }
+            if getattr(existing, "data", None):
+                (supabase.table(TABLE_CAMPOS_CONFIG)
+                 .update(payload)
+                 .eq("tenant", tenant)
+                 .eq("escopo", escopo_cfg)
+                 .eq("chave", chave)
+                 .execute())
+            else:
+                payload.update({
+                    "tenant": tenant,
+                    "escopo": escopo_cfg,
+                    "chave": chave,
+                    "visivel": 1,
+                })
+                supabase.table(TABLE_CAMPOS_CONFIG).insert(payload).execute()
+    except Exception:
+        app.logger.exception("Falha ao salvar ordem de colunas")
+        return jsonify({"ok": False, "error": "Falha ao salvar ordem."}), 500
+
+    return jsonify({"ok": True})
+
 
 # ===================== CONFIG (TODOS OS USUÁRIOS) =====================
 
