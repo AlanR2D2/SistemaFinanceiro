@@ -811,7 +811,7 @@
           <th data-field="honorarios">HONORÁRIOS</th>
           <th data-field="audiencista">AUDIENCISTA</th>
           <!-- Conferência calculada no front: Correção + Honorários + Audiencista + Sucumbência + Repasse -->
-          <th>
+          <th class="no-filter" data-field="conferencia">
             CONFERÊNCIA
             <span class="ac-info" title="Soma: Correção + Honorários + Audiencista + Sucumbência + Repasse">i</span>
           </th>
@@ -1345,12 +1345,17 @@
       }
     }
 
+    function cellTextByField(tr, field) {
+      const td = tr.querySelector(`[data-field="${field}"]`);
+      return td ? (td.innerText || '') : '';
+    }
+
     function applyRule(tr) {
       clearRowColor(tr);
 
-      const tipo   = norm(tr.cells[13]?.innerText);
-      const status = norm(tr.cells[8]?.innerText);
-      const local  = norm(tr.cells[12]?.innerText);
+      const tipo   = norm(cellTextByField(tr, "tipo"));
+      const status = norm(cellTextByField(tr, "status"));
+      const local  = norm(cellTextByField(tr, "local"));
 
       // tipo = CNPJ — prioridade máxima (hardcoded)
       if (tipo === "CNPJ") {
@@ -1422,36 +1427,20 @@
 
     if (!table || !thead || !tbody || !wrap) return;
 
-    /* ---------- Configuração: índice da coluna → campo no banco ---------- */
-    const COL_FIELDS = {
-      0: 'data_acordo',
-      1: 'numero_processo',
-      2: 'uf',
-      3: 'reu',
-      4: 'autor',
-      5: 'tel',
-      6: 'escritorio_reu',
-      7: 'valor_acordo',
-      8: 'status',
-      9: 'prazo_estimado',
-      10: 'prazo_real',
-      11: 'data_pagamento',
-      12: 'local',
-      13: 'tipo',
-      14: 'porcentagem_honorarios',
-      15: 'deposito',
-      16: 'correcao',
-      17: 'honorarios',
-      18: 'audiencista',
-      // 19 é Conferência (calculada) — não filtrável/ordenável
-      20: 'repasse',
-      21: 'chave_pix',
-      22: 'sucumbencia',
-      23: 'observacoes',
-      // 24 é Ações
-    };
-    const FIELD_TO_COL = {};
-    Object.entries(COL_FIELDS).forEach(([k, v]) => { FIELD_TO_COL[v] = Number(k); });
+    /* ---------- Quais <th> são filtráveis/ordenáveis ----------
+       Antes era um mapa estático idx→campo. Como agora as colunas podem ser
+       reordenadas por tenant, iteramos o thead em runtime e usamos data-field.
+       Cell é filtrável se tem data-field e NÃO tem class="no-filter".
+       Isso exclui automaticamente: CONFERÊNCIA, Ações, extras antigos e
+       campos personalizados (que vêm com no-filter). */
+    function iterFilterableTh(fn) {
+      Array.from(thead.cells).forEach(th => {
+        const field = th.dataset.field;
+        if (!field) return;
+        if (th.classList.contains('no-filter')) return;
+        fn(th, field);
+      });
+    }
 
     const DATE_FIELDS = new Set(['data_acordo', 'prazo_real', 'data_pagamento']);
 
@@ -1516,40 +1505,44 @@
             inner = escapeHtml(String(raw));
           }
         }
-        return `<td><div class="clamp-2">${inner}</div></td>`;
+        const f = escapeHtml(cf.chave);
+        return `<td data-field="${f}"><div class="clamp-2">${inner}</div></td>`;
       }).join('');
     }
 
-    /* ---------- Render de uma linha ---------- */
+    /* ---------- Render de uma linha ----------
+       IMPORTANTE: cada <td> tem data-field para que os módulos consumidores
+       (AC_COLORS, AC_CONFERENCIA, filtros) localizem células por chave em vez
+       de posição. Posições mudam com reordenação por tenant. */
     function renderRow(r) {
       const id = (r && r.id != null) ? r.id : '';
       return `<tr data-id="${id}" class="ac-row">
-        <td class="whitespace-nowrap"><div class="clamp-2 ac-date">${escapeHtml(r.data_acordo)}</div></td>
-        <td class="font-medium whitespace-nowrap"><div class="clamp-2">${escapeHtml(r.numero_processo)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.uf)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.reu)}</div></td>
-        <td style="min-width:220px; max-width:340px;"><div class="clamp-2">${escapeHtml(r.autor)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.tel)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.escritorio_reu)}</div></td>
-        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.valor_acordo))}</div></td>
-        <td style="min-width:260px; max-width:360px;"><div class="clamp-2">${escapeHtml(r.status)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.prazo_estimado)}</div></td>
-        <td class="whitespace-nowrap"><div class="clamp-2 ac-date">${escapeHtml(r.prazo_real)}</div></td>
-        <td class="whitespace-nowrap"><div class="clamp-2 ac-date">${escapeHtml(r.data_pagamento)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.local)}</div></td>
-        <td><div class="clamp-2">${(r.tipo === null || r.tipo === undefined) ? '-' : escapeHtml(r.tipo)}</div></td>
-        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.porcentagem_honorarios))}</div></td>
-        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.deposito))}</div></td>
-        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.correcao))}</div></td>
-        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.honorarios))}</div></td>
-        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.audiencista))}</div></td>
-        <td class="ac-number"><div class="clamp-2 ac-money ac-conferencia">-</div></td>
-        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.repasse))}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.chave_pix)}</div></td>
-        <td class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.sucumbencia))}</div></td>
-        <td style="min-width:320px; max-width:520px;"><div class="clamp-2">${escapeHtml(r.observacoes)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.extra_1)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.extra_2)}</div></td>
+        <td data-field="data_acordo" class="whitespace-nowrap"><div class="clamp-2 ac-date">${escapeHtml(r.data_acordo)}</div></td>
+        <td data-field="numero_processo" class="font-medium whitespace-nowrap"><div class="clamp-2">${escapeHtml(r.numero_processo)}</div></td>
+        <td data-field="uf"><div class="clamp-2">${escapeHtml(r.uf)}</div></td>
+        <td data-field="reu"><div class="clamp-2">${escapeHtml(r.reu)}</div></td>
+        <td data-field="autor" style="min-width:220px; max-width:340px;"><div class="clamp-2">${escapeHtml(r.autor)}</div></td>
+        <td data-field="tel"><div class="clamp-2">${escapeHtml(r.tel)}</div></td>
+        <td data-field="escritorio_reu"><div class="clamp-2">${escapeHtml(r.escritorio_reu)}</div></td>
+        <td data-field="valor_acordo" class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.valor_acordo))}</div></td>
+        <td data-field="status" style="min-width:260px; max-width:360px;"><div class="clamp-2">${escapeHtml(r.status)}</div></td>
+        <td data-field="prazo_estimado"><div class="clamp-2">${escapeHtml(r.prazo_estimado)}</div></td>
+        <td data-field="prazo_real" class="whitespace-nowrap"><div class="clamp-2 ac-date">${escapeHtml(r.prazo_real)}</div></td>
+        <td data-field="data_pagamento" class="whitespace-nowrap"><div class="clamp-2 ac-date">${escapeHtml(r.data_pagamento)}</div></td>
+        <td data-field="local"><div class="clamp-2">${escapeHtml(r.local)}</div></td>
+        <td data-field="tipo"><div class="clamp-2">${(r.tipo === null || r.tipo === undefined) ? '-' : escapeHtml(r.tipo)}</div></td>
+        <td data-field="porcentagem_honorarios" class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.porcentagem_honorarios))}</div></td>
+        <td data-field="deposito" class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.deposito))}</div></td>
+        <td data-field="correcao" class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.correcao))}</div></td>
+        <td data-field="honorarios" class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.honorarios))}</div></td>
+        <td data-field="audiencista" class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.audiencista))}</div></td>
+        <td data-field="conferencia" class="ac-number"><div class="clamp-2 ac-money ac-conferencia">-</div></td>
+        <td data-field="repasse" class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.repasse))}</div></td>
+        <td data-field="chave_pix"><div class="clamp-2">${escapeHtml(r.chave_pix)}</div></td>
+        <td data-field="sucumbencia" class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.sucumbencia))}</div></td>
+        <td data-field="observacoes" style="min-width:320px; max-width:520px;"><div class="clamp-2">${escapeHtml(r.observacoes)}</div></td>
+        <td data-field="extra_1"><div class="clamp-2">${escapeHtml(r.extra_1)}</div></td>
+        <td data-field="extra_2"><div class="clamp-2">${escapeHtml(r.extra_2)}</div></td>
         ${renderCustomCells(r)}
         <td style="text-align:right; white-space:nowrap;">
           <button class="ac-btn ac-edit-btn" type="button"
@@ -1618,9 +1611,7 @@
     function updateBadgeAndHeaderDots() {
       const hasFilters = Object.keys(state.filters).length > 0;
       if (badge) badge.style.display = hasFilters ? 'inline-block' : 'none';
-      Object.entries(COL_FIELDS).forEach(([colIdx, field]) => {
-        const th = thead.cells[Number(colIdx)];
-        if (!th) return;
+      iterFilterableTh((th, field) => {
         th.classList.toggle('ac-filtered', !!state.filters[field]);
       });
     }
@@ -1904,13 +1895,9 @@
     }
 
     function buildHeaderUI() {
-      Object.entries(COL_FIELDS).forEach(([colIdx, field]) => {
-        const col = Number(colIdx);
-        const th = thead.cells[col];
-        if (!th) return;
+      iterFilterableTh((th, field) => {
         if (th.dataset.acInited === '1') return;
         th.dataset.acInited = '1';
-        th.dataset.field = field;
 
         const label = (th.innerText || '').trim();
         th.innerHTML = `
@@ -2977,14 +2964,17 @@
     const tbody = document.getElementById("acTbody");
     if (!tbody) return;
 
-    function setCellText(tr, idx, text) {
-      const td = tr.cells[idx];
+    function cellByField(tr, field) {
+      return tr.querySelector(`[data-field="${field}"]`);
+    }
+    function setCellTextByField(tr, field, text) {
+      const td = cellByField(tr, field);
       if (!td) return;
       const div = td.querySelector("div");
       if (div) div.textContent = text;
     }
-    function getCellText(tr, idx) {
-      const td = tr.cells[idx];
+    function getCellTextByField(tr, field) {
+      const td = cellByField(tr, field);
       if (!td) return '-';
       const div = td.querySelector("div");
       const raw = (div ? div.textContent : td.textContent || '').trim();
@@ -2992,23 +2982,24 @@
     }
 
     function calcConferencia() {
-      // indices corretos: Correcao(16), Honorarios(17), Audiencista(18), Conferencia(19), Repasse(20), Sucumbencia(22)
+      // Soma por chave (data-field), imune a reordenação de colunas:
+      // correcao + honorarios + audiencista + repasse + sucumbencia
       tbody.querySelectorAll("tr").forEach(tr => {
         if (!tr.classList.contains("ac-row")) return;
 
-        const cor = acParseAnyNumber(getCellText(tr, 16));
-        const hon = acParseAnyNumber(getCellText(tr, 17));
-        const aud = acParseAnyNumber(getCellText(tr, 18));
-        const rep = acParseAnyNumber(getCellText(tr, 20));
-        const suc = acParseAnyNumber(getCellText(tr, 22));
+        const cor = acParseAnyNumber(getCellTextByField(tr, "correcao"));
+        const hon = acParseAnyNumber(getCellTextByField(tr, "honorarios"));
+        const aud = acParseAnyNumber(getCellTextByField(tr, "audiencista"));
+        const rep = acParseAnyNumber(getCellTextByField(tr, "repasse"));
+        const suc = acParseAnyNumber(getCellTextByField(tr, "sucumbencia"));
 
         const hasAny = Number.isFinite(cor) || Number.isFinite(hon) || Number.isFinite(aud) || Number.isFinite(rep) || Number.isFinite(suc);
 
         if (!hasAny) {
-          setCellText(tr, 19, "-");
+          setCellTextByField(tr, "conferencia", "-");
         } else {
           const sum = (Number.isFinite(cor) ? cor : 0) + (Number.isFinite(hon) ? hon : 0) + (Number.isFinite(aud) ? aud : 0) + (Number.isFinite(rep) ? rep : 0) + (Number.isFinite(suc) ? suc : 0);
-          setCellText(tr, 19, (typeof acFormatBR === 'function' ? acFormatBR(sum) : sum.toFixed(2).replace('.', ',')));
+          setCellTextByField(tr, "conferencia", (typeof acFormatBR === 'function' ? acFormatBR(sum) : sum.toFixed(2).replace('.', ',')));
         }
       });
     }

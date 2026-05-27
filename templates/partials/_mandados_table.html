@@ -872,7 +872,7 @@
           <th data-field="audiencista">AUDIENCISTA</th>
 
           <!-- (3) CONFERÊNCIA calculada no front: Correção + Honorários + Audiencista + Sucumbência + Repasse -->
-          <th>
+          <th class="no-filter" data-field="conferencia">
             CONFERÊNCIA
             <span class="md-info" title="Soma: Correção + Honorários + Audiencista + Sucumbência + Repasse">i</span>
           </th>
@@ -1243,17 +1243,13 @@
 </script>
 
 <script>
-  /* ===================== FORMATA NÚMEROS/DATAS + CONFERÊNCIA (re-executável) ===================== */
+  /* ===================== FORMATA NÚMEROS/DATAS + CONFERÊNCIA (re-executável) =====================
+     Antes dependia de índices fixos (numericCols = [6, 7, 14, ...]). Agora usa
+     data-field das células (resiliente a reordenação de colunas por tenant).
+     - Numéricos: identificados pela classe .md-number aplicada no renderRow.
+     - Datas: identificadas pela classe .md-date.
+     - Cells da conferência e somatório: lookup por data-field. */
   (function () {
-    const numericCols = [6, 7, 14, 15, 16, 17, 18, 19, 20, 22];
-
-    const COL_CORRECAO = 16;
-    const COL_HONORARIOS = 17;
-    const COL_AUDIENCISTA = 18;
-    const COL_CONFERENCIA = 19;
-    const COL_REPASSE = 20;
-    const COL_SUCUMBENCIA = 22;
-
     const tbody = document.getElementById("mdTbody");
     if (!tbody) return;
 
@@ -1267,15 +1263,18 @@
       return s;
     }
 
-    function setCellText(tr, idx, text) {
-      const td = tr.cells[idx];
+    function cellByField(tr, field) {
+      return tr.querySelector(`[data-field="${field}"]`);
+    }
+    function setCellTextByField(tr, field, text) {
+      const td = cellByField(tr, field);
       if (!td) return;
       const div = td.querySelector("div");
       if (!div) return;
       div.textContent = text;
     }
-    function getCellText(tr, idx) {
-      const td = tr.cells[idx];
+    function getCellTextByField(tr, field) {
+      const td = cellByField(tr, field);
       if (!td) return '-';
       const div = td.querySelector("div");
       const raw = (div ? div.textContent : td.textContent || '').trim();
@@ -1285,17 +1284,15 @@
     function formatRow(tr) {
       if (!tr || tr.dataset.mdFmt === "1") return;
 
-      /* formata as colunas numéricas */
-      numericCols.forEach(idx => {
-        const td = tr.cells[idx];
-        if (!td) return;
+      /* formata todas as colunas numéricas (classe .md-number) */
+      tr.querySelectorAll(".md-number").forEach(td => {
         const div = td.querySelector("div");
         if (!div) return;
         const raw = div.textContent.trim();
         div.textContent = raw === '-' ? '-' : (formatBR_MD(raw) || raw);
       });
 
-      /* formata datas */
+      /* formata datas (classe .md-date) */
       tr.querySelectorAll(".md-date").forEach(div => {
         div.textContent = toBRDate(div.textContent.trim());
       });
@@ -1304,18 +1301,18 @@
     }
 
     function calcConferenciaRow(tr) {
-      const cor = MD.parseSmartNumber(getCellText(tr, COL_CORRECAO));
-      const hon = MD.parseSmartNumber(getCellText(tr, COL_HONORARIOS));
-      const aud = MD.parseSmartNumber(getCellText(tr, COL_AUDIENCISTA));
-      const suc = MD.parseSmartNumber(getCellText(tr, COL_SUCUMBENCIA));
-      const rep = MD.parseSmartNumber(getCellText(tr, COL_REPASSE));
+      const cor = MD.parseSmartNumber(getCellTextByField(tr, "correcao"));
+      const hon = MD.parseSmartNumber(getCellTextByField(tr, "honorarios"));
+      const aud = MD.parseSmartNumber(getCellTextByField(tr, "audiencista"));
+      const suc = MD.parseSmartNumber(getCellTextByField(tr, "sucumbencia"));
+      const rep = MD.parseSmartNumber(getCellTextByField(tr, "repasse"));
 
       const hasAny =
         Number.isFinite(cor) || Number.isFinite(hon) || Number.isFinite(aud) ||
         Number.isFinite(suc) || Number.isFinite(rep);
 
       if (!hasAny) {
-        setCellText(tr, COL_CONFERENCIA, "-");
+        setCellTextByField(tr, "conferencia", "-");
       } else {
         const sum =
           (Number.isFinite(cor) ? cor : 0) +
@@ -1323,7 +1320,7 @@
           (Number.isFinite(aud) ? aud : 0) +
           (Number.isFinite(suc) ? suc : 0) +
           (Number.isFinite(rep) ? rep : 0);
-        setCellText(tr, COL_CONFERENCIA, formatBR_MD(sum) || "-");
+        setCellTextByField(tr, "conferencia", formatBR_MD(sum) || "-");
       }
     }
 
@@ -1456,12 +1453,17 @@
       }
     }
 
+    function cellTextByField(tr, field) {
+      const td = tr.querySelector(`[data-field="${field}"]`);
+      return td ? (td.innerText || '') : '';
+    }
+
     function applyRule(tr) {
       clearRowColor(tr);
 
-      const tipo   = norm(tr.cells[12]?.innerText);
-      const status = norm(tr.cells[8]?.innerText);
-      const local  = norm(tr.cells[11]?.innerText);
+      const tipo   = norm(cellTextByField(tr, "tipo"));
+      const status = norm(cellTextByField(tr, "status"));
+      const local  = norm(cellTextByField(tr, "local"));
 
       // tipo = CNPJ — prioridade máxima (hardcoded)
       if (tipo === "CNPJ") {
@@ -1532,38 +1534,19 @@
       deposito: document.getElementById("mdSumDeposito"),
     };
 
-    /* ---------- Mapa coluna → campo no banco ---------- */
-    const COL_FIELDS = {
-      0: 'data_quitacao',
-      1: 'numero_processo',
-      2: 'uf',
-      3: 'reu',
-      4: 'autor',
-      5: 'tel',
-      6: 'sentenca',
-      7: 'quitacao',
-      8: 'status',
-      9: 'previsao',
-      10: 'data_pagamento',
-      11: 'local',
-      12: 'tipo',
-      13: 'tipo_reu',
-      14: 'porcentagem_honorarios',
-      15: 'deposito',
-      16: 'correcao',
-      17: 'honorarios',
-      18: 'audiencista',
-      // 19 = Conferência (calculada)
-      20: 'repasse',
-      21: 'chave_pix',
-      22: 'sucumbencia',
-      23: 'observacoes',
-      24: 'created_at',
-      25: 'updated_at',
-      // 26 = Ações
-    };
-    const FIELD_TO_COL = {};
-    Object.entries(COL_FIELDS).forEach(([k, v]) => { FIELD_TO_COL[v] = Number(k); });
+    /* ---------- Quais <th> são filtráveis/ordenáveis ----------
+       Iteramos o thead em runtime usando data-field, em vez de um mapa estático
+       idx→campo. Cell é filtrável se tem data-field e NÃO tem class="no-filter".
+       Exclui automaticamente: CONFERÊNCIA, Ações, extras antigos e campos
+       personalizados (que vêm com no-filter). */
+    function iterFilterableTh(fn) {
+      Array.from(thead.cells).forEach(th => {
+        const field = th.dataset.field;
+        if (!field) return;
+        if (th.classList.contains('no-filter')) return;
+        fn(th, field);
+      });
+    }
 
     const DATE_FIELDS = new Set(['data_quitacao', 'previsao', 'data_pagamento', 'created_at', 'updated_at']);
 
@@ -1639,42 +1622,45 @@
             inner = escapeHtml(String(raw));
           }
         }
-        return `<td><div class="clamp-2">${inner}</div></td>`;
+        const f = escapeHtml(cf.chave);
+        return `<td data-field="${f}"><div class="clamp-2">${inner}</div></td>`;
       }).join('');
     }
 
-    /* ---------- Render de uma linha ---------- */
+    /* ---------- Render de uma linha ----------
+       Cada <td> tem data-field para módulos consumidores localizarem células
+       por chave em vez de posição (resiliente a reordenação por tenant). */
     function renderRow(r) {
       const id = (r && r.id != null) ? r.id : '';
       return `<tr data-id="${id}" class="md-row">
-        <td class="whitespace-nowrap"><div class="clamp-2 md-date">${escapeHtml(r.data_quitacao)}</div></td>
-        <td class="font-medium whitespace-nowrap"><div class="clamp-2">${escapeHtml(r.numero_processo)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.uf)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.reu)}</div></td>
-        <td style="min-width:220px; max-width:340px;"><div class="clamp-2">${escapeHtml(r.autor)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.tel)}</div></td>
-        <td class="md-number" style="min-width:260px; max-width:360px;"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.sentenca))}</div></td>
-        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.quitacao))}</div></td>
-        <td style="min-width:260px; max-width:360px;"><div class="clamp-2">${escapeHtml(r.status)}</div></td>
-        <td><div class="clamp-2 md-date">${escapeHtml(r.previsao)}</div></td>
-        <td class="whitespace-nowrap"><div class="clamp-2 md-date">${escapeHtml(r.data_pagamento)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.local)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.tipo)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.tipo_reu)}</div></td>
-        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.porcentagem_honorarios))}</div></td>
-        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.deposito))}</div></td>
-        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.correcao))}</div></td>
-        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.honorarios))}</div></td>
-        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.audiencista))}</div></td>
-        <td class="md-number"><div class="clamp-2 md-money">-</div></td>
-        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.repasse))}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.chave_pix)}</div></td>
-        <td class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.sucumbencia))}</div></td>
-        <td style="min-width:320px; max-width:520px;"><div class="clamp-2">${escapeHtml(r.observacoes)}</div></td>
-        <td class="whitespace-nowrap"><div class="clamp-2 md-date">${escapeHtml(r.created_at)}</div></td>
-        <td class="whitespace-nowrap"><div class="clamp-2 md-date">${escapeHtml(r.updated_at)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.extra_1)}</div></td>
-        <td><div class="clamp-2">${escapeHtml(r.extra_2)}</div></td>
+        <td data-field="data_quitacao" class="whitespace-nowrap"><div class="clamp-2 md-date">${escapeHtml(r.data_quitacao)}</div></td>
+        <td data-field="numero_processo" class="font-medium whitespace-nowrap"><div class="clamp-2">${escapeHtml(r.numero_processo)}</div></td>
+        <td data-field="uf"><div class="clamp-2">${escapeHtml(r.uf)}</div></td>
+        <td data-field="reu"><div class="clamp-2">${escapeHtml(r.reu)}</div></td>
+        <td data-field="autor" style="min-width:220px; max-width:340px;"><div class="clamp-2">${escapeHtml(r.autor)}</div></td>
+        <td data-field="tel"><div class="clamp-2">${escapeHtml(r.tel)}</div></td>
+        <td data-field="sentenca" class="md-number" style="min-width:260px; max-width:360px;"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.sentenca))}</div></td>
+        <td data-field="quitacao" class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.quitacao))}</div></td>
+        <td data-field="status" style="min-width:260px; max-width:360px;"><div class="clamp-2">${escapeHtml(r.status)}</div></td>
+        <td data-field="previsao"><div class="clamp-2 md-date">${escapeHtml(r.previsao)}</div></td>
+        <td data-field="data_pagamento" class="whitespace-nowrap"><div class="clamp-2 md-date">${escapeHtml(r.data_pagamento)}</div></td>
+        <td data-field="local"><div class="clamp-2">${escapeHtml(r.local)}</div></td>
+        <td data-field="tipo"><div class="clamp-2">${escapeHtml(r.tipo)}</div></td>
+        <td data-field="tipo_reu"><div class="clamp-2">${escapeHtml(r.tipo_reu)}</div></td>
+        <td data-field="porcentagem_honorarios" class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.porcentagem_honorarios))}</div></td>
+        <td data-field="deposito" class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.deposito))}</div></td>
+        <td data-field="correcao" class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.correcao))}</div></td>
+        <td data-field="honorarios" class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.honorarios))}</div></td>
+        <td data-field="audiencista" class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.audiencista))}</div></td>
+        <td data-field="conferencia" class="md-number"><div class="clamp-2 md-money">-</div></td>
+        <td data-field="repasse" class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.repasse))}</div></td>
+        <td data-field="chave_pix"><div class="clamp-2">${escapeHtml(r.chave_pix)}</div></td>
+        <td data-field="sucumbencia" class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.sucumbencia))}</div></td>
+        <td data-field="observacoes" style="min-width:320px; max-width:520px;"><div class="clamp-2">${escapeHtml(r.observacoes)}</div></td>
+        <td data-field="created_at" class="whitespace-nowrap"><div class="clamp-2 md-date">${escapeHtml(r.created_at)}</div></td>
+        <td data-field="updated_at" class="whitespace-nowrap"><div class="clamp-2 md-date">${escapeHtml(r.updated_at)}</div></td>
+        <td data-field="extra_1"><div class="clamp-2">${escapeHtml(r.extra_1)}</div></td>
+        <td data-field="extra_2"><div class="clamp-2">${escapeHtml(r.extra_2)}</div></td>
         ${renderCustomCells(r)}
         <td style="text-align:right; white-space:nowrap;">
           <button class="md-btn md-edit-btn" type="button"
@@ -1743,9 +1729,7 @@
     function updateBadgeAndHeaderDots() {
       const hasFilters = Object.keys(state.filters).length > 0;
       if (badge) badge.style.display = hasFilters ? 'inline-flex' : 'none';
-      Object.entries(COL_FIELDS).forEach(([colIdx, field]) => {
-        const th = thead.cells[Number(colIdx)];
-        if (!th) return;
+      iterFilterableTh((th, field) => {
         th.classList.toggle('md-filtered', !!state.filters[field]);
       });
     }
@@ -2024,13 +2008,9 @@
     }
 
     function buildHeaderUI() {
-      Object.entries(COL_FIELDS).forEach(([colIdx, field]) => {
-        const col = Number(colIdx);
-        const th = thead.cells[col];
-        if (!th) return;
+      iterFilterableTh((th, field) => {
         if (th.dataset.mdInited === '1') return;
         th.dataset.mdInited = '1';
-        th.dataset.field = field;
 
         const label = (th.innerText || '').trim();
         th.innerHTML = `
