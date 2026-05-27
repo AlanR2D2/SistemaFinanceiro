@@ -335,6 +335,10 @@
     <div class="modal-b">
       <input type="hidden" id="moFieldId" value="">
 
+      <div style="margin-bottom:12px;">
+        <button class="btn btn-blue btn-sm" type="button" id="moBtnAddOpcaoTop">+ Adicionar opção</button>
+      </div>
+
       <table class="opts-table">
         <thead>
           <tr>
@@ -738,6 +742,7 @@
   }
 
   $("#moBtnAddOpcao").addEventListener("click", () => openOpcaoModal(null));
+  $("#moBtnAddOpcaoTop").addEventListener("click", () => openOpcaoModal(null));
 
   function updateMoPreview(opt){
     const el = $("#moPreview");

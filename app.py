@@ -13,6 +13,7 @@ from flask_login import (
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 from supabase import create_client, Client
+import httpx
 
 load_dotenv()
 
@@ -36,6 +37,38 @@ login_manager.init_app(app)
 login_manager.login_view = "login"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
+def _recreate_supabase_client() -> None:
+    """Recria o cliente global do Supabase. Usado pelos helpers de retry quando a
+    conexão HTTP/2 keep-alive é terminada pelo servidor (RemoteProtocolError) ou
+    em outros erros transientes de transporte."""
+    global supabase
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
+def _exec_with_retry(builder, retries: int = 2):
+    """Executa um closure que constrói+executa uma query supabase-py com retry em
+    erros transientes (httpx.TransportError engloba RemoteProtocolError, ReadError,
+    ConnectError, timeouts, etc.). Entre tentativas recria o cliente global, pois o
+    builder lê `supabase` do escopo global a cada chamada."""
+    last_exc: Exception | None = None
+    for attempt in range(retries + 1):
+        try:
+            return builder()
+        except httpx.TransportError as e:
+            last_exc = e
+            app.logger.warning(
+                "Supabase transient %s (tentativa %d/%d) — recriando cliente",
+                type(e).__name__, attempt + 1, retries + 1,
+            )
+            if attempt < retries:
+                _recreate_supabase_client()
+                continue
+            raise
+    if last_exc:
+        raise last_exc
+
 
 TABLE_USERS = "fin_users"
 TABLE_ACORDOS = "fin_acordos"
@@ -403,69 +436,75 @@ def _derive_finalizado_from_status(status: str) -> int:
 
 
 def sb_select(table: str, columns="*", limit=300, order_col=None, desc=True, filters=None, skip_tenant=False):
-    q = supabase.table(table).select(columns)
+    def _run():
+        q = supabase.table(table).select(columns)
 
-    # Filtro de tenant automático
-    if not skip_tenant and table not in TABLES_SEM_TENANT:
-        q = q.eq("tenant", _get_tenant())
+        # Filtro de tenant automático
+        if not skip_tenant and table not in TABLES_SEM_TENANT:
+            q = q.eq("tenant", _get_tenant())
 
-    if filters:
-        for (col, op, val) in filters:
-            if val is None or val == "" or val == []:
-                continue
-            if op == "eq":
-                q = q.eq(col, val)
-            elif op == "ilike":
-                q = q.ilike(col, f"*{val}*")
-            elif op == "gte":
-                q = q.gte(col, val)
-            elif op == "lte":
-                q = q.lte(col, val)
-            elif op == "in":
-                q = q.in_(col, val)
+        if filters:
+            for (col, op, val) in filters:
+                if val is None or val == "" or val == []:
+                    continue
+                if op == "eq":
+                    q = q.eq(col, val)
+                elif op == "ilike":
+                    q = q.ilike(col, f"*{val}*")
+                elif op == "gte":
+                    q = q.gte(col, val)
+                elif op == "lte":
+                    q = q.lte(col, val)
+                elif op == "in":
+                    q = q.in_(col, val)
 
-    if order_col:
-        q = q.order(order_col, desc=desc)
+        if order_col:
+            q = q.order(order_col, desc=desc)
 
-    q = q.limit(limit)
-    res = q.execute()
+        q = q.limit(limit)
+        return q.execute()
+
+    res = _exec_with_retry(_run)
     return getattr(res, "data", None) or []
 
 
 def sb_select_or_like(table: str, columns="*", limit=300, order_col=None, desc=True,
                       or_ilike_cols=None, qtext=None, extra_filters=None, skip_tenant=False):
-    query = supabase.table(table).select(columns)
+    def _run():
+        query = supabase.table(table).select(columns)
 
-    # Filtro de tenant automático
-    if not skip_tenant and table not in TABLES_SEM_TENANT:
-        query = query.eq("tenant", _get_tenant())
+        # Filtro de tenant automático
+        if not skip_tenant and table not in TABLES_SEM_TENANT:
+            query = query.eq("tenant", _get_tenant())
 
-    if qtext and or_ilike_cols:
-        qtext = (qtext or "").strip()
-        if qtext:
-            parts = [f"{c}.ilike.*{qtext}*" for c in or_ilike_cols]
-            query = query.or_(",".join(parts))
+        if qtext and or_ilike_cols:
+            qt = (qtext or "").strip()
+            if qt:
+                parts = [f"{c}.ilike.*{qt}*" for c in or_ilike_cols]
+                query = query.or_(",".join(parts))
 
-    if extra_filters:
-        for (col, op, val) in extra_filters:
-            if val is None or val == "" or val == []:
-                continue
-            if op == "eq":
-                query = query.eq(col, val)
-            elif op == "ilike":
-                query = query.ilike(col, f"*{val}*")
-            elif op == "gte":
-                query = query.gte(col, val)
-            elif op == "lte":
-                query = query.lte(col, val)
-            elif op == "in":
-                query = query.in_(col, val)
+        if extra_filters:
+            for (col, op, val) in extra_filters:
+                if val is None or val == "" or val == []:
+                    continue
+                if op == "eq":
+                    query = query.eq(col, val)
+                elif op == "ilike":
+                    query = query.ilike(col, f"*{val}*")
+                elif op == "gte":
+                    query = query.gte(col, val)
+                elif op == "lte":
+                    query = query.lte(col, val)
+                elif op == "in":
+                    query = query.in_(col, val)
 
-    if order_col:
-        query = query.order(order_col, desc=desc)
+        if order_col:
+            query = query.order(order_col, desc=desc)
 
-    query = query.limit(limit)
-    res = query.execute()
+        query = query.limit(limit)
+        return query.execute()
+
+    res = _exec_with_retry(_run)
     return getattr(res, "data", None) or []
 
 
@@ -661,7 +700,108 @@ def _ctx_tabela(escopo: str) -> dict:
     return {
         "campos_config": _config_campos_tabela(tenant, escopo),
         "honorarios_default": _honorarios_default(tenant),
+        "custom_fields_modal": _custom_fields_for_modal(tenant, escopo),
+        "ordem_colunas": _build_ordem_colunas(tenant, escopo),
     }
+
+
+def _custom_fields_for_modal(tenant: str, escopo: str) -> list[dict]:
+    """
+    Retorna os campos personalizados (fin_custom_fields) que devem aparecer no
+    modal de criação/edição de Acordos ou Mandados:
+      - ativo = 1
+      - escopo_acordos = 1 (se escopo=='acordos') ou escopo_mandados=1
+      - sem coluna_fixa (campos com coluna fixa já estão renderizados como
+        inputs estáticos no modal — status, reu, uf, local, etc.)
+
+    Para campos do tipo select, anexa a lista de opções ativas (somente valor)
+    em `opcoes`. Datas são tratadas no front-end (formato BR no input).
+    """
+    if not _campos_v2_disponivel():
+        return []
+    try:
+        campos = _list_custom_fields(tenant) or []
+    except Exception:
+        return []
+
+    chave_escopo = "escopo_acordos" if escopo == "acordos" else "escopo_mandados"
+    fields_modal: list[dict] = []
+    for c in campos:
+        if int(c.get("ativo") or 0) != 1:
+            continue
+        if int(c.get(chave_escopo) or 0) != 1:
+            continue
+        if (c.get("coluna_fixa") or "").strip():
+            continue
+        opcoes: list[str] = []
+        if (c.get("tipo") or "").startswith("select"):
+            try:
+                opts = _list_field_options(tenant, c["id"]) or []
+                opcoes = [
+                    (o.get("valor") or "").strip()
+                    for o in opts
+                    if int(o.get("ativo") or 0) == 1 and (o.get("valor") or "").strip()
+                ]
+            except Exception:
+                opcoes = []
+        fields_modal.append({
+            "id": c.get("id"),
+            "chave": c.get("chave"),
+            "nome": c.get("nome"),
+            "tipo": c.get("tipo"),
+            "ordem": c.get("ordem"),
+            "opcoes": opcoes,
+        })
+
+    fields_modal.sort(key=lambda f: (int(f.get("ordem") or 999), (f.get("nome") or "").lower()))
+    return fields_modal
+
+
+def _sanitize_valores_custom(tenant: str, escopo: str, payload_raw) -> dict:
+    """
+    Recebe o dict bruto `valores_custom` enviado pelo cliente e normaliza:
+      - data: BR (dd/mm/aaaa) -> ISO (yyyy-mm-dd)
+      - numero: parse robusto -> float ou None
+      - hora: trim
+      - texto: trim
+      - select_single: trim (string)
+      - select_multi: lista de strings (já filtrada)
+    Mantém apenas as chaves correspondentes a campos custom ativos do escopo.
+    Valores vazios viram None e são removidos do dict final.
+    """
+    if not isinstance(payload_raw, dict):
+        return {}
+    campos = _custom_fields_for_modal(tenant, escopo)
+    by_chave = {c["chave"]: c for c in campos if c.get("chave")}
+    out: dict = {}
+    for chave, valor in payload_raw.items():
+        cfg = by_chave.get(chave)
+        if not cfg:
+            continue
+        tipo = (cfg.get("tipo") or "").strip()
+        if tipo == "data":
+            v_str = (str(valor or "")).strip()
+            iso = br_to_iso_date(v_str) if v_str else None
+            if iso:
+                out[chave] = iso
+        elif tipo == "numero":
+            n = parse_numeric(valor)
+            if n is not None:
+                out[chave] = n
+        elif tipo == "select_multi":
+            if isinstance(valor, list):
+                vals = [str(x).strip() for x in valor if str(x).strip()]
+            elif isinstance(valor, str) and valor.strip():
+                vals = [s.strip() for s in valor.split(",") if s.strip()]
+            else:
+                vals = []
+            if vals:
+                out[chave] = vals
+        else:
+            v_str = (str(valor or "")).strip()
+            if v_str:
+                out[chave] = v_str
+    return out
 
 
 @app.get("/acordos/ativos")
@@ -691,6 +831,7 @@ def acordos_redirect_to_ativos():
 def acordos_create():
     data = request.get_json(force=True) or {}
     status_txt = _status_text_from_payload(data)
+    tenant = _get_tenant()
 
     payload = {
         "data_acordo": br_to_iso_date(data.get("data_acordo")),
@@ -722,7 +863,7 @@ def acordos_create():
         "observacoes": data.get("observacoes"),
         "mes_pg": data.get("mes_pg"),
         "finalizado": _derive_finalizado_from_status(status_txt),
-        "tenant": _get_tenant(),
+        "tenant": tenant,
 
         # Campos extras (texto livre, item 3)
         "extra_1": data.get("extra_1"),
@@ -730,6 +871,10 @@ def acordos_create():
     }
 
     payload = clean_payload(payload, NUMERIC_FIELDS_ACORDOS)
+
+    valores_custom = _sanitize_valores_custom(tenant, "acordos", data.get("valores_custom"))
+    if valores_custom:
+        payload["valores_custom"] = valores_custom
 
     res = _insert_or_update_safe(
         lambda p: supabase.table(TABLE_ACORDOS).insert(p), payload
@@ -744,6 +889,7 @@ def acordos_create():
 def acordos_update(acordo_id: int):
     data = request.get_json(force=True) or {}
     status_txt = _status_text_from_payload(data)
+    tenant = _get_tenant()
 
     payload = {
         "data_acordo": br_to_iso_date(data.get("data_acordo")),
@@ -782,6 +928,11 @@ def acordos_update(acordo_id: int):
     }
 
     payload = clean_payload(payload, NUMERIC_FIELDS_ACORDOS)
+
+    if "valores_custom" in data:
+        payload["valores_custom"] = _sanitize_valores_custom(
+            tenant, "acordos", data.get("valores_custom")
+        )
 
     res = _insert_or_update_safe(
         lambda p: supabase.table(TABLE_ACORDOS).update(p).eq("id", acordo_id),
@@ -829,6 +980,7 @@ def mandados_redirect_to_ativos():
 def mandados_create():
     data = request.get_json(force=True) or {}
     status_txt = _status_text_from_payload(data)
+    tenant = _get_tenant()
 
     payload = {
         "numero_processo": data.get("numero_processo"),
@@ -862,7 +1014,7 @@ def mandados_create():
         "mes_pg": data.get("mes_pg"),
 
         "finalizado": _derive_finalizado_from_status(status_txt),
-        "tenant": _get_tenant(),
+        "tenant": tenant,
 
         # Campos extras (texto livre, item 3)
         "extra_1": data.get("extra_1"),
@@ -870,6 +1022,10 @@ def mandados_create():
     }
 
     payload = clean_payload(payload, NUMERIC_FIELDS_MANDADOS)
+
+    valores_custom = _sanitize_valores_custom(tenant, "mandados", data.get("valores_custom"))
+    if valores_custom:
+        payload["valores_custom"] = valores_custom
 
     res = _insert_or_update_safe(
         lambda p: supabase.table(TABLE_MANDADOS).insert(p), payload
@@ -884,6 +1040,7 @@ def mandados_create():
 def mandados_update(mandado_id: int):
     data = request.get_json(force=True) or {}
     status_txt = _status_text_from_payload(data)
+    tenant = _get_tenant()
 
     payload = {
         "numero_processo": data.get("numero_processo"),
@@ -924,6 +1081,11 @@ def mandados_update(mandado_id: int):
     }
 
     payload = clean_payload(payload, NUMERIC_FIELDS_MANDADOS)
+
+    if "valores_custom" in data:
+        payload["valores_custom"] = _sanitize_valores_custom(
+            tenant, "mandados", data.get("valores_custom")
+        )
 
     res = _insert_or_update_safe(
         lambda p: supabase.table(TABLE_MANDADOS).update(p).eq("id", mandado_id),
@@ -957,7 +1119,7 @@ ACORDOS_LIST_COLUMNS = (
     "valor_acordo,status,prazo_estimado,prazo_real,data_pagamento,local,"
     "tipo,tipo_reu,porcentagem_honorarios,deposito,correcao,honorarios,"
     "audiencista,repasse,chave_pix,sucumbencia,observacoes,mes_pg,finalizado,"
-    "extra_1,extra_2"
+    "extra_1,extra_2,valores_custom"
 )
 
 MANDADOS_LIST_COLUMNS = (
@@ -966,7 +1128,7 @@ MANDADOS_LIST_COLUMNS = (
     "porcentagem_honorarios,deposito,correcao,honorarios,audiencista,"
     "repasse,chave_pix,sucumbencia,observacoes,mes_pg,finalizado,"
     "created_at,updated_at,"
-    "extra_1,extra_2"
+    "extra_1,extra_2,valores_custom"
 )
 
 ACORDOS_DATE_COLS = {"data_acordo", "prazo_real", "data_pagamento"}
@@ -3576,21 +3738,27 @@ def handle_unexpected_error(e):
         usuario = None
     tenant = session.get("tenant") if session else None
 
+    # Erros transitórios de transporte HTTP (HTTP/2 ConnectionTerminated, timeouts,
+    # ReadError, etc.) já têm retry com recriação de cliente em _exec_with_retry.
+    # Quando ainda assim chegam aqui, são ruído operacional — log sim, e-mail não.
+    is_transient = isinstance(e, httpx.TransportError)
+
     app.logger.exception(
-        "ERRO 500 nao tratado | rota=%s metodo=%s usuario=%s tenant=%s",
-        request.path, request.method, usuario, tenant,
+        "ERRO 500 nao tratado | rota=%s metodo=%s usuario=%s tenant=%s transient=%s",
+        request.path, request.method, usuario, tenant, is_transient,
     )
 
-    # E-mail de erro (best-effort — nunca deixa o handler quebrar).
-    try:
-        from send_email import send_email_error
-        corpo = (
-            f"Rota: {request.method} {request.path}\n"
-            f"Usuário: {usuario}\nTenant: {tenant}\n\n{tb}"
-        )
-        send_email_error(corpo, subject="Erro 500 — Sistema Financeiro")
-    except Exception:
-        pass
+    if not is_transient:
+        # E-mail de erro (best-effort — nunca deixa o handler quebrar).
+        try:
+            from send_email import send_email_error
+            corpo = (
+                f"Rota: {request.method} {request.path}\n"
+                f"Usuário: {usuario}\nTenant: {tenant}\n\n{tb}"
+            )
+            send_email_error(corpo, subject="Erro 500 — Sistema Financeiro")
+        except Exception:
+            pass
 
     return render_template_string(
         "<h1>Internal Server Error</h1>"

@@ -889,9 +889,21 @@
           <th class="no-filter" data-field="extra_1">EXTRA 1</th>
           <th class="no-filter" data-field="extra_2">EXTRA 2</th>
 
+          {% for cf in (custom_fields_modal or []) %}
+            <th class="no-filter md-custom-col" data-field="{{ cf.chave }}">{{ cf.nome | upper }}</th>
+          {% endfor %}
+
           <th class="no-filter">Ações</th>
         </tr>
       </thead>
+
+      <script>
+        // Config dos campos personalizados visíveis nas colunas (vinda do servidor).
+        // Usada por renderRow para gerar <td> dinâmicas e formatar por tipo.
+        window.MD_CUSTOM_FIELDS = {{ (custom_fields_modal or []) | tojson }};
+        // Ordem unificada de colunas (fixas + custom) salva em fin_campos_config.
+        window.MD_ORDEM = {{ (ordem_colunas or []) | tojson }};
+      </script>
 
       <tbody id="mdTbody">
         <tr id="mdLoadingRow">
@@ -1097,6 +1109,38 @@
           <label data-extra-label>Extra 2</label>
           <input class="md-input" id="mdExtra2" placeholder="">
         </div>
+
+        {% for cf in (custom_fields_modal or []) %}
+          {% set col_class = 'col-12' if cf.tipo in ['texto'] else 'col-6' %}
+          <div class="md-field {{ col_class }} md-custom-field"
+               data-cf-chave="{{ cf.chave }}"
+               data-cf-tipo="{{ cf.tipo }}">
+            <label>{{ cf.nome }}</label>
+            {% if cf.tipo == 'select_single' %}
+              <select class="md-select" id="mdCf_{{ cf.chave }}">
+                <option value="">Selecione...</option>
+                {% for opt in cf.opcoes %}
+                  <option value="{{ opt }}">{{ opt }}</option>
+                {% endfor %}
+              </select>
+            {% elif cf.tipo == 'select_multi' %}
+              <select class="md-select" id="mdCf_{{ cf.chave }}" multiple size="4" style="height:auto;">
+                {% for opt in cf.opcoes %}
+                  <option value="{{ opt }}">{{ opt }}</option>
+                {% endfor %}
+              </select>
+              <div style="font-size:11px; color:#64748b; margin-top:4px;">Segure Ctrl/Cmd para selecionar várias.</div>
+            {% elif cf.tipo == 'data' %}
+              <input class="md-input" id="mdCf_{{ cf.chave }}" placeholder="dd/mm/aaaa">
+            {% elif cf.tipo == 'numero' %}
+              <input class="md-input" id="mdCf_{{ cf.chave }}" placeholder="Ex: 1500,00">
+            {% elif cf.tipo == 'hora' %}
+              <input class="md-input" id="mdCf_{{ cf.chave }}" type="time" placeholder="hh:mm">
+            {% else %}
+              <input class="md-input" id="mdCf_{{ cf.chave }}" placeholder="">
+            {% endif %}
+          </div>
+        {% endfor %}
       </div>
     </div>
 
@@ -1304,6 +1348,86 @@
 </script>
 
 <script>
+  /* ===================== REORDENAR COLUNAS POR TENANT (Mandados) ===================== */
+  /* Mesma lógica de AC_ORDEM_COLS: lê window.MD_ORDEM (de _build_ordem_colunas),
+     reordena <th> uma vez e os <td> em cada refresh. Colunas com data-field cuja
+     chave NÃO está em MD_ORDEM (created_at, updated_at, extras) e colunas sem
+     data-field (Ações) ficam como âncoras na posição original. */
+  (function () {
+    const table = document.getElementById("mdTable");
+    const thead = table?.tHead?.rows?.[0];
+    const tbody = document.getElementById("mdTbody");
+    if (!table || !thead || !tbody) {
+      window.MD_ORDEM_COLS = { refresh: () => {} };
+      return;
+    }
+
+    const orderCfg = Array.isArray(window.MD_ORDEM) ? window.MD_ORDEM : [];
+    const wantedOrder = orderCfg.map(o => o && o.chave).filter(Boolean);
+    if (!wantedOrder.length) {
+      window.MD_ORDEM_COLS = { refresh: () => {} };
+      return;
+    }
+    const wantedSet = new Set(wantedOrder);
+
+    const headCells = Array.from(thead.cells);
+    const N = headCells.length;
+
+    const fieldToOrigIdx = new Map();
+    headCells.forEach((th, i) => {
+      const f = th.dataset.field;
+      if (f && wantedSet.has(f)) fieldToOrigIdx.set(f, i);
+    });
+
+    const queue = wantedOrder
+      .filter(f => fieldToOrigIdx.has(f))
+      .map(f => fieldToOrigIdx.get(f));
+
+    const permutation = new Array(N);
+    let qi = 0;
+    for (let i = 0; i < N; i++) {
+      const f = headCells[i].dataset.field;
+      const isReorderable = !!(f && wantedSet.has(f));
+      if (isReorderable && qi < queue.length) {
+        permutation[i] = queue[qi++];
+      } else {
+        permutation[i] = i;
+      }
+    }
+
+    let identidade = true;
+    for (let i = 0; i < N; i++) {
+      if (permutation[i] !== i) { identidade = false; break; }
+    }
+    if (identidade) {
+      window.MD_ORDEM_COLS = { refresh: () => {} };
+      return;
+    }
+
+    for (let i = 0; i < N; i++) {
+      thead.appendChild(headCells[permutation[i]]);
+    }
+
+    function reorderRow(tr) {
+      if (!tr || tr.dataset.mdOrdemAplicada === "1") return;
+      const cells = Array.from(tr.cells);
+      if (cells.length !== N) return;
+      for (let i = 0; i < N; i++) {
+        tr.appendChild(cells[permutation[i]]);
+      }
+      tr.dataset.mdOrdemAplicada = "1";
+    }
+
+    function apply() {
+      Array.from(tbody.rows).forEach(reorderRow);
+    }
+
+    window.MD_ORDEM_COLS = { refresh: apply };
+    apply();
+  })();
+</script>
+
+<script>
   /* ===================== APLICA REGRAS DE COR (HIERARQUIA DINÂMICA) ===================== */
   (function () {
     const tbody = document.getElementById("mdTbody");
@@ -1494,6 +1618,31 @@
       return String(v);
     }
 
+    /* ---------- Render de células dinâmicas (campos personalizados) ---------- */
+    function renderCustomCells(r) {
+      const cfg = window.MD_CUSTOM_FIELDS || [];
+      if (!cfg.length) return '';
+      const vc = (r && r.valores_custom && typeof r.valores_custom === 'object') ? r.valores_custom : {};
+      return cfg.map(cf => {
+        const raw = vc[cf.chave];
+        let inner = '-';
+        if (raw !== null && raw !== undefined && raw !== '') {
+          if (cf.tipo === 'data') {
+            const s = String(raw);
+            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            inner = m ? `${m[3]}/${m[2]}/${m[1]}` : escapeHtml(s);
+          } else if (cf.tipo === 'numero') {
+            inner = escapeHtml(moneyVal(raw));
+          } else if (cf.tipo === 'select_multi' && Array.isArray(raw)) {
+            inner = escapeHtml(raw.join(', '));
+          } else {
+            inner = escapeHtml(String(raw));
+          }
+        }
+        return `<td><div class="clamp-2">${inner}</div></td>`;
+      }).join('');
+    }
+
     /* ---------- Render de uma linha ---------- */
     function renderRow(r) {
       const id = (r && r.id != null) ? r.id : '';
@@ -1526,6 +1675,7 @@
         <td class="whitespace-nowrap"><div class="clamp-2 md-date">${escapeHtml(r.updated_at)}</div></td>
         <td><div class="clamp-2">${escapeHtml(r.extra_1)}</div></td>
         <td><div class="clamp-2">${escapeHtml(r.extra_2)}</div></td>
+        ${renderCustomCells(r)}
         <td style="text-align:right; white-space:nowrap;">
           <button class="md-btn md-edit-btn" type="button"
             onclick="openEditModalFromRowMD(this.closest('tr'))">Editar</button>
@@ -1536,6 +1686,9 @@
     }
 
     function postProcess() {
+      // Reordena antes dos demais para que módulos que dependem de índice
+      // (cores por coluna, conferência) operem sobre o thead já permutado.
+      window.MD_ORDEM_COLS?.refresh?.();
       window.MD_FMT?.refresh?.();
       window.MD_COLORS?.refresh?.();
       window.MD_CONFERENCIA?.refresh?.();
@@ -2576,6 +2729,28 @@
       document.getElementById("mdExtra1").value = row?.extra_1 ?? "";
       document.getElementById("mdExtra2").value = row?.extra_2 ?? "";
 
+      // ---------- Campos personalizados (valores_custom JSONB) ----------
+      const vc = (row && typeof row.valores_custom === "object" && row.valores_custom) || {};
+      document.querySelectorAll(".md-custom-field").forEach(el => {
+        const chave = el.dataset.cfChave;
+        const tipo = el.dataset.cfTipo;
+        const input = document.getElementById("mdCf_" + chave);
+        if (!input) return;
+        const raw = vc[chave];
+        if (tipo === "select_multi") {
+          const set = new Set(Array.isArray(raw) ? raw.map(String) : (raw ? String(raw).split(",").map(s => s.trim()) : []));
+          Array.from(input.options).forEach(o => { o.selected = set.has(o.value); });
+        } else if (tipo === "data") {
+          input.value = raw ? toBRDateText(raw) : "";
+        } else if (tipo === "numero") {
+          input.value = (raw === null || raw === undefined || raw === "") ? "" : formatBR_MD(raw);
+        } else if (tipo === "select_single") {
+          setSelectValue(input, raw ?? "");
+        } else {
+          input.value = raw == null ? "" : String(raw);
+        }
+      });
+
       recalcAutoFields("fillEmpty");
       setTipoReuFirstUI();
       updateCorrecaoAvailability();
@@ -2583,6 +2758,21 @@
 
     function _collectForm() {
       const tipoVal = document.getElementById("mdTipo").value.trim();
+
+      const valores_custom = {};
+      document.querySelectorAll(".md-custom-field").forEach(el => {
+        const chave = el.dataset.cfChave;
+        const tipo = el.dataset.cfTipo;
+        const input = document.getElementById("mdCf_" + chave);
+        if (!input) return;
+        if (tipo === "select_multi") {
+          const vals = Array.from(input.selectedOptions || []).map(o => o.value).filter(v => v);
+          if (vals.length) valores_custom[chave] = vals;
+        } else {
+          const v = (input.value || "").trim();
+          if (v) valores_custom[chave] = v;
+        }
+      });
 
       return {
         id: document.getElementById("mdId").value || null,
@@ -2618,6 +2808,8 @@
         observacoes: document.getElementById("mdObservacoes").value.trim(),
         extra_1: document.getElementById("mdExtra1").value.trim(),
         extra_2: document.getElementById("mdExtra2").value.trim(),
+
+        valores_custom: valores_custom,
       };
     }
 

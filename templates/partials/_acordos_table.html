@@ -823,9 +823,22 @@
           <th class="no-filter" data-field="extra_1">EXTRA 1</th>
           <th class="no-filter" data-field="extra_2">EXTRA 2</th>
 
+          {% for cf in (custom_fields_modal or []) %}
+            <th class="no-filter ac-custom-col" data-field="{{ cf.chave }}">{{ cf.nome | upper }}</th>
+          {% endfor %}
+
           <th class="no-filter">Ações</th>
         </tr>
       </thead>
+
+      <script>
+        // Config dos campos personalizados visíveis nas colunas (vinda do servidor).
+        // Usada por renderRow para gerar <td> dinâmicas e formatar por tipo.
+        window.AC_CUSTOM_FIELDS = {{ (custom_fields_modal or []) | tojson }};
+        // Ordem unificada de colunas (fixas + custom) salva em fin_campos_config.
+        // Cada item: { chave, label, origem, ordem, visivel }.
+        window.AC_ORDEM = {{ (ordem_colunas or []) | tojson }};
+      </script>
 
       <tbody id="acTbody">
         <tr id="acLoadingRow">
@@ -1025,6 +1038,38 @@
           <input class="ac-input" id="acExtra2" placeholder="">
         </div>
 
+        {% for cf in (custom_fields_modal or []) %}
+          {% set col_class = 'col-12' if cf.tipo in ['texto'] else 'col-6' %}
+          <div class="ac-field {{ col_class }} ac-custom-field"
+               data-cf-chave="{{ cf.chave }}"
+               data-cf-tipo="{{ cf.tipo }}">
+            <label>{{ cf.nome }}</label>
+            {% if cf.tipo == 'select_single' %}
+              <select class="ac-select" id="acCf_{{ cf.chave }}">
+                <option value="">Selecione...</option>
+                {% for opt in cf.opcoes %}
+                  <option value="{{ opt }}">{{ opt }}</option>
+                {% endfor %}
+              </select>
+            {% elif cf.tipo == 'select_multi' %}
+              <select class="ac-select" id="acCf_{{ cf.chave }}" multiple size="4" style="height:auto;">
+                {% for opt in cf.opcoes %}
+                  <option value="{{ opt }}">{{ opt }}</option>
+                {% endfor %}
+              </select>
+              <div style="font-size:11px; color:#64748b; margin-top:4px;">Segure Ctrl/Cmd para selecionar várias.</div>
+            {% elif cf.tipo == 'data' %}
+              <input class="ac-input" id="acCf_{{ cf.chave }}" placeholder="dd/mm/aaaa">
+            {% elif cf.tipo == 'numero' %}
+              <input class="ac-input" id="acCf_{{ cf.chave }}" placeholder="Ex: 1500,00">
+            {% elif cf.tipo == 'hora' %}
+              <input class="ac-input" id="acCf_{{ cf.chave }}" type="time" placeholder="hh:mm">
+            {% else %}
+              <input class="ac-input" id="acCf_{{ cf.chave }}" placeholder="">
+            {% endif %}
+          </div>
+        {% endfor %}
+
       </div>
     </div>
 
@@ -1143,6 +1188,94 @@
 
     window.AC_FMT = { refresh, formatRow, toBRDate };
     refresh();
+  })();
+</script>
+
+<script>
+  /* ===================== (3.5) REORDENAR COLUNAS POR TENANT ===================== */
+  /* Lê window.AC_ORDEM (vinda do servidor via _build_ordem_colunas) e:
+     - Reordena <th> no <thead> uma única vez.
+     - Em cada refresh, reordena os <td> das linhas para casar com o thead.
+
+     <th> com data-field cuja chave está em AC_ORDEM = reordenável.
+     <th> sem data-field OU com chave fora de AC_ORDEM (ex.: CONFERÊNCIA,
+     extras antigos, Ações) = âncora — fica na sua posição original. */
+  (function () {
+    const table = document.getElementById("acTable");
+    const thead = table?.tHead?.rows?.[0];
+    const tbody = document.getElementById("acTbody");
+    if (!table || !thead || !tbody) {
+      window.AC_ORDEM_COLS = { refresh: () => {} };
+      return;
+    }
+
+    const orderCfg = Array.isArray(window.AC_ORDEM) ? window.AC_ORDEM : [];
+    const wantedOrder = orderCfg.map(o => o && o.chave).filter(Boolean);
+    if (!wantedOrder.length) {
+      window.AC_ORDEM_COLS = { refresh: () => {} };
+      return;
+    }
+    const wantedSet = new Set(wantedOrder);
+
+    const headCells = Array.from(thead.cells);
+    const N = headCells.length;
+
+    // Mapa data-field -> índice original (apenas para cells reorderáveis)
+    const fieldToOrigIdx = new Map();
+    headCells.forEach((th, i) => {
+      const f = th.dataset.field;
+      if (f && wantedSet.has(f)) fieldToOrigIdx.set(f, i);
+    });
+
+    // Fila de índices originais na ordem desejada (só os que existem no thead)
+    const queue = wantedOrder
+      .filter(f => fieldToOrigIdx.has(f))
+      .map(f => fieldToOrigIdx.get(f));
+
+    // permutation[novaPos] = índiceOriginal
+    const permutation = new Array(N);
+    let qi = 0;
+    for (let i = 0; i < N; i++) {
+      const f = headCells[i].dataset.field;
+      const isReorderable = !!(f && wantedSet.has(f));
+      if (isReorderable && qi < queue.length) {
+        permutation[i] = queue[qi++];
+      } else {
+        permutation[i] = i;
+      }
+    }
+
+    // Se nada muda, não toca DOM (evita custo).
+    let identidade = true;
+    for (let i = 0; i < N; i++) {
+      if (permutation[i] !== i) { identidade = false; break; }
+    }
+    if (identidade) {
+      window.AC_ORDEM_COLS = { refresh: () => {} };
+      return;
+    }
+
+    // Aplica no thead (appendChild move o nó para o final, na ordem desejada).
+    for (let i = 0; i < N; i++) {
+      thead.appendChild(headCells[permutation[i]]);
+    }
+
+    function reorderRow(tr) {
+      if (!tr || tr.dataset.acOrdemAplicada === "1") return;
+      const cells = Array.from(tr.cells);
+      if (cells.length !== N) return; // pula loading/empty rows
+      for (let i = 0; i < N; i++) {
+        tr.appendChild(cells[permutation[i]]);
+      }
+      tr.dataset.acOrdemAplicada = "1";
+    }
+
+    function apply() {
+      Array.from(tbody.rows).forEach(reorderRow);
+    }
+
+    window.AC_ORDEM_COLS = { refresh: apply };
+    apply();
   })();
 </script>
 
@@ -1362,6 +1495,31 @@
       return String(v);
     }
 
+    /* ---------- Render de células dinâmicas (campos personalizados) ---------- */
+    function renderCustomCells(r) {
+      const cfg = window.AC_CUSTOM_FIELDS || [];
+      if (!cfg.length) return '';
+      const vc = (r && r.valores_custom && typeof r.valores_custom === 'object') ? r.valores_custom : {};
+      return cfg.map(cf => {
+        const raw = vc[cf.chave];
+        let inner = '-';
+        if (raw !== null && raw !== undefined && raw !== '') {
+          if (cf.tipo === 'data') {
+            const s = String(raw);
+            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            inner = m ? `${m[3]}/${m[2]}/${m[1]}` : escapeHtml(s);
+          } else if (cf.tipo === 'numero') {
+            inner = escapeHtml(moneyVal(raw));
+          } else if (cf.tipo === 'select_multi' && Array.isArray(raw)) {
+            inner = escapeHtml(raw.join(', '));
+          } else {
+            inner = escapeHtml(String(raw));
+          }
+        }
+        return `<td><div class="clamp-2">${inner}</div></td>`;
+      }).join('');
+    }
+
     /* ---------- Render de uma linha ---------- */
     function renderRow(r) {
       const id = (r && r.id != null) ? r.id : '';
@@ -1392,6 +1550,7 @@
         <td style="min-width:320px; max-width:520px;"><div class="clamp-2">${escapeHtml(r.observacoes)}</div></td>
         <td><div class="clamp-2">${escapeHtml(r.extra_1)}</div></td>
         <td><div class="clamp-2">${escapeHtml(r.extra_2)}</div></td>
+        ${renderCustomCells(r)}
         <td style="text-align:right; white-space:nowrap;">
           <button class="ac-btn ac-edit-btn" type="button"
             onclick="openEditModalFromRow(this.closest('tr'))">Editar</button>
@@ -1403,6 +1562,9 @@
 
     /* ---------- Pós-processamento após render ---------- */
     function postProcess() {
+      // Reordena ANTES das outras refreshes — assim AC_HIDE_COLS / AC_COLORS
+      // que dependem do índice da coluna trabalham sobre o thead já permutado.
+      window.AC_ORDEM_COLS?.refresh?.();
       window.AC_FMT?.refresh?.();
       window.AC_HIDE_COLS?.refresh?.();
       window.AC_COLORS?.refresh?.();
@@ -2515,6 +2677,28 @@
       document.getElementById("acExtra1").value = row?.extra_1 ?? "";
       document.getElementById("acExtra2").value = row?.extra_2 ?? "";
 
+      // ---------- Campos personalizados (valores_custom JSONB) ----------
+      const vc = (row && typeof row.valores_custom === "object" && row.valores_custom) || {};
+      document.querySelectorAll(".ac-custom-field").forEach(el => {
+        const chave = el.dataset.cfChave;
+        const tipo = el.dataset.cfTipo;
+        const input = document.getElementById("acCf_" + chave);
+        if (!input) return;
+        const raw = vc[chave];
+        if (tipo === "select_multi") {
+          const set = new Set(Array.isArray(raw) ? raw.map(String) : (raw ? String(raw).split(",").map(s => s.trim()) : []));
+          Array.from(input.options).forEach(o => { o.selected = set.has(o.value); });
+        } else if (tipo === "data") {
+          input.value = raw ? toBRDateText(raw) : "";
+        } else if (tipo === "numero") {
+          input.value = (raw === null || raw === undefined || raw === "") ? "" : acFormatBR(raw);
+        } else if (tipo === "select_single") {
+          setSelectValue(input, raw ?? "");
+        } else {
+          input.value = raw == null ? "" : String(raw);
+        }
+      });
+
       const tr = document.getElementById("acTipoReu");
       if (tr) {
         const rawTipo = (row?.tipo_reu ?? row?.tipoReu ?? "").toString().trim().toLowerCase();
@@ -2525,6 +2709,24 @@
     }
 
     function _collectForm() {
+      const valores_custom = {};
+      document.querySelectorAll(".ac-custom-field").forEach(el => {
+        const chave = el.dataset.cfChave;
+        const tipo = el.dataset.cfTipo;
+        const input = document.getElementById("acCf_" + chave);
+        if (!input) return;
+        if (tipo === "select_multi") {
+          const vals = Array.from(input.selectedOptions || []).map(o => o.value).filter(v => v);
+          if (vals.length) valores_custom[chave] = vals;
+        } else if (tipo === "numero") {
+          const v = (input.value || "").trim();
+          if (v) valores_custom[chave] = v; // backend faz parse com parse_numeric
+        } else {
+          const v = (input.value || "").trim();
+          if (v) valores_custom[chave] = v;
+        }
+      });
+
       return {
         id: document.getElementById("acId").value || null,
 
@@ -2562,6 +2764,8 @@
         observacoes: document.getElementById("acObservacoes").value.trim(),
         extra_1: document.getElementById("acExtra1").value.trim(),
         extra_2: document.getElementById("acExtra2").value.trim(),
+
+        valores_custom: valores_custom,
       };
     }
 
