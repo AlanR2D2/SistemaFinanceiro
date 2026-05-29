@@ -368,14 +368,38 @@ NUMERIC_FIELDS_MANDADOS = {
     "repasse", "sucumbencia", "porcentagem_honorarios",
 }
 
+# Campos editáveis pelo modal: quando o cliente envia "" (ou null), o backend
+# precisa propagar como NULL para o banco — o usuário está LIMPANDO a célula.
+# Campos fora desses conjuntos (ex.: mes_pg em acordos, tenant, finalizado)
+# continuam sendo descartados quando None (preserva valor existente no update).
+ACORDOS_FORM_FIELDS = {
+    "data_acordo", "numero_processo", "uf", "reu", "autor", "tel",
+    "escritorio_reu", "valor_acordo", "status", "prazo_estimado",
+    "prazo_real", "data_pagamento", "local", "tipo", "tipo_reu",
+    "porcentagem_honorarios", "deposito", "correcao", "honorarios",
+    "audiencista", "repasse", "chave_pix", "sucumbencia",
+    "observacoes", "extra_1", "extra_2",
+}
+MANDADOS_FORM_FIELDS = {
+    "data_quitacao", "numero_processo", "uf", "reu", "autor", "tel",
+    "sentenca", "quitacao", "status", "previsao", "data_pagamento",
+    "local", "tipo", "tipo_reu", "porcentagem_honorarios",
+    "deposito", "correcao", "honorarios", "audiencista", "repasse",
+    "chave_pix", "sucumbencia", "observacoes", "mes_pg",
+    "extra_1", "extra_2",
+}
 
-def clean_payload(payload: dict, numeric_fields: set[str]):
+
+def clean_payload(payload: dict, numeric_fields: set[str],
+                  clearable_fields: set[str] | None = None):
     """
     - converte "" -> None
     - parseia campos numéricos
-    - remove chaves com None (não sobrescreve com null)
-      Obs: se você quiser permitir limpar campo (setar NULL), aí NÃO remova None.
+    - se a chave está em `clearable_fields`, MANTÉM None (escreve NULL no banco
+      — usuário limpou a célula no modal). Caso contrário, remove chaves com None
+      (preserva valor existente).
     """
+    clearable_fields = clearable_fields or set()
     out = {}
     for k, v in (payload or {}).items():
         if isinstance(v, str) and v.strip() == "":
@@ -385,6 +409,8 @@ def clean_payload(payload: dict, numeric_fields: set[str]):
             v = parse_numeric(v)
 
         if v is None:
+            if k in clearable_fields:
+                out[k] = None
             continue
         out[k] = v
     return out
@@ -870,7 +896,7 @@ def acordos_create():
         "extra_2": data.get("extra_2"),
     }
 
-    payload = clean_payload(payload, NUMERIC_FIELDS_ACORDOS)
+    payload = clean_payload(payload, NUMERIC_FIELDS_ACORDOS, ACORDOS_FORM_FIELDS)
 
     valores_custom = _sanitize_valores_custom(tenant, "acordos", data.get("valores_custom"))
     if valores_custom:
@@ -927,7 +953,7 @@ def acordos_update(acordo_id: int):
         "extra_2": data.get("extra_2"),
     }
 
-    payload = clean_payload(payload, NUMERIC_FIELDS_ACORDOS)
+    payload = clean_payload(payload, NUMERIC_FIELDS_ACORDOS, ACORDOS_FORM_FIELDS)
 
     if "valores_custom" in data:
         payload["valores_custom"] = _sanitize_valores_custom(
@@ -1021,7 +1047,7 @@ def mandados_create():
         "extra_2": data.get("extra_2"),
     }
 
-    payload = clean_payload(payload, NUMERIC_FIELDS_MANDADOS)
+    payload = clean_payload(payload, NUMERIC_FIELDS_MANDADOS, MANDADOS_FORM_FIELDS)
 
     valores_custom = _sanitize_valores_custom(tenant, "mandados", data.get("valores_custom"))
     if valores_custom:
@@ -1080,7 +1106,7 @@ def mandados_update(mandado_id: int):
         "extra_2": data.get("extra_2"),
     }
 
-    payload = clean_payload(payload, NUMERIC_FIELDS_MANDADOS)
+    payload = clean_payload(payload, NUMERIC_FIELDS_MANDADOS, MANDADOS_FORM_FIELDS)
 
     if "valores_custom" in data:
         payload["valores_custom"] = _sanitize_valores_custom(
@@ -1224,18 +1250,62 @@ def _month_range(mm_yyyy: str) -> tuple[str, str] | None:
         return None
 
 
-def _apply_list_filters(query, filters: dict, valid_cols: set, date_cols: set, skip_col: str | None = None):
+def _custom_chaves_filtraveis(tenant: str, escopo: str) -> tuple[set[str], set[str]]:
+    """Devolve (chaves_validas, chaves_data) dos campos personalizados que vivem
+    em valores_custom (JSONB) — usados para validar e roteamento de filtros.
+
+    - chaves_validas: todas as chaves ativas com o escopo correto e SEM coluna_fixa.
+    - chaves_data: subconjunto com tipo='data' (ISO yyyy-mm-dd em texto no JSONB).
+    """
+    if not _campos_v2_disponivel():
+        return set(), set()
+    try:
+        fields = _list_custom_fields(tenant) or []
+    except Exception:
+        return set(), set()
+    chave_escopo = "escopo_acordos" if escopo == "acordos" else "escopo_mandados"
+    chaves, chaves_data = set(), set()
+    for f in fields:
+        if int(f.get("ativo") or 0) != 1:
+            continue
+        if int(f.get(chave_escopo) or 0) != 1:
+            continue
+        if (f.get("coluna_fixa") or "").strip():
+            continue
+        ch = (f.get("chave") or "").strip()
+        if not ch:
+            continue
+        chaves.add(ch)
+        if (f.get("tipo") or "").strip() == "data":
+            chaves_data.add(ch)
+    return chaves, chaves_data
+
+
+def _apply_list_filters(query, filters: dict, valid_cols: set, date_cols: set,
+                        skip_col: str | None = None,
+                        custom_chaves: set | None = None,
+                        custom_date_chaves: set | None = None):
     """
     Constrói WHERE no query do supabase a partir do dict de filtros.
     skip_col: ignora o filtro daquela coluna (usado em facets).
+    custom_chaves / custom_date_chaves: filtros em chaves de valores_custom (JSONB).
+      Roteia o nome da coluna para o path PostgREST `valores_custom->>chave`.
     """
+    custom_chaves = custom_chaves or set()
+    custom_date_chaves = custom_date_chaves or set()
+
     for col, f in (filters or {}).items():
         if not isinstance(f, dict):
             continue
         if col == skip_col:
             continue
-        if col not in valid_cols:
+        is_custom = col in custom_chaves
+        if not is_custom and col not in valid_cols:
             continue
+
+        # Path usado no PostgREST: nome da coluna fixa ou JSONB ->> chave.
+        path = f"valores_custom->>{col}" if is_custom else col
+        is_date = (col in date_cols) or (col in custom_date_chaves)
 
         ftype = (f.get("type") or "").strip()
         values = f.get("values") or []
@@ -1246,59 +1316,61 @@ def _apply_list_filters(query, filters: dict, valid_cols: set, date_cols: set, s
 
         if ftype == "set":
             if include_blank and not values:
-                query = query.is_(col, "null")
+                query = query.is_(path, "null")
             elif include_blank and values:
                 escaped = _quote_for_in(values)
-                query = query.or_(f"{col}.is.null,{col}.in.({escaped})")
+                query = query.or_(f"{path}.is.null,{path}.in.({escaped})")
             else:
-                query = query.in_(col, values)
+                query = query.in_(path, values)
 
-        elif ftype == "date_day" and col in date_cols:
+        elif ftype == "date_day" and is_date:
             iso_vals = [_br_to_iso(v) for v in values]
             iso_vals = [v for v in iso_vals if v]
             if include_blank and not iso_vals:
-                query = query.is_(col, "null")
+                query = query.is_(path, "null")
             elif include_blank and iso_vals:
                 escaped = _quote_for_in(iso_vals)
-                query = query.or_(f"{col}.is.null,{col}.in.({escaped})")
+                query = query.or_(f"{path}.is.null,{path}.in.({escaped})")
             elif iso_vals:
-                query = query.in_(col, iso_vals)
+                query = query.in_(path, iso_vals)
 
-        elif ftype == "date_month" and col in date_cols:
+        elif ftype == "date_month" and is_date:
             ranges = [_month_range(v) for v in values]
             ranges = [r for r in ranges if r]
             if include_blank and not ranges:
-                query = query.is_(col, "null")
+                query = query.is_(path, "null")
             elif ranges:
-                or_parts = [f"and({col}.gte.{a},{col}.lt.{b})" for a, b in ranges]
+                or_parts = [f"and({path}.gte.{a},{path}.lt.{b})" for a, b in ranges]
                 if include_blank:
-                    or_parts.append(f"{col}.is.null")
+                    or_parts.append(f"{path}.is.null")
                 query = query.or_(",".join(or_parts))
 
-        elif ftype == "date_range" and col in date_cols:
+        elif ftype == "date_range" and is_date:
             # values = [start_iso | null, end_iso | null] — qualquer um pode ser omitido.
             start_v = values[0] if len(values) >= 1 else None
             end_v   = values[1] if len(values) >= 2 else None
             if not start_v and not end_v:
                 continue
             if start_v:
-                query = query.gte(col, start_v)
+                query = query.gte(path, start_v)
             if end_v:
                 # Inclui o dia final: usamos col < (end + 1 dia) para funcionar
                 # tanto em colunas DATE quanto em TIMESTAMP (created_at/updated_at).
                 try:
                     from datetime import timedelta
                     d = datetime.strptime(str(end_v), "%Y-%m-%d").date()
-                    query = query.lt(col, (d + timedelta(days=1)).isoformat())
+                    query = query.lt(path, (d + timedelta(days=1)).isoformat())
                 except Exception:
-                    query = query.lte(col, end_v)
+                    query = query.lte(path, end_v)
 
     return query
 
 
 def _compute_totals(table_name: str, valid_cols: set, date_cols: set,
                     filters: dict, finalizado_value: int | None,
-                    total_fields: tuple[str, ...]) -> dict:
+                    total_fields: tuple[str, ...],
+                    custom_chaves: set | None = None,
+                    custom_date_chaves: set | None = None) -> dict:
     """
     Soma os campos numéricos para TODOS os registros que casam com os filtros.
     Estratégia: puxa apenas as colunas numéricas necessárias (payload mínimo) e soma em Python.
@@ -1309,7 +1381,9 @@ def _compute_totals(table_name: str, valid_cols: set, date_cols: set,
     q = q.eq("tenant", _get_tenant())
     if finalizado_value is not None:
         q = q.eq("finalizado", int(finalizado_value))
-    q = _apply_list_filters(q, filters, valid_cols, date_cols)
+    q = _apply_list_filters(q, filters, valid_cols, date_cols,
+                            custom_chaves=custom_chaves,
+                            custom_date_chaves=custom_date_chaves)
     # Limite alto: cobre cenários reais. Se passar de 50k, idealmente RPC SQL.
     q = q.limit(50000)
     res = q.execute()
@@ -1353,33 +1427,44 @@ def _page_args():
 
 def _fetch_facets(table_name: str, col: str, valid_cols: set, date_cols: set,
                   filters: dict, finalizado_value: int | None,
-                  date_mode: str | None = None) -> list[str]:
+                  date_mode: str | None = None,
+                  custom_chaves: set | None = None,
+                  custom_date_chaves: set | None = None) -> list[str]:
     """
     Retorna valores distintos de `col` respeitando os demais filtros.
     Para colunas de data, aplica formatação BR (dia ou mês) antes do distinct.
+    Para campos custom (chave em custom_chaves), busca em valores_custom JSONB.
     """
-    if col not in valid_cols:
+    custom_chaves = custom_chaves or set()
+    custom_date_chaves = custom_date_chaves or set()
+    is_custom = col in custom_chaves
+    if not is_custom and col not in valid_cols:
         return []
 
-    q = supabase.table(table_name).select(col)
+    # Campos custom vivem em valores_custom JSONB — buscamos a coluna inteira
+    # e extraímos a chave em Python (também trata tipo=select_multi com listas).
+    select_col = "valores_custom" if is_custom else col
+
+    q = supabase.table(table_name).select(select_col)
     q = q.eq("tenant", _get_tenant())
     if finalizado_value is not None:
         q = q.eq("finalizado", int(finalizado_value))
-    q = _apply_list_filters(q, filters, valid_cols, date_cols, skip_col=col)
+    q = _apply_list_filters(q, filters, valid_cols, date_cols, skip_col=col,
+                            custom_chaves=custom_chaves,
+                            custom_date_chaves=custom_date_chaves)
     q = q.limit(50000)
     res = q.execute()
     rows = getattr(res, "data", None) or []
 
     seen = set()
     out = []
-    is_date = col in date_cols
+    is_date = (col in date_cols) or (col in custom_date_chaves)
 
-    for r in rows:
-        v = r.get(col)
-        if v is None or v == "":
+    def _push_value(raw):
+        if raw is None or raw == "":
             label = "-"
         elif is_date:
-            iso = str(v)[:10]
+            iso = str(raw)[:10]
             try:
                 d = datetime.strptime(iso, "%Y-%m-%d").date()
             except Exception:
@@ -1391,11 +1476,26 @@ def _fetch_facets(table_name: str, col: str, valid_cols: set, date_cols: set,
             else:
                 label = f"{d.day:02d}/{d.month:02d}/{d.year:04d}"
         else:
-            label = str(v)
-
+            label = str(raw)
         if label not in seen:
             seen.add(label)
             out.append(label)
+
+    for r in rows:
+        if is_custom:
+            vc = r.get("valores_custom") or {}
+            v = vc.get(col) if isinstance(vc, dict) else None
+            # select_multi vem como lista — cada elemento vira uma opção do facet
+            if isinstance(v, list):
+                if not v:
+                    _push_value(None)
+                else:
+                    for x in v:
+                        _push_value(x)
+            else:
+                _push_value(v)
+        else:
+            _push_value(r.get(col))
 
     # Ordena: data por ordem cronológica, demais alfabética
     if is_date:
@@ -1416,9 +1516,13 @@ def _fetch_facets(table_name: str, col: str, valid_cols: set, date_cols: set,
 
 def _list_paginated(table_name: str, list_columns: str, valid_cols: set, date_cols: set,
                     default_sort_col: str, total_fields: tuple[str, ...],
-                    finalizado_value: int | None):
-    """Lógica comum dos endpoints /api/acordos e /api/mandados."""
+                    finalizado_value: int | None, escopo: str):
+    """Lógica comum dos endpoints /api/acordos e /api/mandados.
+    `escopo` é 'acordos' ou 'mandados' — usado para descobrir os campos
+    personalizados filtráveis do tenant atual."""
     filters = _decode_filters_param(request.args.get("filters"))
+    custom_chaves, custom_date_chaves = _custom_chaves_filtraveis(_get_tenant(), escopo)
+
     sort_col, sort_dir = _normalize_sort(
         request.args.get("sort_col"), request.args.get("sort_dir"),
         valid_cols, default_sort_col, "desc"
@@ -1439,7 +1543,9 @@ def _list_paginated(table_name: str, list_columns: str, valid_cols: set, date_co
     q = q.eq("tenant", _get_tenant())
     if finalizado_value is not None:
         q = q.eq("finalizado", int(finalizado_value))
-    q = _apply_list_filters(q, filters, valid_cols, date_cols)
+    q = _apply_list_filters(q, filters, valid_cols, date_cols,
+                            custom_chaves=custom_chaves,
+                            custom_date_chaves=custom_date_chaves)
     q = q.order(sort_col, desc=(sort_dir == "desc"))
 
     start = (page - 1) * page_size
@@ -1465,7 +1571,8 @@ def _list_paginated(table_name: str, list_columns: str, valid_cols: set, date_co
 
     if want_totals:
         totals = _compute_totals(
-            table_name, valid_cols, date_cols, filters, finalizado_value, total_fields
+            table_name, valid_cols, date_cols, filters, finalizado_value, total_fields,
+            custom_chaves=custom_chaves, custom_date_chaves=custom_date_chaves,
         )
         payload["totals"] = totals["sums"]
         payload["filtered_count"] = totals["count"]
@@ -1490,6 +1597,7 @@ def api_acordos_list():
         default_sort_col="data_acordo",
         total_fields=ACORDOS_TOTAL_FIELDS,
         finalizado_value=finalizado_value,
+        escopo="acordos",
     )
 
 
@@ -1514,9 +1622,11 @@ def api_acordos_facets():
     except Exception:
         finalizado_value = 0
     filters = _decode_filters_param(request.args.get("filters"))
+    custom_chaves, custom_date_chaves = _custom_chaves_filtraveis(_get_tenant(), "acordos")
     values = _fetch_facets(
         TABLE_ACORDOS, col, ACORDOS_VALID_COLS, ACORDOS_DATE_COLS,
         filters, finalizado_value, date_mode=date_mode,
+        custom_chaves=custom_chaves, custom_date_chaves=custom_date_chaves,
     )
     return jsonify({"ok": True, "values": values})
 
@@ -1538,6 +1648,7 @@ def api_mandados_list():
         default_sort_col="data_quitacao",
         total_fields=MANDADOS_TOTAL_FIELDS,
         finalizado_value=finalizado_value,
+        escopo="mandados",
     )
 
 
@@ -1562,9 +1673,11 @@ def api_mandados_facets():
     except Exception:
         finalizado_value = 0
     filters = _decode_filters_param(request.args.get("filters"))
+    custom_chaves, custom_date_chaves = _custom_chaves_filtraveis(_get_tenant(), "mandados")
     values = _fetch_facets(
         TABLE_MANDADOS, col, MANDADOS_VALID_COLS, MANDADOS_DATE_COLS,
         filters, finalizado_value, date_mode=date_mode,
+        custom_chaves=custom_chaves, custom_date_chaves=custom_date_chaves,
     )
     return jsonify({"ok": True, "values": values})
 
@@ -1795,23 +1908,91 @@ def _upsert_campo_config(tenant: str, escopo: str, chave: str,
         supabase.table(TABLE_CAMPOS_CONFIG).insert(payload).execute()
 
 
+# Mapeia o nome da tabela legada → chave do campo system_locked no sistema novo
+# (fin_custom_fields). É a ponte entre o front que pede por "fin_reu" e o
+# backend que agora armazena em fin_custom_field_options.
+LEGACY_TABLE_TO_CAMPO_CHAVE = {
+    "fin_status": "status",
+    "fin_local": "local",
+    "fin_conta": "conta",
+    "fin_reu": "reu",
+    "fin_uf": "uf",
+    "fin_patrono_reu": "escritorio_reu",
+    "fin_prazo_estimado": "prazo_estimado",
+}
+
+
+def _load_field_options_por_tenant(tenant: str):
+    """Carrega de uma só vez (id_campo, valor, cor, cor_letra, hierarquia, ativo)
+    de todas as opções dos campos system_locked do tenant. Devolve dict por chave
+    do campo (status/local/...). Filtro de tenant é obrigatório."""
+    if not _campos_v2_disponivel():
+        return None
+    try:
+        fields = _list_custom_fields(tenant) or []
+        chave_to_field_id = {(f.get("chave") or ""): f.get("id") for f in fields if f.get("chave")}
+        if not chave_to_field_id:
+            return {}
+
+        res = (
+            supabase.table(TABLE_CUSTOM_FIELD_OPTIONS)
+            .select("field_id,valor,cor,cor_letra,hierarquia,ativo,ordem")
+            .eq("tenant", tenant)
+            .order("ordem")
+            .order("valor")
+            .limit(20000)
+            .execute()
+        )
+        all_opts = getattr(res, "data", None) or []
+
+        by_field_id: dict[int, list[dict]] = {}
+        for o in all_opts:
+            by_field_id.setdefault(o["field_id"], []).append(o)
+
+        by_chave: dict[str, list[dict]] = {}
+        for chave, fid in chave_to_field_id.items():
+            by_chave[chave] = by_field_id.get(fid, [])
+        return by_chave
+    except Exception:
+        app.logger.exception("Falha ao carregar opções do sistema novo para tenant=%r", tenant)
+        return None
+
+
 @app.get("/api/cadastro-options")
 @login_required
 def api_cadastro_options():
-    options = {}
+    """Opções ATIVAS para os dropdowns do modal de Acordo/Mandado, por tenant.
+
+    Fonte primária: fin_custom_field_options (sistema novo — onde a tela
+    `/cadastros` grava). Fallback defensivo para as tabelas legadas
+    (fin_status/local/...) se a migration 05 ainda não tiver rodado.
+    """
+    tenant = _get_tenant()
+    options: dict[str, list[str]] = {}
+
+    by_chave = _load_field_options_por_tenant(tenant)
+    if by_chave is not None:
+        for tname, chave in LEGACY_TABLE_TO_CAMPO_CHAVE.items():
+            opts = by_chave.get(chave, [])
+            options[tname] = [
+                (o.get("valor") or "").strip()
+                for o in opts
+                if int(o.get("ativo") or 0) == 1 and (o.get("valor") or "").strip()
+            ]
+        return jsonify(options)
+
+    # Fallback: tabelas legadas
     for tname, cfg in CADASTRO_TABLES.items():
         value_col = cfg["value_col"]
         ativo_col = cfg["ativo_col"]
-
         rows = sb_select(
             tname,
             columns=f"{value_col},{ativo_col}",
             limit=5000,
             order_col=value_col,
-            desc=False
+            desc=False,
         )
         options[tname] = [r[value_col] for r in rows if r.get(ativo_col) == 1]
-
     return jsonify(options)
 
 
@@ -1819,10 +2000,39 @@ def api_cadastro_options():
 @app.get("/api/row-colors")
 @login_required
 def api_row_colors():
-    """Retorna cores e hierarquia de status, local e conta para colorir linhas."""
-    def _build_map(table_name, value_col):
+    """Retorna cores e hierarquia de status, local e conta para colorir linhas.
+
+    Fonte primária: fin_custom_field_options (sistema novo, por tenant).
+    Fallback: tabelas legadas se a migration 05 não estiver disponível.
+    """
+    tenant = _get_tenant()
+
+    def _build_map_from_opts(opts: list[dict]) -> dict:
+        m: dict[str, dict] = {}
+        for o in (opts or []):
+            v = (o.get("valor") or "").strip()
+            c = (o.get("cor") or "").strip()
+            if not v or not c:
+                continue
+            m[v.upper()] = {
+                "cor": c,
+                "cor_letra": (o.get("cor_letra") or "").strip() or "#000000",
+                "hierarquia": int(o.get("hierarquia") or 2),
+            }
+        return m
+
+    by_chave = _load_field_options_por_tenant(tenant)
+    if by_chave is not None:
+        return jsonify({
+            "status": _build_map_from_opts(by_chave.get("status", [])),
+            "local":  _build_map_from_opts(by_chave.get("local",  [])),
+            "conta":  _build_map_from_opts(by_chave.get("conta",  [])),
+        })
+
+    # Fallback: tabelas legadas
+    def _build_map_legacy(table_name: str, value_col: str) -> dict:
         rows = sb_select(table_name, columns=f"{value_col},cor,cor_letra,hierarquia", limit=5000)
-        m = {}
+        m: dict[str, dict] = {}
         for r in rows:
             v = (r.get(value_col) or "").strip()
             c = (r.get("cor") or "").strip()
@@ -1833,9 +2043,9 @@ def api_row_colors():
         return m
 
     return jsonify({
-        "status": _build_map("fin_status", "status"),
-        "local": _build_map("fin_local", "local"),
-        "conta": _build_map("fin_conta", "conta"),
+        "status": _build_map_legacy("fin_status", "status"),
+        "local":  _build_map_legacy("fin_local",  "local"),
+        "conta":  _build_map_legacy("fin_conta",  "conta"),
     })
 
 

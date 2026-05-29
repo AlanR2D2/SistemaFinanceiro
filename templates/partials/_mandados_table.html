@@ -890,7 +890,7 @@
           <th class="no-filter" data-field="extra_2">EXTRA 2</th>
 
           {% for cf in (custom_fields_modal or []) %}
-            <th class="no-filter md-custom-col" data-field="{{ cf.chave }}">{{ cf.nome | upper }}</th>
+            <th class="md-custom-col" data-field="{{ cf.chave }}">{{ cf.nome | upper }}</th>
           {% endfor %}
 
           <th class="no-filter">Ações</th>

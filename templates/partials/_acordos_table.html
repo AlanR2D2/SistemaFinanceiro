@@ -177,6 +177,8 @@
     font-size: 13px;
     vertical-align: top;
     color: #111827;
+    text-align: center;
+    /* garante centralização geral (assim como em mandados) */
   }
 
   /* (6) todas colunas numéricas centralizadas */
@@ -824,7 +826,7 @@
           <th class="no-filter" data-field="extra_2">EXTRA 2</th>
 
           {% for cf in (custom_fields_modal or []) %}
-            <th class="no-filter ac-custom-col" data-field="{{ cf.chave }}">{{ cf.nome | upper }}</th>
+            <th class="ac-custom-col" data-field="{{ cf.chave }}">{{ cf.nome | upper }}</th>
           {% endfor %}
 
           <th class="no-filter">Ações</th>
