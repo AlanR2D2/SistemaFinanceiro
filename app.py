@@ -36,6 +36,27 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
+
+@app.after_request
+def _no_store_para_apis(response):
+    """Impede que o navegador sirva respostas de API a partir do cache.
+
+    Sem cabeçalhos de cache, alguns navegadores aplicam cache heurístico e
+    reservam respostas antigas dos endpoints de opções (ex.: /api/cadastro-options).
+    Isso fazia com que um novo status/valor recém-cadastrado NÃO aparecesse nos
+    dropdowns de criação de Acordo/Mandado nem nos filtros até o cache expirar.
+    Forçar no-store garante que as opções estejam sempre atualizadas.
+    """
+    try:
+        if request.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+    except Exception:
+        pass
+    return response
+
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
@@ -1496,6 +1517,24 @@ def _fetch_facets(table_name: str, col: str, valid_cols: set, date_cols: set,
                 _push_value(v)
         else:
             _push_value(r.get(col))
+
+    # Inclui também os valores CADASTRADOS e ativos do campo, mesmo que ainda
+    # não tenham sido usados em nenhum registro. Sem isto, um status/valor
+    # recém-criado (ex.: "EMITIR NOTA FISCAL") não aparecia na lista de filtros
+    # até existir ao menos um Acordo/Mandado usando-o. Campos de data não têm
+    # opções cadastradas, então são ignorados.
+    if not is_date:
+        try:
+            by_chave = _load_field_options_por_tenant(_get_tenant())
+            if by_chave:
+                for o in by_chave.get(col, []):
+                    if int(o.get("ativo") or 0) != 1:
+                        continue
+                    valor = (o.get("valor") or "").strip()
+                    if valor:
+                        _push_value(valor)
+        except Exception:
+            pass
 
     # Ordena: data por ordem cronológica, demais alfabética
     if is_date:
