@@ -302,9 +302,13 @@ def _norm(x):
 
 def br_to_iso_date(s: str | None) -> str | None:
     """
-    Converte dd/mm/aaaa -> yyyy-mm-dd.
+    Converte dd/mm/aaaa (ou dd/mm/aa) -> yyyy-mm-dd.
     Se vier vazio/None, retorna None.
-    Se já estiver yyyy-mm-dd ou outro formato, retorna original.
+    Se já estiver yyyy-mm-dd ou outro formato não reconhecido, retorna original.
+
+    Usa date.isoformat() (sempre zero-pada o ano com 4 dígitos) em vez de
+    strftime("%Y..."), que no Linux/glibc NÃO faz zero-pad e gera datas
+    inválidas como "26-06-05" que o Postgres rejeita.
     """
     if s is None:
         return None
@@ -312,12 +316,17 @@ def br_to_iso_date(s: str | None) -> str | None:
     if not s:
         return None
 
-    try:
-        if len(s) >= 10 and s[2] == "/" and s[5] == "/":
-            d = datetime.strptime(s[:10], "%d/%m/%Y").date()
-            return d.strftime("%Y-%m-%d")
-    except Exception:
-        pass
+    m = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{2}|\d{4})$", s)
+    if m:
+        dd, mm, yy = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        # Ano com 2 dígitos (ou "0026" já corrompido) -> 20yy. Nenhuma data
+        # legítima deste sistema é anterior ao ano 100.
+        if yy < 100:
+            yy += 2000
+        try:
+            return date(yy, mm, dd).isoformat()
+        except ValueError:
+            return s
 
     return s
 
