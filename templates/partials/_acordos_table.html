@@ -2504,6 +2504,16 @@
       el.textContent = msg;
     }
 
+    // Extrai a mensagem amigável de uma resposta de erro do backend.
+    // O backend retorna JSON {ok:false, error:"..."}; cai no fallback se não for JSON.
+    async function _extractError(resp, fallback) {
+      try {
+        const j = await resp.json();
+        if (j && j.error) return j.error;
+      } catch (_) {}
+      return fallback;
+    }
+
     function toBRDateText(raw) {
       if (!raw) return '';
       raw = String(raw).trim();
@@ -2819,8 +2829,7 @@
         });
 
         if (!resp.ok) {
-          const txt = await resp.text();
-          _showError(txt || "Erro ao salvar edição.");
+          _showError(await _extractError(resp, "Erro ao salvar edição."));
           return;
         }
 
@@ -2845,8 +2854,7 @@
         });
 
         if (!resp.ok) {
-          const txt = await resp.text();
-          _showError(txt || "Erro ao criar acordo.");
+          _showError(await _extractError(resp, "Erro ao criar acordo."));
           return;
         }
 

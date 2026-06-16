@@ -304,7 +304,11 @@ def br_to_iso_date(s: str | None) -> str | None:
     """
     Converte dd/mm/aaaa (ou dd/mm/aa) -> yyyy-mm-dd.
     Se vier vazio/None, retorna None.
-    Se já estiver yyyy-mm-dd ou outro formato não reconhecido, retorna original.
+    Se já estiver yyyy-mm-dd válido, retorna normalizado.
+    Se for qualquer outro valor não reconhecido (ex.: data parcial "15"),
+    retorna None — NUNCA devolve a string crua, pois ela iria direto para
+    uma coluna `date` do Postgres e dispararia o erro 22008
+    (date/time field value out of range).
 
     Usa date.isoformat() (sempre zero-pada o ano com 4 dígitos) em vez de
     strftime("%Y..."), que no Linux/glibc NÃO faz zero-pad e gera datas
@@ -326,9 +330,53 @@ def br_to_iso_date(s: str | None) -> str | None:
         try:
             return date(yy, mm, dd).isoformat()
         except ValueError:
-            return s
+            return None
 
-    return s
+    # Já está em ISO yyyy-mm-dd? Valida e normaliza.
+    m = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})", s)
+    if m:
+        yy, mm, dd = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        try:
+            return date(yy, mm, dd).isoformat()
+        except ValueError:
+            return None
+
+    # Valor não reconhecido (data parcial, lixo) -> não envia ao banco.
+    return None
+
+
+# Campos de data de cada formulário: (chave no payload JSON, label amigável).
+# Usados para validar e avisar o usuário quando uma data vem inválida.
+ACORDOS_DATE_FIELDS = (
+    ("data_acordo", "Data Acordo"),
+    ("prazo_real", "Prazo Real"),
+    ("data_pagamento", "Data Pagamento"),
+)
+MANDADOS_DATE_FIELDS = (
+    ("data_quitacao", "Data Quitação"),
+    ("previsao", "Previsão"),
+    ("data_pagamento", "Data Pagamento"),
+)
+
+
+def _validate_date_fields(data: dict, fields) -> str | None:
+    """
+    Verifica os campos de data informados. Um campo é inválido quando veio
+    preenchido (não vazio) mas não é uma data reconhecível (ex.: "15").
+    Retorna uma mensagem de erro pronta para o usuário, ou None se tudo ok.
+    """
+    invalidos = []
+    for key, label in fields:
+        raw = data.get(key)
+        if raw is None or str(raw).strip() == "":
+            continue
+        if br_to_iso_date(raw) is None:
+            invalidos.append(label)
+    if not invalidos:
+        return None
+    campos = ", ".join(invalidos)
+    plural = "datas inválidas" if len(invalidos) > 1 else "data inválida"
+    return f"Há {plural} no(s) campo(s): {campos}. Use o formato dd/mm/aaaa."
 
 
 def iso_to_br_date(s: str | None) -> str | None:
@@ -886,6 +934,9 @@ def acordos_redirect_to_ativos():
 @login_required
 def acordos_create():
     data = request.get_json(force=True) or {}
+    erro_data = _validate_date_fields(data, ACORDOS_DATE_FIELDS)
+    if erro_data:
+        return jsonify({"ok": False, "error": erro_data}), 400
     status_txt = _status_text_from_payload(data)
     tenant = _get_tenant()
 
@@ -944,6 +995,9 @@ def acordos_create():
 @login_required
 def acordos_update(acordo_id: int):
     data = request.get_json(force=True) or {}
+    erro_data = _validate_date_fields(data, ACORDOS_DATE_FIELDS)
+    if erro_data:
+        return jsonify({"ok": False, "error": erro_data}), 400
     status_txt = _status_text_from_payload(data)
     tenant = _get_tenant()
 
@@ -1035,6 +1089,9 @@ def mandados_redirect_to_ativos():
 @login_required
 def mandados_create():
     data = request.get_json(force=True) or {}
+    erro_data = _validate_date_fields(data, MANDADOS_DATE_FIELDS)
+    if erro_data:
+        return jsonify({"ok": False, "error": erro_data}), 400
     status_txt = _status_text_from_payload(data)
     tenant = _get_tenant()
 
@@ -1095,6 +1152,9 @@ def mandados_create():
 @login_required
 def mandados_update(mandado_id: int):
     data = request.get_json(force=True) or {}
+    erro_data = _validate_date_fields(data, MANDADOS_DATE_FIELDS)
+    if erro_data:
+        return jsonify({"ok": False, "error": erro_data}), 400
     status_txt = _status_text_from_payload(data)
     tenant = _get_tenant()
 
