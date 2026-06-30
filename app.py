@@ -1,6 +1,7 @@
 # app.py
 import os
 import re
+import unicodedata
 from decimal import Decimal, InvalidOperation
 from datetime import date, datetime
 from collections import Counter
@@ -623,6 +624,51 @@ def static_logo_lowercase_fix():
     lower_dir = os.path.join(app.root_path, "static", "images")
     upper_dir = os.path.join(app.root_path, "static", "Images")
 
+    if os.path.exists(os.path.join(lower_dir, "logo.png")):
+        return send_from_directory(lower_dir, "logo.png")
+    return send_from_directory(upper_dir, "logo.png")
+
+
+# ===================== LOGO POR TENANT =====================
+
+def _tenant_slug(tenant: str) -> str:
+    """Converte o nome do tenant num slug seguro p/ nome de arquivo (sem acento/espaço)."""
+    s = unicodedata.normalize("NFKD", tenant or "").encode("ascii", "ignore").decode("ascii")
+    s = s.lower()
+    s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+    return s
+
+
+def _find_tenant_logo_file(tenant: str):
+    """
+    Procura o arquivo de logo do tenant em static/Images/logos/<slug>.<ext>.
+    Retorna (diretorio, nome_arquivo) ou None se não houver logo específica.
+    """
+    slug = _tenant_slug(tenant)
+    if not slug:
+        return None
+    directory = os.path.join(app.root_path, "static", "Images", "logos")
+    for ext in ("png", "jpg", "jpeg", "webp", "svg"):
+        filename = f"{slug}.{ext}"
+        if os.path.exists(os.path.join(directory, filename)):
+            return directory, filename
+    return None
+
+
+@app.get("/tenant-logo")
+@login_required
+def tenant_logo():
+    """
+    Serve a logo do tenant atual (da sessão). Se o tenant não tiver logo própria
+    em static/Images/logos/, cai no fallback da logo padrão do sistema.
+    """
+    found = _find_tenant_logo_file(session.get("tenant", ""))
+    if found:
+        directory, filename = found
+        return send_from_directory(directory, filename)
+
+    lower_dir = os.path.join(app.root_path, "static", "images")
+    upper_dir = os.path.join(app.root_path, "static", "Images")
     if os.path.exists(os.path.join(lower_dir, "logo.png")):
         return send_from_directory(lower_dir, "logo.png")
     return send_from_directory(upper_dir, "logo.png")
