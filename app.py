@@ -2023,7 +2023,7 @@ def _config_campos_tabela(tenant: str, escopo: str) -> dict:
     base_cols = COLUNAS_POR_ESCOPO.get(escopo, [])
     visiveis = {campo: 1 for campo, _ in base_cols}
     labels = {campo: lbl for campo, lbl in base_cols}
-    for campo, _ in CAMPOS_EXTRAS:
+    for campo, lbl in CAMPOS_EXTRAS:
         visiveis[campo] = 0
         labels[campo] = lbl
 

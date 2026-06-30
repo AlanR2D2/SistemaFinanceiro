@@ -285,6 +285,13 @@ Staff inicial seedado pela migração SQL: `leadfabrix@gmail.com` (senha `La.260
 | POST   | `/staff/users/delete`               | Exclui usuário                                       |
 | GET/POST | `/staff/account`                  | Minha conta do staff (nome, email, senha)            |
 
+### Configuração de Colunas por Tenant
+
+| Método | Rota                             | Descrição                                                                 |
+|--------|----------------------------------|---------------------------------------------------------------------------|
+| GET    | `/admin/ordem-colunas`           | Tela de admin para reordenar colunas e renomear labels por tenant        |
+| PUT    | `/api/ordem-colunas/<escopo>`    | Salva ordem e labels customizados de `acordos` ou `mandados` por tenant  |
+
 ### Fix estático
 
 | Método | Rota                          | Descrição                                 |
@@ -301,7 +308,13 @@ Staff inicial seedado pela migração SQL: `leadfabrix@gmail.com` (senha `La.260
 - `finalizado = 1` quando `status` começa com `"FINALIZADO"` (case-insensitive).
 - Isso é aplicado tanto no CRUD do app.py (função `_derive_finalizado_from_status`) quanto nos scripts de sync (função `_status_is_finalizado` com lista expandida de keywords).
 - Os scripts de sync reconhecem mais variações: ENCERRADO, CONCLUÍDO, PAGO, etc.
+### Label e Ordem de Colunas por Tenant
 
+- O tenant admin pode renomear os labels das colunas fixas de `acordos` e `mandados` usando a tela `/admin/ordem-colunas`.
+- Labels customizados também são aplicados aos modais de criação/edição, além dos cabeçalhos de tabela.
+- A ordem das colunas é salva por tenant em `fin_campos_config` nos escopos `ordem_acordos` e `ordem_mandados`.
+- Labels customizados são salvos em `fin_campos_config` nos escopos `acordos` e `mandados`.
+- A personalização de labels é isolada por tenant e não afeta outras empresas.
 ### Campos numéricos / monetários
 
 - Acordos: `valor_acordo`, `deposito`, `correcao`, `honorarios`, `repasse`, `sucumbencia`, `porcentagem_honorarios`
