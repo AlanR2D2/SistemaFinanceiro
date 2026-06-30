@@ -42,6 +42,23 @@
     cursor: grab; user-select: none;
     font-size: 13px; color:#0f172a; font-weight:700;
   }
+  .ordem-item input.ordem-label-input{
+    flex: 1 1 auto;
+    min-width: 180px;
+    max-width: 450px;
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .ordem-item input.ordem-label-input:focus{
+    outline: none;
+    border-color: rgba(27,42,166,.55);
+    box-shadow: 0 0 0 3px rgba(27,42,166,.12);
+  }
   .ordem-item:hover{ background:#f1f5fb; border-color:#cbd5e1; }
   .ordem-item.dragging{ opacity:.5; cursor: grabbing; }
   .ordem-item.over{ border-color: var(--mw-blue); background: #eff3ff; }
@@ -184,7 +201,7 @@
       <div class="ordem-item" draggable="true" data-chave="${escapeHtml(c.chave)}">
         <span class="drag-handle">⋮⋮</span>
         <span class="pos">${i + 1}</span>
-        <span>${escapeHtml(c.label)}</span>
+        <input class="inp ordem-label-input" type="text" data-chave="${escapeHtml(c.chave)}" value="${escapeHtml(c.label)}" placeholder="Rótulo">
         <span class="origem-chip ${c.origem}">${originLabel(c.origem)}</span>
       </div>
     `).join("");
@@ -228,7 +245,10 @@
     const wrap = document.getElementById(`ordem-list-${escopo}`);
     const msg = document.getElementById(`ordem-msg-${escopo}`);
     const ordem = Array.from(wrap.querySelectorAll(".ordem-item"))
-      .map(it => ({ chave: it.dataset.chave }));
+      .map(it => ({
+        chave: it.dataset.chave,
+        label: it.querySelector(".ordem-label-input")?.value.trim(),
+      }));
 
     msg.style.color = "#64748b";
     msg.textContent = "Salvando…";

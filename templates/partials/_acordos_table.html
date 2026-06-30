@@ -3039,6 +3039,58 @@
     const table = document.querySelector("#acTable, table.ac-table") || document.querySelector("table");
     if (!table) return;
 
+    // ----- 0) Rótulos customizados para colunas fixas + extras -----
+    const modalLabelMap = {
+      data_acordo: "acDataAcordo",
+      numero_processo: "acNumeroProcesso",
+      uf: "acUfSelect",
+      reu: "acReuSelect",
+      autor: "acAutor",
+      tel: "acTel",
+      escritorio_reu: "acEscritorioReuSelect",
+      valor_acordo: "acValorAcordo",
+      status: "acStatusSelect",
+      prazo_estimado: "acPrazoEstimadoSelect",
+      prazo_real: "acPrazoReal",
+      data_pagamento: "acDataPagamento",
+      local: "acLocalSelect",
+      tipo: "acTipo",
+      tipo_reu: "acTipoReu",
+      porcentagem_honorarios: "acPorcentagemHonorarios",
+      deposito: "acDeposito",
+      correcao: "acCorrecao",
+      honorarios: "acHonorarios",
+      audiencista: "acAudiencista",
+      repasse: "acRepasse",
+      chave_pix: "acChavePix",
+      sucumbencia: "acSucumbencia",
+      observacoes: "acObservacoes",
+      extra_1: "acExtra1",
+      extra_2: "acExtra2",
+    };
+    Object.entries(cfg.labels || {}).forEach(([field, label]) => {
+      if (!field || !label) return;
+      const th = table.querySelector(`thead th[data-field="${field}"]`);
+      if (th) th.textContent = label;
+      const inputId = modalLabelMap[field];
+      if (inputId) {
+        const inputEl = document.getElementById(inputId);
+        const labelEl = inputEl?.closest(".ac-field")?.querySelector("label");
+        if (labelEl) {
+          const suffix = (labelEl.textContent || "").match(/\(.*$/);
+          labelEl.textContent = label + (suffix ? ` ${suffix[0]}` : "");
+        }
+      }
+    });
+    // ----- 0) Rótulos customizados para colunas fixas + extras -----
+    Object.entries(cfg.labels || {}).forEach(([field, label]) => {
+      if (!field || !label) return;
+      const th = table.querySelector(`thead th[data-field="${field}"]`);
+      if (th) {
+        th.textContent = label;
+      }
+    });
+
     // ----- 1) Rótulos dos extras (item 3) -----
     document.querySelectorAll(".ac-extra-field").forEach(el => {
       const key = el.getAttribute("data-extra");

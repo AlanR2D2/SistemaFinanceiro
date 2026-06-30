@@ -2022,9 +2022,10 @@ def _config_campos_tabela(tenant: str, escopo: str) -> dict:
     """
     base_cols = COLUNAS_POR_ESCOPO.get(escopo, [])
     visiveis = {campo: 1 for campo, _ in base_cols}
+    labels = {campo: lbl for campo, lbl in base_cols}
     for campo, _ in CAMPOS_EXTRAS:
         visiveis[campo] = 0
-    labels = {campo: lbl for campo, lbl in CAMPOS_EXTRAS}
+        labels[campo] = lbl
 
     for r in _campos_config_rows(tenant, escopo):
         chave = r.get("chave")
@@ -3100,12 +3101,16 @@ def _build_ordem_colunas(tenant: str, escopo: str) -> list[dict]:
 
     # 3) Lê visibilidade da config existente (escopo='acordos'|'mandados').
     visiveis_base: dict[str, int] = {}
+    labels_custom: dict[str, str] = {}
     for r in _campos_config_rows(tenant, escopo):
         chave = (r.get("chave") or "").strip()
         if not chave:
             continue
         if r.get("visivel") is not None:
             visiveis_base[chave] = int(r.get("visivel") or 0)
+        lbl = (r.get("label") or "").strip()
+        if lbl:
+            labels_custom[chave] = lbl
 
     # 4) Monta saída final, aplicando ordem custom (quando definida).
     out = []
@@ -3115,7 +3120,7 @@ def _build_ordem_colunas(tenant: str, escopo: str) -> list[dict]:
         vis = visiveis_custom.get(chave, visiveis_base.get(chave, 1))
         out.append({
             "chave": chave,
-            "label": it["label"],
+            "label": labels_custom.get(chave, it["label"]),
             "origem": it["origem"],
             "ordem": ordem,
             "visivel": int(vis),
@@ -3221,6 +3226,14 @@ def api_ordem_colunas_salvar(escopo: str):
             chave = (item.get("chave") or "").strip() if isinstance(item, dict) else ""
             if not chave:
                 continue
+            label = None
+            if isinstance(item, dict) and "label" in item:
+                label = item.get("label")
+            if label is None and isinstance(data.get("labels"), dict):
+                label = data.get("labels").get(chave)
+            if label is not None:
+                label = (label or None)
+
             # Upsert linha em fin_campos_config (mesma lógica do helper, mas
             # carrega `ordem` em vez de só label/valor/visivel).
             existing = (
@@ -3236,6 +3249,8 @@ def api_ordem_colunas_salvar(escopo: str):
                 "ordem": idx,
                 "updated_at": datetime.now().isoformat(),
             }
+            if label is not None:
+                payload["label"] = label
             if getattr(existing, "data", None):
                 (supabase.table(TABLE_CAMPOS_CONFIG)
                  .update(payload)

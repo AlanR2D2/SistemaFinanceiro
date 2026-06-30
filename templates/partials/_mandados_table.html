@@ -2932,6 +2932,58 @@
     const table = document.getElementById("mdTable");
     if (!table) return;
 
+    // ----- 0) Rótulos customizados para colunas fixas + extras -----
+    const modalLabelMap = {
+      data_quitacao: "mdDataQuitacao",
+      numero_processo: "mdNumeroProcesso",
+      uf: "mdUf",
+      reu: "mdReu",
+      autor: "mdAutor",
+      tel: "mdTel",
+      sentenca: "mdSentenca",
+      quitacao: "mdQuitacao",
+      status: "mdStatusSelect",
+      previsao: "mdPrevisao",
+      data_pagamento: "mdDataPagamento",
+      local: "mdLocalSelect",
+      tipo: "mdTipo",
+      tipo_reu: "mdTipoReu",
+      porcentagem_honorarios: "mdPorcentagemHonorarios",
+      deposito: "mdDeposito",
+      correcao: "mdCorrecao",
+      honorarios: "mdHonorarios",
+      audiencista: "mdAudiencista",
+      repasse: "mdRepasse",
+      chave_pix: "mdChavePix",
+      sucumbencia: "mdSucumbencia",
+      observacoes: "mdObservacoes",
+      extra_1: "mdExtra1",
+      extra_2: "mdExtra2",
+    };
+    Object.entries(cfg.labels || {}).forEach(([field, label]) => {
+      if (!field || !label) return;
+      const th = table.querySelector(`thead th[data-field="${field}"]`);
+      if (th) th.textContent = label;
+      const inputId = modalLabelMap[field];
+      if (inputId) {
+        const inputEl = document.getElementById(inputId);
+        const labelEl = inputEl?.closest(".md-field")?.querySelector("label");
+        if (labelEl) {
+          const suffix = (labelEl.textContent || "").match(/\(.*$/);
+          labelEl.textContent = label + (suffix ? ` ${suffix[0]}` : "");
+        }
+      }
+    });
+
+    // ----- 0) Rótulos customizados para colunas fixas + extras -----
+    Object.entries(cfg.labels || {}).forEach(([field, label]) => {
+      if (!field || !label) return;
+      const th = table.querySelector(`thead th[data-field="${field}"]`);
+      if (th) {
+        th.textContent = label;
+      }
+    });
+
     // ----- 1) Rótulos dos extras (item 3) -----
     document.querySelectorAll(".md-extra-field").forEach(el => {
       const key = el.getAttribute("data-extra");
