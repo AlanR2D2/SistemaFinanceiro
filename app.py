@@ -3231,11 +3231,8 @@ def api_ordem_colunas_salvar(escopo: str):
                 label = item.get("label")
             if label is None and isinstance(data.get("labels"), dict):
                 label = data.get("labels").get(chave)
-            if label is not None:
-                label = (label or None)
 
-            # Upsert linha em fin_campos_config (mesma lógica do helper, mas
-            # carrega `ordem` em vez de só label/valor/visivel).
+            # A ORDEM vai para o escopo de ordenação (ordem_acordos / ordem_mandados).
             existing = (
                 supabase.table(TABLE_CAMPOS_CONFIG)
                 .select("id")
@@ -3249,8 +3246,6 @@ def api_ordem_colunas_salvar(escopo: str):
                 "ordem": idx,
                 "updated_at": datetime.now().isoformat(),
             }
-            if label is not None:
-                payload["label"] = label
             if getattr(existing, "data", None):
                 (supabase.table(TABLE_CAMPOS_CONFIG)
                  .update(payload)
@@ -3266,6 +3261,13 @@ def api_ordem_colunas_salvar(escopo: str):
                     "visivel": 1,
                 })
                 supabase.table(TABLE_CAMPOS_CONFIG).insert(payload).execute()
+
+            # O LABEL custom vai para o escopo base (acordos / mandados), que é de
+            # onde os cabeçalhos da tabela, os modais e a tela de ordenação leem os
+            # rótulos. Label vazio reseta para o padrão. (Antes era gravado no
+            # escopo de ordem e por isso "não acontecia nada".)
+            if label is not None:
+                _upsert_campo_config(tenant, escopo, chave, label=(label or ""))
     except Exception:
         app.logger.exception("Falha ao salvar ordem de colunas")
         return jsonify({"ok": False, "error": "Falha ao salvar ordem."}), 500
