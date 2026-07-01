@@ -2960,10 +2960,19 @@
       extra_1: "mdExtra1",
       extra_2: "mdExtra2",
     };
+    // Aplica o rótulo SEM destruir a UI de filtro/ordenação que o buildHeaderUI
+    // já injetou no <th> (span de texto + botão ▾). Se o inner span existir,
+    // atualiza só ele; caso contrário (colunas no-filter) usa textContent.
+    function setHeaderLabel(th, label) {
+      if (!th) return;
+      const inner = th.querySelector(".md-th-inner > span");
+      if (inner) inner.textContent = label;
+      else th.textContent = label;
+    }
     Object.entries(cfg.labels || {}).forEach(([field, label]) => {
       if (!field || !label) return;
       const th = table.querySelector(`thead th[data-field="${field}"]`);
-      if (th) th.textContent = label;
+      setHeaderLabel(th, label);
       const inputId = modalLabelMap[field];
       if (inputId) {
         const inputEl = document.getElementById(inputId);
@@ -2972,15 +2981,6 @@
           const suffix = (labelEl.textContent || "").match(/\(.*$/);
           labelEl.textContent = label + (suffix ? ` ${suffix[0]}` : "");
         }
-      }
-    });
-
-    // ----- 0) Rótulos customizados para colunas fixas + extras -----
-    Object.entries(cfg.labels || {}).forEach(([field, label]) => {
-      if (!field || !label) return;
-      const th = table.querySelector(`thead th[data-field="${field}"]`);
-      if (th) {
-        th.textContent = label;
       }
     });
 
