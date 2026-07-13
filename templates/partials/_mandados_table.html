@@ -1430,7 +1430,10 @@
     const tbody = document.getElementById("mdTbody");
     if (!tbody) return;
 
-    let colorData = { status: {}, local: {}, conta: {} };
+    /* Mapa carregado da API (/api/row-colors-v2):
+       { chave_campo: { VALOR_UPPER: { cor, cor_letra, hierarquia } } }
+       Inclui status, local, conta E campos personalizados (ex: "travado"). */
+    let colorData = {};
 
     function norm(s) {
       return String(s ?? "")
@@ -1455,15 +1458,15 @@
 
     function cellTextByField(tr, field) {
       const td = tr.querySelector(`[data-field="${field}"]`);
-      return td ? (td.innerText || '') : '';
+      // textContent (não innerText) para funcionar mesmo se a coluna que dirige
+      // a cor estiver oculta (display:none) — ex: campo "travado" escondido.
+      return td ? (td.textContent || '') : '';
     }
 
     function applyRule(tr) {
       clearRowColor(tr);
 
-      const tipo   = norm(cellTextByField(tr, "tipo"));
-      const status = norm(cellTextByField(tr, "status"));
-      const local  = norm(cellTextByField(tr, "local"));
+      const tipo = norm(cellTextByField(tr, "tipo"));
 
       // tipo = CNPJ — prioridade máxima (hardcoded)
       if (tipo === "CNPJ") {
@@ -1471,14 +1474,22 @@
         return;
       }
 
-      // Coletar candidatos com hierarquia
+      // Coletar candidatos com hierarquia de TODOS os campos coloridos:
+      // status, local, conta e campos personalizados (ex: "travado").
       const candidates = [];
-
-      const sData = colorData.status[status];
-      if (sData) candidates.push(sData);
-
-      const lData = colorData.local[local];
-      if (lData) candidates.push(lData);
+      for (const chave in colorData) {
+        const mapa = colorData[chave];
+        if (!mapa) continue;
+        const cellText = cellTextByField(tr, chave);
+        if (!cellText) continue;
+        // Suporta select_multi ("A, B") e select_single ("SIM").
+        cellText.split(",").forEach(part => {
+          const val = norm(part);
+          if (!val) return;
+          const data = mapa[val];
+          if (data) candidates.push(data);
+        });
+      }
 
       if (!candidates.length) return;
 
@@ -1493,9 +1504,14 @@
 
     async function loadAndApply() {
       try {
-        const resp = await fetch("/api/row-colors");
+        const resp = await fetch("/api/row-colors-v2");
         if (resp.ok) {
-          colorData = await resp.json();
+          const j = await resp.json();
+          if (j && j.ok && j.mapa) colorData = j.mapa;
+        } else {
+          // Fallback legado (migration 05 ausente): só status/local/conta.
+          const r2 = await fetch("/api/row-colors");
+          if (r2.ok) colorData = await r2.json();
         }
       } catch (e) {
         console.warn("Falha ao carregar cores:", e);

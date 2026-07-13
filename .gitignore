@@ -63,6 +63,7 @@ Thumbs.db
 *.out
 *.tmp
 *.bak
+*.csv
 
 # Arquivos gerados em runtime
 instance/

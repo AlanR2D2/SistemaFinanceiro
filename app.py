@@ -2029,7 +2029,11 @@ def _config_campos_tabela(tenant: str, escopo: str) -> dict:
 
     for r in _campos_config_rows(tenant, escopo):
         chave = r.get("chave")
-        if chave in visiveis:
+        if not chave:
+            continue
+        # Visibilidade vale para QUALQUER coluna (fixas, extras e personalizadas),
+        # pois o tenant pode ocultar qualquer uma pela tela de Ordenar colunas.
+        if r.get("visivel") is not None:
             visiveis[chave] = 1 if int(r.get("visivel") or 0) == 1 else 0
         lbl = (r.get("label") or "").strip()
         if lbl and chave in labels:
@@ -3117,7 +3121,10 @@ def _build_ordem_colunas(tenant: str, escopo: str) -> list[dict]:
     for it in itens:
         chave = it["chave"]
         ordem = ordens_custom.get(chave, it.get("ordem_default", 1000))
-        vis = visiveis_custom.get(chave, visiveis_base.get(chave, 1))
+        # Escopo base ('acordos'/'mandados') é a fonte da verdade da visibilidade
+        # (é o que as tabelas de fato leem). O escopo de ordem só serve de
+        # fallback para configs legadas.
+        vis = visiveis_base.get(chave, visiveis_custom.get(chave, 1))
         out.append({
             "chave": chave,
             "label": labels_custom.get(chave, it["label"]),
@@ -3232,6 +3239,11 @@ def api_ordem_colunas_salvar(escopo: str):
             if label is None and isinstance(data.get("labels"), dict):
                 label = data.get("labels").get(chave)
 
+            # Visibilidade (opcional) — só é considerada quando enviada.
+            visivel = None
+            if isinstance(item, dict) and "visivel" in item:
+                visivel = 1 if item.get("visivel") else 0
+
             # A ORDEM vai para o escopo de ordenação (ordem_acordos / ordem_mandados).
             existing = (
                 supabase.table(TABLE_CAMPOS_CONFIG)
@@ -3262,12 +3274,15 @@ def api_ordem_colunas_salvar(escopo: str):
                 })
                 supabase.table(TABLE_CAMPOS_CONFIG).insert(payload).execute()
 
-            # O LABEL custom vai para o escopo base (acordos / mandados), que é de
-            # onde os cabeçalhos da tabela, os modais e a tela de ordenação leem os
-            # rótulos. Label vazio reseta para o padrão. (Antes era gravado no
-            # escopo de ordem e por isso "não acontecia nada".)
-            if label is not None:
-                _upsert_campo_config(tenant, escopo, chave, label=(label or ""))
+            # O LABEL custom e a VISIBILIDADE vão para o escopo base (acordos /
+            # mandados), que é de onde os cabeçalhos da tabela, os modais e a tela
+            # de ordenação leem os rótulos e o que ocultar. Label vazio reseta para
+            # o padrão. (Antes o label era gravado no escopo de ordem e por isso
+            # "não acontecia nada".)
+            label_arg = (label or "") if label is not None else None
+            if label_arg is not None or visivel is not None:
+                _upsert_campo_config(tenant, escopo, chave,
+                                     label=label_arg, visivel=visivel)
     except Exception:
         app.logger.exception("Falha ao salvar ordem de colunas")
         return jsonify({"ok": False, "error": "Falha ao salvar ordem."}), 500

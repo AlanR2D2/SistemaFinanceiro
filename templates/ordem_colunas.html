@@ -79,6 +79,17 @@
     padding: 2px 6px; font-size: 11px; color:#64748b; font-weight:800;
   }
 
+  /* Toggle de visibilidade da coluna (por tenant) */
+  .ordem-vis{
+    display:inline-flex; align-items:center; gap:6px; cursor:pointer;
+    font-size:11px; font-weight:800; color:#475569; user-select:none;
+    padding: 4px 8px; border-radius:8px; border:1px solid #e2e8f0; background:#fff;
+  }
+  .ordem-vis input{ cursor:pointer; }
+  .ordem-item.oculta{ opacity:.62; background:#f8fafc; }
+  .ordem-item.oculta input.ordem-label-input{ color:#94a3b8; }
+  .ordem-vis .vis-txt{ min-width:52px; }
+
   .inp{
     width:100%; height:40px; padding:0 12px;
     border:1px solid var(--mw-border); border-radius:10px;
@@ -115,7 +126,8 @@
         <div class="oc-title">Ordem das colunas — {{ titulo }}</div>
         <div class="oc-sub">
           Arraste para reordenar as colunas da tabela de {{ titulo }}. Inclui colunas fixas (Data, Valor, Autor…)
-          e personalizadas. A ordem é por tenant — não afeta outras empresas.
+          e personalizadas. Use o botão <strong>Visível</strong> para ocultar colunas que não quiser exibir.
+          A ordem e a visibilidade são por tenant — não afetam outras empresas.
         </div>
       </div>
       <button type="button" class="btn btn-blue" data-save-ordem="{{ escopo }}">Salvar ordem</button>
@@ -197,15 +209,35 @@
       wrap.innerHTML = `<div style="padding:14px; color:#64748b;">Nenhuma coluna disponível.</div>`;
       return;
     }
-    wrap.innerHTML = colunas.map((c, i) => `
-      <div class="ordem-item" draggable="true" data-chave="${escapeHtml(c.chave)}">
+    wrap.innerHTML = colunas.map((c, i) => {
+      const visivel = (c.visivel === undefined || c.visivel === null) ? 1 : Number(c.visivel);
+      return `
+      <div class="ordem-item${visivel ? "" : " oculta"}" draggable="true" data-chave="${escapeHtml(c.chave)}">
         <span class="drag-handle">⋮⋮</span>
         <span class="pos">${i + 1}</span>
         <input class="inp ordem-label-input" type="text" data-chave="${escapeHtml(c.chave)}" value="${escapeHtml(c.label)}" placeholder="Rótulo">
+        <label class="ordem-vis" title="Exibir esta coluna na tabela">
+          <input type="checkbox" class="ordem-vis-input" ${visivel ? "checked" : ""}>
+          <span class="vis-txt">${visivel ? "Visível" : "Oculta"}</span>
+        </label>
         <span class="origem-chip ${c.origem}">${originLabel(c.origem)}</span>
       </div>
-    `).join("");
+    `;
+    }).join("");
     bindDragDrop(wrap);
+    bindVis(wrap);
+  }
+
+  /* Atualiza o rótulo Visível/Oculta e o estilo ao alternar o checkbox. */
+  function bindVis(wrap){
+    wrap.querySelectorAll(".ordem-vis-input").forEach(chk => {
+      chk.addEventListener("change", () => {
+        const item = chk.closest(".ordem-item");
+        const txt = item?.querySelector(".vis-txt");
+        if (item) item.classList.toggle("oculta", !chk.checked);
+        if (txt) txt.textContent = chk.checked ? "Visível" : "Oculta";
+      });
+    });
   }
 
   function bindDragDrop(wrap){
@@ -248,6 +280,7 @@
       .map(it => ({
         chave: it.dataset.chave,
         label: it.querySelector(".ordem-label-input")?.value.trim(),
+        visivel: it.querySelector(".ordem-vis-input")?.checked ? 1 : 0,
       }));
 
     msg.style.color = "#64748b";
