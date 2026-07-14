@@ -2952,8 +2952,8 @@
     const modalLabelMap = {
       data_quitacao: "mdDataQuitacao",
       numero_processo: "mdNumeroProcesso",
-      uf: "mdUf",
-      reu: "mdReu",
+      uf: "mdUfSelect",
+      reu: "mdReuSelect",
       autor: "mdAutor",
       tel: "mdTel",
       sentenca: "mdSentenca",
@@ -3046,6 +3046,60 @@
       });
     }
     applyExtraFieldsModalVis();
+
+    // ----- 2b) Ordem + visibilidade dos campos NO MODAL -----
+    // Espelha a config de colunas (window.MD_ORDEM, de _build_ordem_colunas)
+    // dentro do modal de criação/edição:
+    //   • posiciona cada campo personalizado na posição escolhida pelo tenant
+    //     (antes eram sempre renderizados no fim da grade);
+    //   • oculta no modal os campos de colunas marcadas como ocultas
+    //     (ex.: TIPO), como já era feito para os campos extras.
+    (function aplicaModalOrdemVisibilidade() {
+      const ordem = Array.isArray(window.MD_ORDEM) ? window.MD_ORDEM : [];
+      if (!ordem.length) return;
+      const grid = document.querySelector("#mdModalOverlay .md-grid");
+      if (!grid) return;
+
+      const escapeSel = (s) =>
+        (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/"/g, '\\"');
+
+      // Container .md-field do modal para um item da ordem (fixo/sistema via
+      // input mapeado; personalizado via data-cf-chave).
+      function fieldEl(item) {
+        if (!item || !item.chave) return null;
+        if (item.origem === "custom") {
+          return grid.querySelector(`.md-custom-field[data-cf-chave="${escapeSel(item.chave)}"]`);
+        }
+        const inputId = modalLabelMap[item.chave];
+        if (!inputId) return null;
+        const inp = document.getElementById(inputId);
+        return inp ? inp.closest(".md-field") : null;
+      }
+
+      // 1) Reposiciona só os campos personalizados; os fixos mantêm o layout
+      //    desenhado do modal. Cada personalizado é inserido logo após o campo
+      //    que o antecede na ordem configurada.
+      ordem.forEach((item, i) => {
+        if (item.origem !== "custom") return;
+        const el = fieldEl(item);
+        if (!el) return;
+        let anchor = null;
+        for (let j = i - 1; j >= 0; j--) {
+          const prev = fieldEl(ordem[j]);
+          if (prev) { anchor = prev; break; }
+        }
+        if (anchor) anchor.after(el);
+        else grid.prepend(el);
+      });
+
+      // 2) Oculta no modal os campos das colunas marcadas como ocultas.
+      ordem.forEach(item => {
+        if (Number(item.visivel) === 0) {
+          const el = fieldEl(item);
+          if (el) el.style.display = "none";
+        }
+      });
+    })();
 
     // ----- 3) % Honorários padrão (item 5) -----
     function prefillPorcDefault() {

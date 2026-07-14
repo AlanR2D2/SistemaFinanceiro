@@ -66,9 +66,12 @@ node = shutil.which("node")
 if node:
     passo("5) JS — filtro preservado ao renomear",
           lambda: run([node, os.path.join(TESTS, "test_frontend_headers.js")]))
+    passo("5b) JS — ordem/visibilidade dos campos no modal",
+          lambda: run([node, os.path.join(TESTS, "test_modal_ordem_visibilidade.js")]))
 else:
-    print("\n(!) node não encontrado — pulando teste JS de headers")
+    print("\n(!) node não encontrado — pulando testes JS")
     resultados.append(("5) JS headers (pulado)", True))
+    resultados.append(("5b) JS modal ordem/visibilidade (pulado)", True))
 
 passo("6) Smoke HTTP telas + filtros", lambda: run([PY, os.path.join(TESTS, "test_smoke_http.py")]))
 
