@@ -777,7 +777,7 @@
 
   {% set _role = (current_user.role if (current_user is defined and current_user.is_authenticated and current_user.role
   is defined) else '') %}
-  {% if _role|string|lower == 'admin' %}
+  {% if _role|string|lower in ['admin', 'financeiro'] %}
   <div class="md-sums">
     <div class="md-sums-grid">
       <div class="md-sum-card">

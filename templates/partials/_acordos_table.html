@@ -749,7 +749,7 @@
   {% set _role = (current_user.role if (current_user is defined and current_user.is_authenticated and current_user.role
   is defined) else (current_user.hierarquia if (current_user is defined and current_user.is_authenticated and
   current_user.hierarquia is defined) else '')) %}
-  {% if _role|string|lower == 'admin' %}
+  {% if _role|string|lower in ['admin', 'financeiro'] %}
   <div class="ac-totals" id="acTotalsBar" aria-live="polite">
     <div class="ac-total-box">
       <div class="ac-total-label">Honorários</div>

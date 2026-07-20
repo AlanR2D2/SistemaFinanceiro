@@ -74,3 +74,7 @@ backups/
 
 # Credenciais dos testes E2E
 .env.test
+
+
+*.xlsx
+*.csv
