@@ -2623,7 +2623,7 @@
         _fillForm({});
         window.AC_AUTOCALC?.resetForCreate?.();
 
-        document.getElementById("acTipoReu")?.focus();
+        document.getElementById("acTipoReu")?.focus({ preventScroll: true });
         window.AC_AUTOCALC?.refreshTipoReuSignal?.();
       } else {
         badge.textContent = "Editar";
@@ -3187,21 +3187,27 @@
         return inp ? inp.closest(".ac-field") : null;
       }
 
-      // 1) Reposiciona só os campos personalizados; os fixos mantêm o layout
-      //    desenhado do modal. Cada personalizado é inserido logo após o campo
-      //    que o antecede na ordem configurada.
-      ordem.forEach((item, i) => {
-        if (item.origem !== "custom") return;
+      // 1) Reordena os campos do modal para espelhar a ordem das colunas
+      //    configurada pelo tenant (antes só os personalizados eram movidos, e
+      //    os fixos — ex.: Sucumbência — ficavam no lugar errado).
+      //    Usa a MESMA estratégia da tabela: apenas os campos que fazem parte
+      //    da ordem trocam de lugar ENTRE SI (ocupam, na sequência da ordem, os
+      //    "slots" que hoje pertencem a campos ordenáveis). Campos que não fazem
+      //    parte da ordem (ex.: Tipo réu, mes_pg oculto e os extras) permanecem
+      //    ancorados na posição original.
+      const gridFields = Array.from(grid.querySelectorAll(":scope > .ac-field"));
+      const desejados = [];
+      const ordenavel = new Set();
+      ordem.forEach(item => {
         const el = fieldEl(item);
-        if (!el) return;
-        let anchor = null;
-        for (let j = i - 1; j >= 0; j--) {
-          const prev = fieldEl(ordem[j]);
-          if (prev) { anchor = prev; break; }
-        }
-        if (anchor) anchor.after(el);
-        else grid.prepend(el);
+        if (el && !ordenavel.has(el)) { desejados.push(el); ordenavel.add(el); }
       });
+      let di = 0;
+      const novaSeq = gridFields.map(el => {
+        if (ordenavel.has(el) && di < desejados.length) return desejados[di++];
+        return el;
+      });
+      novaSeq.forEach(el => grid.appendChild(el));
 
       // 2) Oculta no modal os campos das colunas marcadas como ocultas.
       ordem.forEach(item => {
@@ -3233,5 +3239,152 @@
         return r;
       };
     }
+  })();
+</script>
+
+<script>
+  /* ===================== MÁSCARA DECIMAL (dinheiro) — sempre 2 casas =====================
+     Comportamento pedido:
+       • Ao digitar "155" o campo já mostra "155,00" (parte inteira à esquerda da vírgula),
+         com o cursor ANTES da vírgula — continuar digitando estende o inteiro (1550,00).
+       • Para editar os centavos, o usuário usa a seta para a direita OU clica sobre os "00".
+       • Ao sair do campo (blur) o valor recebe separador de milhar (1.234,56).
+       • Ao focar, o separador de milhar é removido para facilitar a edição (1234,56).
+     Aplicada apenas a campos monetários de entrada e NÃO-negativos (Valor acordo, Depósito,
+     Audiencista, Sucumbência). Os campos AUTO (Correção/Honorários/Repasse) não recebem a
+     máscara: já saem com 2 casas do cálculo e podem ser negativos. */
+  (function () {
+    const onlyD = (s) => (s || "").replace(/\D/g, "");
+
+    // Converte um texto cru para o invariante "INT,CC" (ou "" se vazio) e
+    // devolve a nova posição do cursor. A posição é reconstruída contando
+    // dígitos à esquerda do cursor (robusto a separadores removidos), sem
+    // depender de marcadores no meio da string.
+    function normalize(raw, caret) {
+      raw = String(raw || "");
+      caret = Math.max(0, Math.min(caret, raw.length));
+
+      const ci = raw.indexOf(",");           // primeira vírgula = separador decimal
+      const hasComma = ci !== -1;
+
+      // Segmento onde o cursor está + quantos dígitos existem à sua esquerda.
+      let seg, digitsLeft;
+      if (!hasComma || caret <= ci) {
+        seg = "int";
+        digitsLeft = onlyD(raw.slice(0, caret)).length;
+      } else {
+        seg = "cent";
+        digitsLeft = onlyD(raw.slice(ci + 1, caret)).length;
+      }
+
+      const intD = onlyD(hasComma ? raw.slice(0, ci) : raw);
+      const centRaw = hasComma ? onlyD(raw.slice(ci + 1)) : "";
+      const cents = hasComma ? (centRaw + "00").slice(0, 2) : "00";
+
+      if (intD === "" && cents === "00") return { value: "", caret: 0 };
+
+      const intShown = intD === "" ? "0" : intD;
+      const value = intShown + "," + cents;
+
+      const pos = (seg === "int")
+        ? Math.min(digitsLeft, intShown.length)
+        : intShown.length + 1 + Math.min(digitsLeft, 2);
+
+      return { value, caret: pos };
+    }
+
+    function normalizeSimple(raw) {
+      return normalize(raw, String(raw || "").length);
+    }
+
+    function installMoneyMask(input, opts) {
+      if (!input || input.dataset.moneyMask === "1") return;
+      input.dataset.moneyMask = "1";
+      input.setAttribute("inputmode", "decimal");
+
+      const parse = opts.parse;
+      const groupFormat = opts.format;
+
+      function apply(raw, caret) {
+        const r = normalize(raw, caret);
+        input.value = r.value;
+        try { input.setSelectionRange(r.caret, r.caret); } catch (_) {}
+        // Evento sintético (isTrusted=false) para os cálculos automáticos que
+        // dependem deste campo reagirem, sem acionar o fallback abaixo.
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+
+      input.addEventListener("beforeinput", (e) => {
+        const it = e.inputType || "";
+        const cur = input.value;
+        const s = input.selectionStart == null ? cur.length : input.selectionStart;
+        const eSel = input.selectionEnd == null ? s : input.selectionEnd;
+
+        if (it.indexOf("insert") === 0) {
+          const data = (e.data != null)
+            ? e.data
+            : (e.dataTransfer ? e.dataTransfer.getData("text") : "");
+          if (data == null) return;                 // deixa o padrão (raro)
+          e.preventDefault();
+          apply(cur.slice(0, s) + data + cur.slice(eSel), s + String(data).length);
+          return;
+        }
+
+        if (it.indexOf("delete") === 0) {
+          e.preventDefault();
+          if (s !== eSel) { apply(cur.slice(0, s) + cur.slice(eSel), s); return; }
+          if (it.indexOf("Forward") !== -1) {
+            let del = s;
+            if (cur[del] === ",") del += 1;          // pula a vírgula (apaga 1º centavo)
+            if (del >= cur.length) { apply(cur, s); return; }
+            apply(cur.slice(0, del) + cur.slice(del + 1), s);
+          } else {
+            let del = s - 1;
+            if (del >= 0 && cur[del] === ",") del -= 1; // pula a vírgula (apaga último dígito do inteiro)
+            if (del < 0) { apply(cur, 0); return; }
+            apply(cur.slice(0, del) + cur.slice(del + 1), del);
+          }
+          return;
+        }
+        // Demais tipos (undo/redo, etc.): deixa o padrão; o fallback normaliza.
+      });
+
+      // Fallback para edições nativas que escaparam (undo/redo/drop/IME).
+      input.addEventListener("input", (e) => {
+        if (!e.isTrusted) return;                    // ignora nossos eventos sintéticos
+        const r = normalizeSimple(input.value);
+        input.value = r.value;
+        try { input.setSelectionRange(r.caret, r.caret); } catch (_) {}
+      });
+
+      // Ao focar: tira o separador de milhar (edição mais simples) e leva o
+      // cursor para antes da vírgula. Um clique posterior reposiciona o cursor.
+      input.addEventListener("focus", () => {
+        const v = (input.value || "").trim();
+        if (!v) return;
+        const n = parse(v);
+        if (!Number.isFinite(n)) return;
+        const plain = Math.abs(n).toFixed(2).replace(".", ",");
+        input.value = plain;
+        const ci = plain.indexOf(",");
+        const pos = ci === -1 ? plain.length : ci;
+        try { input.setSelectionRange(pos, pos); } catch (_) {}
+      });
+
+      // Ao sair: formata com separador de milhar e 2 casas (ou limpa se vazio).
+      input.addEventListener("blur", () => {
+        const v = (input.value || "").trim();
+        if (!v) { input.value = ""; return; }
+        const n = parse(v);
+        input.value = Number.isFinite(n) ? groupFormat(n) : "";
+      });
+    }
+
+    const parse = (v) => { const n = acParseAnyNumber(v); return (n === null || !Number.isFinite(n)) ? NaN : n; };
+    const groupFormat = (n) => acFormatBR(n);
+
+    ["acValorAcordo", "acValorDeposito", "acAudiencista", "acSucumbencia"].forEach(id => {
+      installMoneyMask(document.getElementById(id), { parse, format: groupFormat });
+    });
   })();
 </script>
