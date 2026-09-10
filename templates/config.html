@@ -110,15 +110,15 @@
     {% endif %}
 
     <div class="cfg-b">
-      <form method="post" action="{{ url_for('config_post') }}">
+      <form method="post" action="{{ url_for('config_post') }}" autocomplete="off">
         <div class="grid">
           <div class="field">
             <label>Nome</label>
-            <input class="inp" name="nome" value="{{ user.nome or '' }}" placeholder="Seu nome">
+            <input class="inp" name="nome" value="{{ user.nome or '' }}" placeholder="Seu nome" autocomplete="off">
           </div>
           <div class="field">
             <label>Email</label>
-            <input class="inp" name="email" value="{{ user.email or '' }}" placeholder="email@dominio.com">
+            <input class="inp" name="email" value="{{ user.email or '' }}" placeholder="email@dominio.com" autocomplete="off">
           </div>
         </div>
 
@@ -128,15 +128,15 @@
         <div class="grid">
           <div class="field">
             <label>Senha atual</label>
-            <input class="inp" name="senha_atual" type="password" placeholder="Senha atual">
+            <input class="inp" name="senha_atual" type="password" placeholder="Senha atual" autocomplete="new-password">
           </div>
           <div class="field">
             <label>Nova senha</label>
-            <input class="inp" name="senha_nova" type="password" placeholder="Nova senha (mín. 6 caracteres)">
+            <input class="inp" name="senha_nova" type="password" placeholder="Nova senha (mín. 6 caracteres)" autocomplete="new-password">
           </div>
           <div class="field">
             <label>Confirmar nova senha</label>
-            <input class="inp" name="senha_nova2" type="password" placeholder="Confirme a nova senha">
+            <input class="inp" name="senha_nova2" type="password" placeholder="Confirme a nova senha" autocomplete="new-password">
           </div>
           <div class="field" style="display:flex; align-items:end; justify-content:flex-end;">
             <button class="btn btn-blue" type="submit" style="width:100%;">Salvar alterações</button>

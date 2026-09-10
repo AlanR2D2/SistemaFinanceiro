@@ -3319,7 +3319,10 @@ def config_post():
     if email != "":
         payload["email"] = email
 
-    wants_pw_change = any([senha_atual, senha_nova, senha_nova2])
+    # A intenção de trocar a senha é definida pelos campos de senha NOVA.
+    # O campo "senha atual" sozinho é ignorado, pois o navegador costuma
+    # preenchê-lo automaticamente (autofill) sem ação do usuário.
+    wants_pw_change = any([senha_nova, senha_nova2])
     if wants_pw_change:
         if not (senha_atual and senha_nova and senha_nova2):
             return redirect(url_for("config_page", error="Para trocar a senha, preencha senha atual, nova e confirmação."))
