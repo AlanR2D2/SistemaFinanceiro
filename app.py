@@ -7,14 +7,18 @@ from datetime import date, datetime
 from collections import Counter
 
 from dotenv import load_dotenv
-from flask import Flask, render_template, render_template_string, request, redirect, url_for, jsonify, abort, send_from_directory, session
+from flask import Flask, render_template, render_template_string, request, redirect, url_for, jsonify, abort, send_from_directory, session, g, has_request_context
 from flask_login import (
     LoginManager, UserMixin, login_user, login_required,
     logout_user, current_user
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 from supabase import create_client, Client
+from supabase.lib.client_options import ClientOptions
+from postgrest.exceptions import APIError
 import httpx
+import threading
+import time
 
 load_dotenv()
 
@@ -58,7 +62,21 @@ def _no_store_para_apis(response):
     return response
 
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# Timeout do cliente PostgREST. O padrão da lib é 120 s — igual ao --timeout do
+# gunicorn — então uma chamada pendurada segurava a thread até o gunicorn matar o
+# worker inteiro (derrubando junto as outras requisições em voo nele). Com um
+# timeout curto a chamada falha rápido, entra no retry e libera a thread.
+SUPABASE_TIMEOUT_SECONDS = float(os.getenv("SUPABASE_TIMEOUT_SECONDS", "15"))
+
+
+def _new_supabase_client() -> Client:
+    return create_client(
+        SUPABASE_URL, SUPABASE_KEY,
+        options=ClientOptions(postgrest_client_timeout=SUPABASE_TIMEOUT_SECONDS),
+    )
+
+
+supabase: Client = _new_supabase_client()
 
 
 def _recreate_supabase_client() -> None:
@@ -66,30 +84,185 @@ def _recreate_supabase_client() -> None:
     conexão HTTP/2 keep-alive é terminada pelo servidor (RemoteProtocolError) ou
     em outros erros transientes de transporte."""
     global supabase
-    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    supabase = _new_supabase_client()
+
+
+# Códigos Postgres/PostgREST que indicam falha momentânea do banco (vale repetir):
+#   57014 statement timeout · 53300 too many connections · 57P03 cannot connect now
+#   08000/08003/08006 falha de conexão · PGRST000/001/002 PostgREST sem acesso ao banco
+_APIERROR_CODIGOS_TRANSIENTES = {
+    "57014", "53300", "57P03", "08000", "08003", "08006",
+    "PGRST000", "PGRST001", "PGRST002",
+}
+# O gateway do Supabase devolve só {"message": "Gateway Timeout"} (sem code).
+_APIERROR_MENSAGENS_TRANSIENTES = (
+    "gateway timeout", "bad gateway", "service unavailable",
+    "statement timeout", "timed out",
+)
+
+
+def _is_transient_error(e: Exception) -> bool:
+    """True para erros momentâneos de infraestrutura (rede/gateway/banco
+    sobrecarregado). Erros de dados/SQL (23505, 42703, 22P02...) retornam False
+    — repetir não adianta e mascararia bugs reais."""
+    if isinstance(e, httpx.TransportError):
+        return True
+    if isinstance(e, APIError):
+        if (e.code or "") in _APIERROR_CODIGOS_TRANSIENTES:
+            return True
+        msg = (e.message or "").lower()
+        return any(m in msg for m in _APIERROR_MENSAGENS_TRANSIENTES)
+    return False
 
 
 def _exec_with_retry(builder, retries: int = 2):
     """Executa um closure que constrói+executa uma query supabase-py com retry em
-    erros transientes (httpx.TransportError engloba RemoteProtocolError, ReadError,
-    ConnectError, timeouts, etc.). Entre tentativas recria o cliente global, pois o
-    builder lê `supabase` do escopo global a cada chamada."""
-    last_exc: Exception | None = None
+    erros transientes: transporte HTTP (RemoteProtocolError, ReadError, timeouts...)
+    e respostas 5xx do gateway/banco (ex.: APIError 'Gateway Timeout').
+
+    Use SOMENTE para leituras (SELECT/RPC sem efeito colateral): repetir um
+    INSERT após timeout pode duplicar o registro.
+
+    Entre tentativas recria o cliente (em erro de transporte) e espera um backoff
+    curto, para não martelar um banco que já está sobrecarregado. O builder deve
+    ler `supabase` do escopo global a cada chamada."""
     for attempt in range(retries + 1):
         try:
             return builder()
-        except httpx.TransportError as e:
-            last_exc = e
+        except Exception as e:
+            if not _is_transient_error(e) or attempt >= retries:
+                raise
+            espera = 0.4 * (2 ** attempt)  # 0,4 s -> 0,8 s
             app.logger.warning(
-                "Supabase transient %s (tentativa %d/%d) — recriando cliente",
-                type(e).__name__, attempt + 1, retries + 1,
+                "Supabase transiente %s: %s (tentativa %d/%d) — nova tentativa em %.1fs",
+                type(e).__name__, str(e)[:120], attempt + 1, retries + 1, espera,
             )
-            if attempt < retries:
+            if isinstance(e, httpx.TransportError):
                 _recreate_supabase_client()
-                continue
-            raise
-    if last_exc:
-        raise last_exc
+            time.sleep(espera)
+
+
+# ===================== CACHE (config quase estática) =====================
+# Cada tela fazia ~20 idas sequenciais ao Supabase, relendo a cada requisição
+# tabelas que quase nunca mudam (fin_custom_fields, fin_custom_field_options,
+# fin_campos_config, fin_users) — e repetindo a mesma query várias vezes dentro
+# da MESMA requisição. Quando o Supabase oscila, cada ida extra é mais uma chance
+# de 504.
+#
+# Regras:
+#   - Só requisições de LEITURA (GET/HEAD) usam cache. Escritas sempre leem do
+#     banco: várias rotas validam antes de gravar (duplicidade de opção, limite
+#     de campos, próxima chave cf_N) e não podem decidir com dado velho.
+#   - Memo por requisição (flask.g) + cache TTL curto entre requisições.
+#   - Invalidação entre workers: o gunicorn roda N processos, cada um com sua
+#     memória. Toda escrita troca um arquivo-marcador no disco do container
+#     (os.replace => novo inode); cada entrada guarda a "geração" do marcador
+#     de quando foi lida e é descartada se ela mudou. Assim quem altera um
+#     cadastro vê o efeito na hora, em qualquer worker.
+#   - Alterações feitas FORA do app (painel do Supabase, scripts de sync)
+#     aparecem em até CACHE_TTL_SECONDS.
+
+CACHE_TTL_SECONDS = float(os.getenv("CACHE_TTL_SECONDS", "30"))
+CACHE_MARKER_PATH = os.getenv(
+    "CACHE_MARKER_PATH",
+    os.path.join(__import__("tempfile").gettempdir(), "sistema_financeiro_cache.gen"),
+)
+
+_TTL_CACHE: dict[tuple, tuple[float, tuple, object]] = {}
+_TTL_CACHE_LOCK = threading.Lock()
+
+
+def _cache_generation() -> tuple:
+    """Identidade atual do arquivo-marcador (muda a cada invalidação).
+    os.stat é barato (microssegundos) e é lido uma vez por requisição."""
+    try:
+        st = os.stat(CACHE_MARKER_PATH)
+        return (st.st_ino, st.st_mtime_ns)
+    except FileNotFoundError:
+        return (0, 0)
+    except OSError:
+        return (-1, time.monotonic_ns())  # marcador ilegível: nunca casa => sem cache
+
+
+def _cache_bump_generation() -> None:
+    """Troca o marcador atomicamente, invalidando o cache de TODOS os workers."""
+    tmp = f"{CACHE_MARKER_PATH}.{os.getpid()}.{threading.get_ident()}.tmp"
+    try:
+        with open(tmp, "w") as fh:
+            fh.write(str(time.time_ns()))
+        os.replace(tmp, CACHE_MARKER_PATH)
+    except OSError:
+        app.logger.warning("Não foi possível atualizar o marcador de cache %s", CACHE_MARKER_PATH)
+
+
+def _cache_leitura_permitida() -> bool:
+    return has_request_context() and request.method in ("GET", "HEAD")
+
+
+def _cached(key: tuple, producer, ttl: float | None = None):
+    """Devolve producer() memorizado por requisição e por `ttl` segundos.
+
+    `key` deve identificar unicamente o resultado (inclua o tenant!). Retorna o
+    mesmo objeto para chamadas repetidas — quem usa NÃO deve mutá-lo.
+    Exceções do producer não são cacheadas. Fora de GET/HEAD chama producer()
+    direto, sem cache."""
+    if not _cache_leitura_permitida():
+        return producer()
+
+    ttl = CACHE_TTL_SECONDS if ttl is None else ttl
+    memo = g.__dict__.setdefault("_cache_memo", {})
+    if key in memo:
+        return memo[key]
+
+    geracao = g.__dict__.get("_cache_geracao")
+    if geracao is None:
+        geracao = g._cache_geracao = _cache_generation()
+
+    agora = time.monotonic()
+    if ttl > 0:
+        with _TTL_CACHE_LOCK:
+            hit = _TTL_CACHE.get(key)
+        if hit is not None and hit[0] > agora and hit[1] == geracao:
+            memo[key] = hit[2]
+            return hit[2]
+
+    valor = producer()
+
+    if ttl > 0:
+        with _TTL_CACHE_LOCK:
+            # Guarda a geração lida ANTES da consulta: se outra escrita trocar o
+            # marcador durante o fetch, esta entrada já nasce inválida.
+            _TTL_CACHE[key] = (agora + ttl, geracao, valor)
+            if len(_TTL_CACHE) > 5000:  # proteção contra crescimento sem limite
+                vencidas = [k for k, v in _TTL_CACHE.items() if v[0] <= agora]
+                for k in vencidas:
+                    _TTL_CACHE.pop(k, None)
+    memo[key] = valor
+    return valor
+
+
+def _cache_invalidate() -> None:
+    """Invalida o cache em todos os workers e limpa o memo da requisição atual."""
+    _cache_bump_generation()
+    with _TTL_CACHE_LOCK:
+        _TTL_CACHE.clear()
+    if has_request_context():
+        g.__dict__.pop("_cache_memo", None)
+        g.__dict__.pop("_cache_geracao", None)
+
+
+@app.after_request
+def _invalida_caches_apos_escrita(response):
+    """Qualquer escrita (POST/PUT/PATCH/DELETE) pode ter alterado cadastros,
+    campos, labels ou usuários: invalida o cache inteiro em todos os workers.
+    Invalidação ampla de propósito — sem risco de esquecer um ponto de escrita;
+    independe do status porque uma rota pode gravar e só depois devolver erro."""
+    try:
+        if request.method not in ("GET", "HEAD", "OPTIONS"):
+            _cache_invalidate()
+    except Exception:
+        pass
+    return response
 
 
 TABLE_USERS = "fin_users"
@@ -114,7 +287,9 @@ def _load_active_tenants() -> list[dict]:
     if (now - _TENANTS_CACHE["ts"]) < _TENANTS_CACHE_TTL and _TENANTS_CACHE["data"]:
         return _TENANTS_CACHE["data"]
     try:
-        res = supabase.table(TABLE_TENANTS).select("nome,ativo").order("nome").execute()
+        res = _exec_with_retry(
+            lambda: supabase.table(TABLE_TENANTS).select("nome,ativo").order("nome").execute()
+        )
         data = getattr(res, "data", None) or []
     except Exception:
         data = []
@@ -203,12 +378,21 @@ def _get_tenant() -> str:
 
 
 def _get_user_by_login(login: str) -> dict | None:
+    """Lê o usuário por login. Cacheado em GETs porque o user_loader do
+    Flask-Login roda em TODA requisição autenticada (inclusive /tenant-logo).
+    Qualquer escrita no app invalida o cache (ver _cached)."""
     login = (login or "").strip()
     if not login:
         return None
-    res = supabase.table(TABLE_USERS).select("*").eq("login", login).limit(1).execute()
-    rows = getattr(res, "data", None) or []
-    return rows[0] if rows else None
+
+    def _fetch():
+        res = _exec_with_retry(
+            lambda: supabase.table(TABLE_USERS).select("*").eq("login", login).limit(1).execute()
+        )
+        rows = getattr(res, "data", None) or []
+        return rows[0] if rows else None
+
+    return _cached(("user", login), _fetch)
 
 
 def _is_hash(stored_password: str) -> bool:
@@ -735,14 +919,20 @@ def _kpis(rows: list[dict]):
     return {"total": total, "pagos": pagos, "sem_pag": sem_pag, "ativos": ativos, "finalizados": finalizados}
 
 
+def _ordena_top(contagens: dict) -> tuple[list, list]:
+    """Maior contagem primeiro; empate em ordem alfabética (determinístico —
+    antes o empate seguia a ordem física das linhas no banco)."""
+    items = sorted(contagens.items(), key=lambda kv: (-kv[1], kv[0]))
+    return [k for k, _ in items], [v for _, v in items]
+
+
 def _top_counter(rows: list[dict], field: str):
     c = Counter()
     for r in rows:
         v = _norm(r.get(field))
         if v:
             c[v] += 1
-    items = c.most_common()
-    return [k for k, _ in items], [v for _, v in items]
+    return _ordena_top(c)
 
 
 def _all_distinct(rows1: list[dict], rows2: list[dict], field: str) -> list[str]:
@@ -777,15 +967,73 @@ def _apply_multi_filter(rows: list[dict], field: str, selected: list[str]) -> li
     return out
 
 
-@app.get("/")
-@login_required
-def dashboard():
-    selected_statuses = request.args.getlist("status")
-    selected_ufs = request.args.getlist("uf")
-    selected_reus = request.args.getlist("reu")
+def _dashboard_filtro_rpc(selected: list[str]) -> dict | None:
+    """Mesma interpretação de _apply_multi_filter, no formato de fin_dashboard."""
+    if not selected:
+        return None
+    wanted = sorted(set([_norm(x) for x in selected if x and _norm(x) and x != "__BLANK__"]))
+    want_blank = "__BLANK__" in selected
+    if not wanted and not want_blank:
+        return None
+    return {"vals": wanted, "blank": want_blank}
 
-    # ✅ adiciona tipo_reu também
-    cols = "uf, reu, status, data_pagamento, finalizado, tipo_reu"
+
+def _dashboard_dados_rpc(selected_statuses, selected_ufs, selected_reus) -> dict | None:
+    """KPIs/gráficos agregados no Postgres. None se a função não estiver disponível."""
+    filtros = {}
+    for campo, sel in (("status", selected_statuses), ("uf", selected_ufs), ("reu", selected_reus)):
+        f = _dashboard_filtro_rpc(sel)
+        if f is not None:
+            filtros[campo] = f
+
+    dados = _rpc_agregacao("fin_dashboard", {"p_tenant": _get_tenant(), "p_filtros": filtros})
+    if not isinstance(dados, dict):
+        return None
+
+    def _bloco(b: dict) -> tuple[dict, dict]:
+        b = b or {}
+        k = b.get("kpis") or {}
+        total = int(k.get("total") or 0)
+        pagos = int(k.get("pagos") or 0)
+        finalizados = int(k.get("finalizados") or 0)
+        kpis = {"total": total, "pagos": pagos, "sem_pag": total - pagos,
+                "ativos": total - finalizados, "finalizados": finalizados}
+
+        meses = sorted((str(m), int(n)) for m, n in (b.get("mes") or []))
+        uf_l, uf_v = _ordena_top({str(v): int(n) for v, n in (b.get("uf") or [])})
+        reu_l, reu_v = _ordena_top({str(v): int(n) for v, n in (b.get("reu") or [])})
+        st_l, st_v = _ordena_top({str(v): int(n) for v, n in (b.get("status") or [])})
+        chart = {
+            "mes_labels": [_fmt_mmm_aa(m) for m, _ in meses],
+            "mes_values": [n for _, n in meses],
+            "uf_labels": uf_l, "uf_values": uf_v,
+            "reu_labels": reu_l, "reu_values": reu_v,
+            "status_labels": st_l, "status_values": st_v,
+        }
+        return kpis, chart
+
+    ac_kpis, ac_chart = _bloco(dados.get("acordos"))
+    md_kpis, md_chart = _bloco(dados.get("mandados"))
+    opcoes = dados.get("opcoes") or {}
+    return {
+        "kpis": {"acordos": ac_kpis, "mandados": md_kpis},
+        "charts": {"acordos": ac_chart, "mandados": md_chart},
+        "status_options": sorted(str(v) for v in (opcoes.get("status") or [])),
+        "uf_options": sorted(str(v) for v in (opcoes.get("uf") or [])),
+        "reu_options": sorted(str(v) for v in (opcoes.get("reu") or [])),
+    }
+
+
+def _dashboard_dados(selected_statuses, selected_ufs, selected_reus) -> dict:
+    dados = _dashboard_dados_rpc(selected_statuses, selected_ufs, selected_reus)
+    if dados is not None:
+        return dados
+    return _dashboard_dados_python(selected_statuses, selected_ufs, selected_reus)
+
+
+def _dashboard_dados_python(selected_statuses, selected_ufs, selected_reus) -> dict:
+    """Fallback: puxa as linhas do tenant e agrega em Python."""
+    cols = "uf, reu, status, data_pagamento, finalizado"
     acordos_all = sb_select(TABLE_ACORDOS, columns=cols, limit=50000)
     mandados_all = sb_select(TABLE_MANDADOS, columns=cols, limit=50000)
 
@@ -830,13 +1078,31 @@ def dashboard():
         }
     }
 
+    return {
+        "kpis": kpis,
+        "charts": charts,
+        "status_options": status_options,
+        "uf_options": uf_options,
+        "reu_options": reu_options,
+    }
+
+
+@app.get("/")
+@login_required
+def dashboard():
+    selected_statuses = request.args.getlist("status")
+    selected_ufs = request.args.getlist("uf")
+    selected_reus = request.args.getlist("reu")
+
+    dados = _dashboard_dados(selected_statuses, selected_ufs, selected_reus)
+
     return render_template(
         "dashboard.html",
-        charts=charts,
-        kpis=kpis,
-        status_options=status_options,
-        uf_options=uf_options,
-        reu_options=reu_options,
+        charts=dados["charts"],
+        kpis=dados["kpis"],
+        status_options=dados["status_options"],
+        uf_options=dados["uf_options"],
+        reu_options=dados["reu_options"],
         selected_statuses=selected_statuses,
         selected_ufs=selected_ufs,
         selected_reus=selected_reus,
@@ -1417,18 +1683,28 @@ def _custom_chaves_filtraveis(tenant: str, escopo: str) -> tuple[set[str], set[s
     return chaves, chaves_data
 
 
-def _apply_list_filters(query, filters: dict, valid_cols: set, date_cols: set,
-                        skip_col: str | None = None,
-                        custom_chaves: set | None = None,
-                        custom_date_chaves: set | None = None):
+def _normalize_list_filters(filters: dict, valid_cols: set, date_cols: set,
+                            skip_col: str | None = None,
+                            custom_chaves: set | None = None,
+                            custom_date_chaves: set | None = None) -> list[dict]:
     """
-    Constrói WHERE no query do supabase a partir do dict de filtros.
+    Traduz o dict de filtros do front em cláusulas neutras, já validadas.
+    É a ÚNICA implementação da semântica dos filtros: tanto o PostgREST
+    (_apply_filter_clauses) quanto as funções SQL da migration 06 consomem
+    estas cláusulas — assim os dois caminhos não divergem.
+
+    Cada cláusula é um AND com as demais; dentro dela os átomos são OR:
+        {"col": "status", "custom": False, "any": [átomo, ...]}
+    Átomos: {"op": "null"} | {"op": "in", "v": [...]} |
+            {"op": "range", "a": ini, "b": fim_exclusivo} |
+            {"op": "gte"|"lt"|"lte", "v": valor}
+
     skip_col: ignora o filtro daquela coluna (usado em facets).
-    custom_chaves / custom_date_chaves: filtros em chaves de valores_custom (JSONB).
-      Roteia o nome da coluna para o path PostgREST `valores_custom->>chave`.
+    custom_chaves / custom_date_chaves: chaves que vivem em valores_custom (JSONB).
     """
     custom_chaves = custom_chaves or set()
     custom_date_chaves = custom_date_chaves or set()
+    clausulas: list[dict] = []
 
     for col, f in (filters or {}).items():
         if not isinstance(f, dict):
@@ -1439,8 +1715,6 @@ def _apply_list_filters(query, filters: dict, valid_cols: set, date_cols: set,
         if not is_custom and col not in valid_cols:
             continue
 
-        # Path usado no PostgREST: nome da coluna fixa ou JSONB ->> chave.
-        path = f"valores_custom->>{col}" if is_custom else col
         is_date = (col in date_cols) or (col in custom_date_chaves)
 
         ftype = (f.get("type") or "").strip()
@@ -1450,36 +1724,37 @@ def _apply_list_filters(query, filters: dict, valid_cols: set, date_cols: set,
         if not values and not include_blank:
             continue
 
+        def _add(*atomos):
+            clausulas.append({"col": col, "custom": is_custom, "any": list(atomos)})
+
         if ftype == "set":
             if include_blank and not values:
-                query = query.is_(path, "null")
+                _add({"op": "null"})
             elif include_blank and values:
-                escaped = _quote_for_in(values)
-                query = query.or_(f"{path}.is.null,{path}.in.({escaped})")
+                _add({"op": "null"}, {"op": "in", "v": list(values)})
             else:
-                query = query.in_(path, values)
+                _add({"op": "in", "v": list(values)})
 
         elif ftype == "date_day" and is_date:
             iso_vals = [_br_to_iso(v) for v in values]
             iso_vals = [v for v in iso_vals if v]
             if include_blank and not iso_vals:
-                query = query.is_(path, "null")
+                _add({"op": "null"})
             elif include_blank and iso_vals:
-                escaped = _quote_for_in(iso_vals)
-                query = query.or_(f"{path}.is.null,{path}.in.({escaped})")
+                _add({"op": "null"}, {"op": "in", "v": iso_vals})
             elif iso_vals:
-                query = query.in_(path, iso_vals)
+                _add({"op": "in", "v": iso_vals})
 
         elif ftype == "date_month" and is_date:
             ranges = [_month_range(v) for v in values]
             ranges = [r for r in ranges if r]
             if include_blank and not ranges:
-                query = query.is_(path, "null")
+                _add({"op": "null"})
             elif ranges:
-                or_parts = [f"and({path}.gte.{a},{path}.lt.{b})" for a, b in ranges]
+                atomos = [{"op": "range", "a": a, "b": b} for a, b in ranges]
                 if include_blank:
-                    or_parts.append(f"{path}.is.null")
-                query = query.or_(",".join(or_parts))
+                    atomos.append({"op": "null"})
+                _add(*atomos)
 
         elif ftype == "date_range" and is_date:
             # values = [start_iso | null, end_iso | null] — qualquer um pode ser omitido.
@@ -1488,18 +1763,105 @@ def _apply_list_filters(query, filters: dict, valid_cols: set, date_cols: set,
             if not start_v and not end_v:
                 continue
             if start_v:
-                query = query.gte(path, start_v)
+                _add({"op": "gte", "v": start_v})
             if end_v:
                 # Inclui o dia final: usamos col < (end + 1 dia) para funcionar
                 # tanto em colunas DATE quanto em TIMESTAMP (created_at/updated_at).
                 try:
                     from datetime import timedelta
                     d = datetime.strptime(str(end_v), "%Y-%m-%d").date()
-                    query = query.lt(path, (d + timedelta(days=1)).isoformat())
+                    _add({"op": "lt", "v": (d + timedelta(days=1)).isoformat()})
                 except Exception:
-                    query = query.lte(path, end_v)
+                    _add({"op": "lte", "v": end_v})
 
+    return clausulas
+
+
+def _apply_filter_clauses(query, clausulas: list[dict]):
+    """Aplica as cláusulas de _normalize_list_filters num query PostgREST."""
+    for c in clausulas:
+        col = c["col"]
+        # Path usado no PostgREST: nome da coluna fixa ou JSONB ->> chave.
+        path = f"valores_custom->>{col}" if c["custom"] else col
+        atomos = c["any"]
+
+        if len(atomos) == 1 and atomos[0]["op"] != "range":
+            a = atomos[0]
+            if a["op"] == "null":
+                query = query.is_(path, "null")
+            elif a["op"] == "in":
+                query = query.in_(path, a["v"])
+            elif a["op"] == "gte":
+                query = query.gte(path, a["v"])
+            elif a["op"] == "lt":
+                query = query.lt(path, a["v"])
+            elif a["op"] == "lte":
+                query = query.lte(path, a["v"])
+            continue
+
+        partes = []
+        for a in atomos:
+            if a["op"] == "null":
+                partes.append(f"{path}.is.null")
+            elif a["op"] == "in":
+                partes.append(f"{path}.in.({_quote_for_in(a['v'])})")
+            elif a["op"] == "range":
+                partes.append(f"and({path}.gte.{a['a']},{path}.lt.{a['b']})")
+        query = query.or_(",".join(partes))
     return query
+
+
+def _apply_list_filters(query, filters: dict, valid_cols: set, date_cols: set,
+                        skip_col: str | None = None,
+                        custom_chaves: set | None = None,
+                        custom_date_chaves: set | None = None):
+    """
+    Constrói WHERE no query do supabase a partir do dict de filtros.
+    skip_col: ignora o filtro daquela coluna (usado em facets).
+    custom_chaves / custom_date_chaves: filtros em chaves de valores_custom (JSONB).
+      Roteia o nome da coluna para o path PostgREST `valores_custom->>chave`.
+    """
+    clausulas = _normalize_list_filters(
+        filters, valid_cols, date_cols, skip_col=skip_col,
+        custom_chaves=custom_chaves, custom_date_chaves=custom_date_chaves,
+    )
+    return _apply_filter_clauses(query, clausulas)
+
+
+# ----- Funções SQL de agregação (migration 06) -----
+# Enquanto a migration não for aplicada, as funções não existem e o app usa o
+# cálculo antigo em Python. A ausência é memorizada por alguns minutos para não
+# pagar uma ida extra ao banco em toda requisição.
+_RPC_INDISPONIVEL: dict[str, float] = {}
+_RPC_RETESTE_SEGUNDOS = 300.0
+
+
+def _rpc_agregacao(nome: str, params: dict):
+    """Chama uma função SQL da migration 06 e devolve o JSON de retorno.
+
+    Devolve None — e o chamador cai no cálculo em Python — quando a função não
+    existe (migration pendente) ou falha por erro não transitório (ex.: bug no
+    SQL), para que um problema na função degrade em vez de derrubar a tela.
+    Erros transitórios (banco/gateway fora) sobem: o fallback bateria no mesmo
+    banco indisponível e só dobraria a carga e o tempo de espera."""
+    marcado = _RPC_INDISPONIVEL.get(nome)
+    if marcado is not None and (time.monotonic() - marcado) < _RPC_RETESTE_SEGUNDOS:
+        return None
+    try:
+        res = _exec_with_retry(lambda: supabase.rpc(nome, params).execute())
+    except Exception as e:
+        if _is_transient_error(e):
+            raise
+        if isinstance(e, APIError) and (e.code or "") in ("PGRST202", "42883"):
+            app.logger.warning(
+                "Função SQL %s não encontrada (migration 06 pendente?) — usando cálculo em Python", nome
+            )
+            _RPC_INDISPONIVEL[nome] = time.monotonic()
+        else:
+            app.logger.exception("Falha na função SQL %s — usando cálculo em Python", nome)
+        return None
+    _RPC_INDISPONIVEL.pop(nome, None)
+    return getattr(res, "data", None)
 
 
 def _compute_totals(table_name: str, valid_cols: set, date_cols: set,
@@ -1509,20 +1871,35 @@ def _compute_totals(table_name: str, valid_cols: set, date_cols: set,
                     custom_date_chaves: set | None = None) -> dict:
     """
     Soma os campos numéricos para TODOS os registros que casam com os filtros.
-    Estratégia: puxa apenas as colunas numéricas necessárias (payload mínimo) e soma em Python.
-    Funciona em qualquer versão do PostgREST/Supabase.
+    Preferência: SUM/COUNT no Postgres (fin_listagem_totais). Fallback: puxa só
+    as colunas numéricas e soma em Python.
     """
+    clausulas = _normalize_list_filters(
+        filters, valid_cols, date_cols,
+        custom_chaves=custom_chaves, custom_date_chaves=custom_date_chaves,
+    )
+    agregado = _rpc_agregacao("fin_listagem_totais", {
+        "p_tabela": table_name,
+        "p_tenant": _get_tenant(),
+        "p_finalizado": None if finalizado_value is None else int(finalizado_value),
+        "p_clausulas": clausulas,
+        "p_campos": list(total_fields),
+    })
+    if isinstance(agregado, dict):
+        somas = agregado.get("sums") or {}
+        return {
+            "count": int(agregado.get("count") or 0),
+            "sums": {f: float(somas.get(f) or 0) for f in total_fields},
+        }
+
     cols = "id," + ",".join(total_fields)
     q = supabase.table(table_name).select(cols)
     q = q.eq("tenant", _get_tenant())
     if finalizado_value is not None:
         q = q.eq("finalizado", int(finalizado_value))
-    q = _apply_list_filters(q, filters, valid_cols, date_cols,
-                            custom_chaves=custom_chaves,
-                            custom_date_chaves=custom_date_chaves)
-    # Limite alto: cobre cenários reais. Se passar de 50k, idealmente RPC SQL.
+    q = _apply_filter_clauses(q, clausulas)
     q = q.limit(50000)
-    res = q.execute()
+    res = _exec_with_retry(q.execute)
     rows = getattr(res, "data", None) or []
 
     sums = {f: 0.0 for f in total_fields}
@@ -1577,20 +1954,42 @@ def _fetch_facets(table_name: str, col: str, valid_cols: set, date_cols: set,
     if not is_custom and col not in valid_cols:
         return []
 
-    # Campos custom vivem em valores_custom JSONB — buscamos a coluna inteira
-    # e extraímos a chave em Python (também trata tipo=select_multi com listas).
-    select_col = "valores_custom" if is_custom else col
+    clausulas = _normalize_list_filters(
+        filters, valid_cols, date_cols, skip_col=col,
+        custom_chaves=custom_chaves, custom_date_chaves=custom_date_chaves,
+    )
 
-    q = supabase.table(table_name).select(select_col)
-    q = q.eq("tenant", _get_tenant())
-    if finalizado_value is not None:
-        q = q.eq("finalizado", int(finalizado_value))
-    q = _apply_list_filters(q, filters, valid_cols, date_cols, skip_col=col,
-                            custom_chaves=custom_chaves,
-                            custom_date_chaves=custom_date_chaves)
-    q = q.limit(50000)
-    res = q.execute()
-    rows = getattr(res, "data", None) or []
+    # Valores brutos da coluna. Para campo custom é o valor da chave dentro de
+    # valores_custom (pode ser lista, no tipo select_multi).
+    distintos = _rpc_agregacao("fin_listagem_facets", {
+        "p_tabela": table_name,
+        "p_tenant": _get_tenant(),
+        "p_finalizado": None if finalizado_value is None else int(finalizado_value),
+        "p_clausulas": clausulas,
+        "p_col": col,
+        "p_custom": is_custom,
+    })
+    if isinstance(distintos, list):
+        valores_brutos = distintos
+    else:
+        # Fallback: campos custom vivem em valores_custom JSONB — buscamos a
+        # coluna inteira e extraímos a chave em Python.
+        select_col = "valores_custom" if is_custom else col
+        q = supabase.table(table_name).select(select_col)
+        q = q.eq("tenant", _get_tenant())
+        if finalizado_value is not None:
+            q = q.eq("finalizado", int(finalizado_value))
+        q = _apply_filter_clauses(q, clausulas)
+        q = q.limit(50000)
+        res = _exec_with_retry(q.execute)
+        rows = getattr(res, "data", None) or []
+        if is_custom:
+            valores_brutos = []
+            for r in rows:
+                vc = r.get("valores_custom") or {}
+                valores_brutos.append(vc.get(col) if isinstance(vc, dict) else None)
+        else:
+            valores_brutos = [r.get(col) for r in rows]
 
     seen = set()
     out = []
@@ -1611,27 +2010,28 @@ def _fetch_facets(table_name: str, col: str, valid_cols: set, date_cols: set,
                 label = f"{d.month:02d}/{d.year:04d}"
             else:
                 label = f"{d.day:02d}/{d.month:02d}/{d.year:04d}"
+        elif isinstance(raw, (int, float)) and not isinstance(raw, bool):
+            # Colunas numeric guardam o mesmo número com escalas diferentes
+            # ("100", "100.0", "100.00"); o JSON vira int ou float e o filtro
+            # mostrava "100" e "100.0" como opções duplicadas. Rótulo único em
+            # float — o IN do filtro casa com qualquer escala no Postgres.
+            label = str(float(raw))
         else:
             label = str(raw)
         if label not in seen:
             seen.add(label)
             out.append(label)
 
-    for r in rows:
-        if is_custom:
-            vc = r.get("valores_custom") or {}
-            v = vc.get(col) if isinstance(vc, dict) else None
-            # select_multi vem como lista — cada elemento vira uma opção do facet
-            if isinstance(v, list):
-                if not v:
-                    _push_value(None)
-                else:
-                    for x in v:
-                        _push_value(x)
+    for v in valores_brutos:
+        # select_multi vem como lista — cada elemento vira uma opção do facet
+        if is_custom and isinstance(v, list):
+            if not v:
+                _push_value(None)
             else:
-                _push_value(v)
+                for x in v:
+                    _push_value(x)
         else:
-            _push_value(r.get(col))
+            _push_value(v)
 
     # Inclui também os valores CADASTRADOS e ativos do campo, mesmo que ainda
     # não tenham sido usados em nenhum registro. Sem isto, um status/valor
@@ -1663,7 +2063,9 @@ def _fetch_facets(table_name: str, col: str, valid_cols: set, date_cols: set,
             return f"{yyyy}-{mm}-{dd}"
         out.sort(key=_date_key)
     else:
-        out.sort(key=lambda s: (s == "-", s.lower()))
+        # Desempate por `s`: a ordem de chegada dos valores varia entre o SQL e
+        # o fallback, e "Abc"/"abc" empatariam em s.lower().
+        out.sort(key=lambda s: (s == "-", s.lower(), s))
 
     return out
 
@@ -1706,7 +2108,7 @@ def _list_paginated(table_name: str, list_columns: str, valid_cols: set, date_co
     end = start + page_size - 1
     q = q.range(start, end)
 
-    res = q.execute()
+    res = _exec_with_retry(q.execute)
     rows = getattr(res, "data", None) or []
     total_count = getattr(res, "count", None)
     if total_count is None:
@@ -1971,25 +2373,43 @@ def _extras_columns_exist(table_name: str) -> bool:
     if cached is not None:
         return cached
     try:
-        supabase.table(table_name).select("extra_1").limit(1).execute()
+        _exec_with_retry(lambda: supabase.table(table_name).select("extra_1").limit(1).execute())
         _EXTRAS_EXISTS_CACHE[table_name] = True
-    except Exception:
+        return True
+    except Exception as e:
+        # Só memoriza "não existe" com resposta definitiva do banco. Antes, um
+        # 504 na primeira sondagem gravava False para sempre naquele worker e
+        # as listagens passavam a omitir extra_1/extra_2 até reiniciar.
+        if _is_transient_error(e):
+            return True  # assume o estado normal (migration 04 aplicada)
         _EXTRAS_EXISTS_CACHE[table_name] = False
-    return _EXTRAS_EXISTS_CACHE[table_name]
+        return False
+
+
+def _campos_config_por_escopo(tenant: str) -> dict[str, list[dict]]:
+    """Toda a fin_campos_config do tenant agrupada por escopo, numa só query
+    (cacheada). Uma tela lê 3-4 escopos; antes era uma ida ao banco por escopo.
+    Lança exceção em erro (não cacheia falha)."""
+    def _fetch():
+        res = _exec_with_retry(
+            lambda: supabase.table(TABLE_CAMPOS_CONFIG)
+            .select("escopo,chave,label,valor,visivel,ordem")
+            .eq("tenant", tenant)
+            .limit(20000)
+            .execute()
+        )
+        agrupado: dict[str, list[dict]] = {}
+        for r in (getattr(res, "data", None) or []):
+            agrupado.setdefault(r.get("escopo") or "", []).append(r)
+        return agrupado
+
+    return _cached(("campos_config", tenant), _fetch)
 
 
 def _campos_config_rows(tenant: str, escopo: str) -> list[dict]:
     """Lê as linhas de fin_campos_config para um tenant/escopo. Defensivo."""
     try:
-        res = (
-            supabase.table(TABLE_CAMPOS_CONFIG)
-            .select("chave,label,valor,visivel,ordem")
-            .eq("tenant", tenant)
-            .eq("escopo", escopo)
-            .limit(5000)
-            .execute()
-        )
-        return getattr(res, "data", None) or []
+        return _campos_config_por_escopo(tenant).get(escopo, [])
     except Exception:
         # Tabela ainda não existe (migration 04 não rodou) — usa padrões.
         return []
@@ -2081,6 +2501,25 @@ LEGACY_TABLE_TO_CAMPO_CHAVE = {
 }
 
 
+def _fetch_all_field_options(tenant: str) -> list[dict]:
+    """Todas as opções (fin_custom_field_options) do tenant, ordenadas por
+    ordem/valor, numa só query cacheada. Base de todas as leituras de opções.
+    Lança exceção em erro (não cacheia falha). Não mute o retorno."""
+    def _fetch():
+        res = _exec_with_retry(
+            lambda: supabase.table(TABLE_CUSTOM_FIELD_OPTIONS)
+            .select("*")
+            .eq("tenant", tenant)
+            .order("ordem")
+            .order("valor")
+            .limit(20000)
+            .execute()
+        )
+        return getattr(res, "data", None) or []
+
+    return _cached(("field_options", tenant), _fetch)
+
+
 def _load_field_options_por_tenant(tenant: str):
     """Carrega de uma só vez (id_campo, valor, cor, cor_letra, hierarquia, ativo)
     de todas as opções dos campos system_locked do tenant. Devolve dict por chave
@@ -2093,16 +2532,7 @@ def _load_field_options_por_tenant(tenant: str):
         if not chave_to_field_id:
             return {}
 
-        res = (
-            supabase.table(TABLE_CUSTOM_FIELD_OPTIONS)
-            .select("field_id,valor,cor,cor_letra,hierarquia,ativo,ordem")
-            .eq("tenant", tenant)
-            .order("ordem")
-            .order("valor")
-            .limit(20000)
-            .execute()
-        )
-        all_opts = getattr(res, "data", None) or []
+        all_opts = _fetch_all_field_options(tenant)
 
         by_field_id: dict[int, list[dict]] = {}
         for o in all_opts:
@@ -2456,7 +2886,7 @@ def _campos_v2_disponivel() -> bool:
     if _EXTRAS_EXISTS_CACHE.get("__campos_v2__") is True:
         return True
     try:
-        supabase.table(TABLE_CUSTOM_FIELDS).select("id").limit(1).execute()
+        _exec_with_retry(lambda: supabase.table(TABLE_CUSTOM_FIELDS).select("id").limit(1).execute())
         _EXTRAS_EXISTS_CACHE["__campos_v2__"] = True
         return True
     except Exception:
@@ -2471,12 +2901,14 @@ def _require_campos_v2():
 
 
 def _list_custom_fields(tenant: str) -> list[dict]:
-    """Lista campos do tenant, ordenados por `ordem`. Defensivo."""
+    """Lista campos do tenant, ordenados por `ordem`. Defensivo.
+    Cacheado — o retorno é compartilhado: copie antes de mutar."""
     if not _campos_v2_disponivel():
         return []
-    try:
-        res = (
-            supabase.table(TABLE_CUSTOM_FIELDS)
+
+    def _fetch():
+        res = _exec_with_retry(
+            lambda: supabase.table(TABLE_CUSTOM_FIELDS)
             .select("*")
             .eq("tenant", tenant)
             .order("ordem")
@@ -2484,6 +2916,9 @@ def _list_custom_fields(tenant: str) -> list[dict]:
             .execute()
         )
         return getattr(res, "data", None) or []
+
+    try:
+        return _cached(("custom_fields", tenant), _fetch)
     except Exception:
         app.logger.exception("Falha ao listar fin_custom_fields")
         return []
@@ -2511,17 +2946,8 @@ def _list_field_options(tenant: str, field_id: int) -> list[dict]:
     if not _campos_v2_disponivel():
         return []
     try:
-        res = (
-            supabase.table(TABLE_CUSTOM_FIELD_OPTIONS)
-            .select("*")
-            .eq("tenant", tenant)
-            .eq("field_id", field_id)
-            .order("ordem")
-            .order("valor")
-            .limit(5000)
-            .execute()
-        )
-        return getattr(res, "data", None) or []
+        fid = int(field_id)
+        return [o for o in _fetch_all_field_options(tenant) if int(o.get("field_id") or 0) == fid]
     except Exception:
         return []
 
@@ -2591,21 +3017,13 @@ def api_campos_list():
     try:
         _require_campos_v2()
         tenant = _get_tenant()
-        fields = _list_custom_fields(tenant)
+        # Cópia rasa: abaixo acrescentamos "opcoes" e o original está no cache.
+        fields = [dict(f) for f in _list_custom_fields(tenant)]
 
         # Carrega todas as opções do tenant em uma única query e agrupa por field_id.
         opts_por_field: dict[int, list[dict]] = {}
         try:
-            res = (
-                supabase.table(TABLE_CUSTOM_FIELD_OPTIONS)
-                .select("*")
-                .eq("tenant", tenant)
-                .order("ordem")
-                .order("valor")
-                .limit(10000)
-                .execute()
-            )
-            for o in (getattr(res, "data", None) or []):
+            for o in _fetch_all_field_options(tenant):
                 opts_por_field.setdefault(o["field_id"], []).append(o)
         except Exception:
             app.logger.exception("Falha ao listar opções")
@@ -2988,14 +3406,7 @@ def api_row_colors_v2():
 
         # Carrega tudo de uma vez
         try:
-            res = (
-                supabase.table(TABLE_CUSTOM_FIELD_OPTIONS)
-                .select("field_id,valor,cor,cor_letra,hierarquia,ativo")
-                .eq("tenant", tenant)
-                .limit(10000)
-                .execute()
-            )
-            opts = getattr(res, "data", None) or []
+            opts = _fetch_all_field_options(tenant)
         except Exception:
             opts = []
 
@@ -3636,6 +4047,19 @@ def staff_logout():
 
 # ---------- DASHBOARD STAFF ----------
 
+def _count_por_tenant(tabela: str, coluna: str, tenant: str) -> int:
+    """COUNT(*) via PostgREST sem trazer as linhas (antes puxava até 50k ids
+    só para fazer len()). Devolve 0 em erro, como antes."""
+    try:
+        res = _exec_with_retry(
+            lambda: supabase.table(tabela).select(coluna, count="exact")
+            .eq("tenant", tenant).limit(1).execute()
+        )
+        return int(getattr(res, "count", None) or 0)
+    except Exception:
+        return 0
+
+
 @app.get("/staff")
 @staff_required
 def staff_dashboard():
@@ -3654,21 +4078,9 @@ def staff_dashboard():
     total_mandados = 0
     for t in tenants:
         nome = t.get("nome") or ""
-        try:
-            u = supabase.table(TABLE_USERS).select("login").eq("tenant", nome).limit(5000).execute()
-            uc = len(getattr(u, "data", None) or [])
-        except Exception:
-            uc = 0
-        try:
-            a = supabase.table(TABLE_ACORDOS).select("id").eq("tenant", nome).limit(50000).execute()
-            ac = len(getattr(a, "data", None) or [])
-        except Exception:
-            ac = 0
-        try:
-            m = supabase.table(TABLE_MANDADOS).select("id").eq("tenant", nome).limit(50000).execute()
-            mc = len(getattr(m, "data", None) or [])
-        except Exception:
-            mc = 0
+        uc = _count_por_tenant(TABLE_USERS, "login", nome)
+        ac = _count_por_tenant(TABLE_ACORDOS, "id", nome)
+        mc = _count_por_tenant(TABLE_MANDADOS, "id", nome)
 
         total_users += uc
         total_acordos += ac
@@ -4150,12 +4562,20 @@ def handle_unexpected_error(e):
     if not is_transient:
         # E-mail de erro (best-effort — nunca deixa o handler quebrar).
         try:
-            from send_email import send_email_error
-            corpo = (
-                f"Rota: {request.method} {request.path}\n"
-                f"Usuário: {usuario}\nTenant: {tenant}\n\n{tb}"
-            )
-            send_email_error(corpo, subject="Erro 500 — Sistema Financeiro")
+            enviar, suprimidos = _erro_email_liberado(e)
+            if enviar:
+                from send_email import send_email_error
+                aviso = ""
+                if suprimidos:
+                    aviso = (
+                        f"(+{suprimidos} ocorrência(s) deste mesmo erro na janela anterior "
+                        f"não geraram e-mail — veja docker logs)\n\n"
+                    )
+                corpo = (
+                    f"{aviso}Rota: {request.method} {request.path}\n"
+                    f"Usuário: {usuario}\nTenant: {tenant}\n\n{tb}"
+                )
+                send_email_error(corpo, subject="Erro 500 — Sistema Financeiro")
         except Exception:
             pass
 
@@ -4163,6 +4583,65 @@ def handle_unexpected_error(e):
         "<h1>Internal Server Error</h1>"
         "<p>Ocorreu um erro interno. A equipe foi notificada.</p>"
     ), 500
+
+
+# ----- Deduplicação de e-mails de erro -----
+# Um incidente (ex.: Supabase fora por 8 minutos) gerava um e-mail por
+# requisição com erro — ~20 e-mails para o mesmo problema. Agora cada
+# "assinatura" de erro envia no máximo 1 e-mail por janela; as repetições
+# vão só para o log e são contadas no e-mail seguinte.
+# O estado fica em arquivos no disco do container para valer entre os
+# workers do gunicorn.
+ERROR_EMAIL_WINDOW_SECONDS = float(os.getenv("ERROR_EMAIL_WINDOW_SECONDS", "600"))
+_ERRO_EMAIL_DIR = os.path.join(__import__("tempfile").gettempdir(), "sistema_financeiro_erros")
+
+
+def _erro_assinatura(e: Exception) -> str:
+    """Agrupa ocorrências do "mesmo" erro.
+    Falha de infraestrutura (gateway/banco fora) é um incidente só, qualquer
+    que seja a rota. Demais erros: rota (padrão da URL) + tipo + mensagem."""
+    import hashlib
+    if _is_transient_error(e):
+        base = f"infra|{type(e).__name__}|{str(e)[:120]}"
+    else:
+        try:
+            rota = request.url_rule.rule if request.url_rule else request.path
+        except Exception:
+            rota = "?"
+        base = f"{rota}|{type(e).__name__}|{str(e)[:200]}"
+    return hashlib.sha1(base.encode("utf-8", "replace")).hexdigest()
+
+
+def _erro_email_liberado(e: Exception) -> tuple[bool, int]:
+    """(enviar?, ocorrências suprimidas na janela anterior). Best-effort: se o
+    disco falhar, libera o envio (melhor e-mail repetido que erro escondido)."""
+    import json as _j
+    try:
+        os.makedirs(_ERRO_EMAIL_DIR, exist_ok=True)
+        caminho = os.path.join(_ERRO_EMAIL_DIR, _erro_assinatura(e) + ".json")
+        agora = time.time()
+        estado = None
+        try:
+            with open(caminho, "r", encoding="utf-8") as fh:
+                estado = _j.load(fh)
+        except (FileNotFoundError, ValueError):
+            estado = None
+
+        if estado and (agora - float(estado.get("enviado_em") or 0)) < ERROR_EMAIL_WINDOW_SECONDS:
+            estado["suprimidos"] = int(estado.get("suprimidos") or 0) + 1
+            enviar, suprimidos_anteriores = False, 0
+        else:
+            suprimidos_anteriores = int((estado or {}).get("suprimidos") or 0)
+            estado = {"enviado_em": agora, "suprimidos": 0}
+            enviar = True
+
+        tmp = f"{caminho}.{os.getpid()}.{threading.get_ident()}.tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            _j.dump(estado, fh)
+        os.replace(tmp, caminho)
+        return enviar, suprimidos_anteriores
+    except Exception:
+        return True, 0
 
 
 # ===================== RUN =====================

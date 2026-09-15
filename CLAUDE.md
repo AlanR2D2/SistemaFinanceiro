@@ -82,6 +82,11 @@ FLASK_DEBUG=true                           # false em produção
 GOOGLE_SERVICE_ACCOUNT_FILE=credentials.json
 EMAIL=seuemail@gmail.com
 SENHA_APP_GMAIL=xxxx xxxx xxxx xxxx        # Senha de app Google
+
+# Opcionais (resiliência) — valores padrão entre parênteses
+SUPABASE_TIMEOUT_SECONDS=15                # timeout por chamada ao PostgREST (15)
+CACHE_TTL_SECONDS=30                       # cache de config/usuário entre requisições (30)
+ERROR_EMAIL_WINDOW_SECONDS=600             # 1 e-mail por erro repetido nesta janela (600)
 ```
 
 ---
@@ -505,3 +510,9 @@ gunicorn>=21.2
 4. **Limites de Supabase**: Queries limitadas a 5000 registros (limit nas consultas).
 5. **Templates monolíticos**: Os partials `_acordos_table.html` e `_mandados_table.html` são arquivos grandes com CSS + HTML + JavaScript inline.
 6. **Rede n8n**: O docker-compose referencia a rede externa `n8n-docker-caddy_n8n_net` — ela deve existir no servidor.
+7. **Cache de configuração**: `_cached()` guarda por `CACHE_TTL_SECONDS` as leituras de `fin_users`, `fin_custom_fields`, `fin_custom_field_options` e `fin_campos_config`.
+   - Só vale em GET/HEAD; qualquer POST/PUT/DELETE lê do banco e invalida o cache de **todos** os workers (arquivo-marcador no disco do container).
+   - Alterações feitas fora do app (painel do Supabase, scripts de sync) aparecem em até `CACHE_TTL_SECONDS`.
+   - O retorno é compartilhado: copie antes de mutar (`[dict(f) for f in _list_custom_fields(t)]`).
+8. **Retry no Supabase**: `_exec_with_retry()` repete erros transitórios (504 do gateway, timeouts, conexão) com backoff. Use **só em leituras** — repetir INSERT pode duplicar registro.
+9. **Agregações no Postgres (migration 06)**: totais da listagem, facets e dashboard usam as funções `fin_listagem_totais`, `fin_listagem_facets` e `fin_dashboard`. Sem a migration aplicada, o app cai automaticamente no cálculo em Python. Filtros são normalizados uma única vez em `_normalize_list_filters()` e consumidos tanto pelo PostgREST quanto pelo SQL — altere a semântica de filtro **só** ali.
