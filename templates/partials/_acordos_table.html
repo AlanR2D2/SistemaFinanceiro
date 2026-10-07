@@ -783,6 +783,9 @@
   </div>
   {% endif %}
 
+  {# Coluna TOTAL GERAL por linha — exclusiva do tenant Dra Consumidor #}
+  {% set _total_geral_row = ((tenant or '')|string|trim|lower) == 'dra consumidor' %}
+
   <div class="ac-table-wrap" id="acTableWrap">
     <table class="ac-table" id="acTable"
            data-finalizado="{{ finalizado_value if finalizado_value is defined else 0 }}"
@@ -817,6 +820,13 @@
             CONFERÊNCIA
             <span class="ac-info" title="Soma: Correção + Honorários + Audiencista + Sucumbência + Repasse">i</span>
           </th>
+          {% if _total_geral_row %}
+          <!-- Total geral por linha calculado no front: Honorários + Audiencista + Sucumbência + Correção -->
+          <th class="no-filter" data-field="total_geral">
+            TOTAL GERAL
+            <span class="ac-info" title="Soma: Honorários + Audiencista + Sucumbência + Correção">i</span>
+          </th>
+          {% endif %}
           <th data-field="repasse">REPASSE</th>
           <th data-field="chave_pix">CHAVE PIX</th>
           <th data-field="sucumbencia">SUCUMBÊNCIA</th>
@@ -840,6 +850,8 @@
         // Ordem unificada de colunas (fixas + custom) salva em fin_campos_config.
         // Cada item: { chave, label, origem, ordem, visivel }.
         window.AC_ORDEM = {{ (ordem_colunas or []) | tojson }};
+        // Coluna TOTAL GERAL por linha (só Dra Consumidor) — precisa casar com o <th>.
+        window.AC_TOTAL_GERAL_ROW = {{ 'true' if _total_geral_row else 'false' }};
       </script>
 
       <tbody id="acTbody">
@@ -1554,6 +1566,7 @@
         <td data-field="honorarios" class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.honorarios))}</div></td>
         <td data-field="audiencista" class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.audiencista))}</div></td>
         <td data-field="conferencia" class="ac-number"><div class="clamp-2 ac-money ac-conferencia">-</div></td>
+        ${window.AC_TOTAL_GERAL_ROW ? '<td data-field="total_geral" class="ac-number"><div class="clamp-2 ac-money">-</div></td>' : ''}
         <td data-field="repasse" class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.repasse))}</div></td>
         <td data-field="chave_pix"><div class="clamp-2">${escapeHtml(r.chave_pix)}</div></td>
         <td data-field="sucumbencia" class="ac-number"><div class="clamp-2 ac-money">${escapeHtml(moneyVal(r.sucumbencia))}</div></td>
@@ -3025,6 +3038,17 @@
         } else {
           const sum = (Number.isFinite(cor) ? cor : 0) + (Number.isFinite(hon) ? hon : 0) + (Number.isFinite(aud) ? aud : 0) + (Number.isFinite(rep) ? rep : 0) + (Number.isFinite(suc) ? suc : 0);
           setCellTextByField(tr, "conferencia", (typeof acFormatBR === 'function' ? acFormatBR(sum) : sum.toFixed(2).replace('.', ',')));
+        }
+
+        // TOTAL GERAL por linha (mesma fórmula do card): honorarios + audiencista + sucumbencia + correcao
+        if (window.AC_TOTAL_GERAL_ROW) {
+          const hasTotal = Number.isFinite(cor) || Number.isFinite(hon) || Number.isFinite(aud) || Number.isFinite(suc);
+          if (!hasTotal) {
+            setCellTextByField(tr, "total_geral", "-");
+          } else {
+            const total = (Number.isFinite(hon) ? hon : 0) + (Number.isFinite(aud) ? aud : 0) + (Number.isFinite(suc) ? suc : 0) + (Number.isFinite(cor) ? cor : 0);
+            setCellTextByField(tr, "total_geral", (typeof acFormatBR === 'function' ? acFormatBR(total) : total.toFixed(2).replace('.', ',')));
+          }
         }
       });
     }

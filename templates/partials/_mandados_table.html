@@ -841,6 +841,9 @@
   </div>
   {% endif %}
 
+  {# Coluna TOTAL GERAL por linha — exclusiva do tenant Dra Consumidor #}
+  {% set _total_geral_row = ((tenant or '')|string|trim|lower) == 'dra consumidor' %}
+
   <div class="md-table-wrap" id="mdTableWrap">
     <table class="md-table" id="mdTable"
            data-finalizado="{{ finalizado_value if finalizado_value is defined else 0 }}"
@@ -877,6 +880,14 @@
             <span class="md-info" title="Soma: Correção + Honorários + Audiencista + Sucumbência + Repasse">i</span>
           </th>
 
+          {% if _total_geral_row %}
+          <!-- TOTAL GERAL por linha calculado no front: Correção + Honorários + Audiencista + Sucumbência -->
+          <th class="no-filter" data-field="total_geral">
+            TOTAL GERAL
+            <span class="md-info" title="Soma: Correção + Honorários + Audiencista + Sucumbência">i</span>
+          </th>
+          {% endif %}
+
           <th data-field="repasse">REPASSE</th>
 
           <th data-field="chave_pix">CHAVE PIX</th>
@@ -903,6 +914,8 @@
         window.MD_CUSTOM_FIELDS = {{ (custom_fields_modal or []) | tojson }};
         // Ordem unificada de colunas (fixas + custom) salva em fin_campos_config.
         window.MD_ORDEM = {{ (ordem_colunas or []) | tojson }};
+        // Coluna TOTAL GERAL por linha (só Dra Consumidor) — precisa casar com o <th>.
+        window.MD_TOTAL_GERAL_ROW = {{ 'true' if _total_geral_row else 'false' }};
       </script>
 
       <tbody id="mdTbody">
@@ -1322,6 +1335,22 @@
           (Number.isFinite(rep) ? rep : 0);
         setCellTextByField(tr, "conferencia", formatBR_MD(sum) || "-");
       }
+
+      // TOTAL GERAL por linha (mesma fórmula do card): correcao + honorarios + audiencista + sucumbencia
+      if (window.MD_TOTAL_GERAL_ROW) {
+        const hasTotal =
+          Number.isFinite(cor) || Number.isFinite(hon) || Number.isFinite(aud) || Number.isFinite(suc);
+        if (!hasTotal) {
+          setCellTextByField(tr, "total_geral", "-");
+        } else {
+          const total =
+            (Number.isFinite(cor) ? cor : 0) +
+            (Number.isFinite(hon) ? hon : 0) +
+            (Number.isFinite(aud) ? aud : 0) +
+            (Number.isFinite(suc) ? suc : 0);
+          setCellTextByField(tr, "total_geral", formatBR_MD(total) || "-");
+        }
+      }
     }
 
     function refreshFmt() {
@@ -1669,6 +1698,7 @@
         <td data-field="honorarios" class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.honorarios))}</div></td>
         <td data-field="audiencista" class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.audiencista))}</div></td>
         <td data-field="conferencia" class="md-number"><div class="clamp-2 md-money">-</div></td>
+        ${window.MD_TOTAL_GERAL_ROW ? '<td data-field="total_geral" class="md-number"><div class="clamp-2 md-money">-</div></td>' : ''}
         <td data-field="repasse" class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.repasse))}</div></td>
         <td data-field="chave_pix"><div class="clamp-2">${escapeHtml(r.chave_pix)}</div></td>
         <td data-field="sucumbencia" class="md-number"><div class="clamp-2 md-money">${escapeHtml(moneyVal(r.sucumbencia))}</div></td>
