@@ -875,14 +875,14 @@
           <th data-field="audiencista">AUDIENCISTA</th>
 
           <!-- (3) CONFERÊNCIA calculada no front: Correção + Honorários + Audiencista + Sucumbência + Repasse -->
-          <th class="no-filter" data-field="conferencia">
+          <th class="no-filter" data-field="conferencia"{% if _total_geral_row %} data-ancora-apos="honorarios"{% endif %}>
             CONFERÊNCIA
             <span class="md-info" title="Soma: Correção + Honorários + Audiencista + Sucumbência + Repasse">i</span>
           </th>
 
           {% if _total_geral_row %}
           <!-- TOTAL GERAL por linha calculado no front: Correção + Honorários + Audiencista + Sucumbência -->
-          <th class="no-filter" data-field="total_geral">
+          <th class="no-filter" data-field="total_geral" data-ancora-apos="sucumbencia">
             TOTAL GERAL
             <span class="md-info" title="Soma: Correção + Honorários + Audiencista + Sucumbência">i</span>
           </th>
@@ -1390,10 +1390,6 @@
 
     const orderCfg = Array.isArray(window.MD_ORDEM) ? window.MD_ORDEM : [];
     const wantedOrder = orderCfg.map(o => o && o.chave).filter(Boolean);
-    if (!wantedOrder.length) {
-      window.MD_ORDEM_COLS = { refresh: () => {} };
-      return;
-    }
     const wantedSet = new Set(wantedOrder);
 
     const headCells = Array.from(thead.cells);
@@ -1420,6 +1416,17 @@
         permutation[i] = i;
       }
     }
+
+    // Âncoras relativas: <th data-ancora-apos="campo"> vai logo depois da
+    // coluna "campo" já reordenada (ex.: CONFERÊNCIA/TOTAL GERAL na Dra Consumidor).
+    headCells.forEach((th, origIdx) => {
+      const apos = th.dataset.ancoraApos;
+      if (!apos) return;
+      const alvoIdx = headCells.findIndex(c => c.dataset.field === apos);
+      if (alvoIdx < 0) return;
+      permutation.splice(permutation.indexOf(origIdx), 1);
+      permutation.splice(permutation.indexOf(alvoIdx) + 1, 0, origIdx);
+    });
 
     let identidade = true;
     for (let i = 0; i < N; i++) {
